@@ -233,12 +233,13 @@ export function Chatbot({
   const [initialSuggestions, setInitialSuggestions] = useState<string[]>([])
 
   useEffect(() => {
-    if (starterSuggestions && starterSuggestions.length > 0 && messages.length === 0) {
+    const hasUserMessages = messages.some(m => m.role === "user")
+    if (starterSuggestions && starterSuggestions.length > 0 && !hasUserMessages) {
       setInitialSuggestions(starterSuggestions)
     } else {
       setInitialSuggestions([])
     }
-  }, [starterSuggestions, messages.length])
+  }, [starterSuggestions, messages])
 
   const handleRefresh = useCallback(() => {
     // Clear messages and prompts

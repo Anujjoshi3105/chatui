@@ -52,7 +52,14 @@ function App() {
       model="ollama"
       position="bottom-right"
       placeholder="Ask me anything..."
-      starterMessage="👋 Hello! I'm here to help you. Feel free to ask me anything!"
+      starter={{
+        message: "👋 Hello! I'm here to help you. Feel free to ask me anything!",
+        suggestions: [
+          "What can you do?",
+          "How do I get started?",
+          "Tell me a joke"
+        ]
+      }}
       showHeader={true}
       stream={true}
       storageKey="my-chat-session"
@@ -75,7 +82,9 @@ function ChatPage() {
         url="http://localhost:8080"
         agent="support-agent"
         showHeader={true}
-        starterPrompt="How can I help you today?"
+        starter={{
+          message: "How can I help you today?"
+        }}
       />
     </div>
   );

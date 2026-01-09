@@ -20,6 +20,7 @@ export interface PopupChatbotProps extends ChatbotProps {
   height?: number | string
   tooltip?: string
   tooltipDelay?: number
+  defaultOpen?: boolean
 }
 
 export function PopupChatbot({
@@ -32,9 +33,10 @@ export function PopupChatbot({
   height = 600,
   tooltip,
   tooltipDelay = 0,
+  defaultOpen = false,
   ...chatbotProps
 }: PopupChatbotProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(defaultOpen)
   const [isMaximized, setIsMaximized] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 

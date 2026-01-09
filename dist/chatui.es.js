@@ -22460,33 +22460,33 @@ function FullChatbot(i) {
 		children: /* @__PURE__ */ jsx(Chatbot, { ...i })
 	});
 }
-function PopupChatbot({ buttonClassName: i, buttonStyle: a, popupClassName: o, children: s, position: c = "bottom-right", width: l = 450, height: u = 600, tooltip: d, tooltipDelay: f = 0, ...p }) {
-	let [m, h] = useState(!1), [_, v] = useState(!1), y = useRef(null);
+function PopupChatbot({ buttonClassName: i, buttonStyle: a, popupClassName: o, children: s, position: c = "bottom-right", width: l = 450, height: u = 600, tooltip: d, tooltipDelay: f = 0, defaultOpen: p = !1, ...m }) {
+	let [h, _] = useState(p), [v, y] = useState(!1), b = useRef(null);
 	useEffect(() => {
 		let i = (i) => {
-			if (!(_ || !m) && y.current && !y.current.contains(i.target)) {
+			if (!(v || !h) && b.current && !b.current.contains(i.target)) {
 				let a = i.target;
 				if (a.closest?.("[data-radix-portal]") || a.closest?.("[role=\"menu\"]") || a.closest?.("[role=\"listbox\"]") || a.closest?.("[role=\"dialog\"]") || a.closest?.("[data-radix-dialog-overlay]") || a.closest?.(".radix-themes")) return;
-				h(!1);
+				_(!1);
 			}
 		};
-		return m && document.addEventListener("mousedown", i), () => {
+		return h && document.addEventListener("mousedown", i), () => {
 			document.removeEventListener("mousedown", i);
 		};
-	}, [m, _]);
-	let b = {
+	}, [h, v]);
+	let E = {
 		"bottom-right": "bottom-4 right-4",
 		"bottom-left": "bottom-4 left-4",
 		"top-right": "top-4 right-4",
 		"top-left": "top-4 left-4"
-	}, E = typeof l == "number" ? `${l}px` : l, D = typeof u == "number" ? `${u}px` : u;
-	return /* @__PURE__ */ jsxs(Fragment$1, { children: [d && !m ? /* @__PURE__ */ jsx(TooltipProvider, {
+	}, D = typeof l == "number" ? `${l}px` : l, O = typeof u == "number" ? `${u}px` : u;
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [d && !h ? /* @__PURE__ */ jsx(TooltipProvider, {
 		delayDuration: f,
 		children: /* @__PURE__ */ jsxs(Tooltip, { children: [/* @__PURE__ */ jsx(TooltipTrigger, {
 			asChild: !0,
 			children: /* @__PURE__ */ jsx(motion.button, {
-				onClick: () => h(!m),
-				className: cn("chatbot-theme fixed z-50 flex items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors", b[c], i),
+				onClick: () => _(!h),
+				className: cn("chatbot-theme fixed z-50 flex items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors", E[c], i),
 				whileHover: { scale: 1.05 },
 				whileTap: { scale: .95 },
 				style: {
@@ -22502,8 +22502,8 @@ function PopupChatbot({ buttonClassName: i, buttonStyle: a, popupClassName: o, c
 			children: /* @__PURE__ */ jsx("p", { children: d })
 		})] })
 	}) : /* @__PURE__ */ jsx(motion.button, {
-		onClick: () => h(!m),
-		className: cn("chatbot-theme fixed z-50 flex items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors", b[c], m && "hidden", i),
+		onClick: () => _(!h),
+		className: cn("chatbot-theme fixed z-50 flex items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors", E[c], h && "hidden", i),
 		whileHover: { scale: 1.05 },
 		whileTap: { scale: .95 },
 		style: {
@@ -22512,8 +22512,8 @@ function PopupChatbot({ buttonClassName: i, buttonStyle: a, popupClassName: o, c
 			...a
 		},
 		children: s || /* @__PURE__ */ jsx(MessageCircle, { className: "h-6 w-6" })
-	}), /* @__PURE__ */ jsx(AnimatePresence, { children: m && /* @__PURE__ */ jsx(motion.div, {
-		ref: y,
+	}), /* @__PURE__ */ jsx(AnimatePresence, { children: h && /* @__PURE__ */ jsx(motion.div, {
+		ref: b,
 		initial: {
 			opacity: 0,
 			scale: .8,
@@ -22530,21 +22530,21 @@ function PopupChatbot({ buttonClassName: i, buttonStyle: a, popupClassName: o, c
 			y: 20
 		},
 		transition: { duration: .2 },
-		className: cn("chatbot-theme fixed z-40 bg-background overflow-hidden border shadow-2xl transition-all duration-300 ease-in-out", _ ? "inset-0 z-50 h-full w-full rounded-none m-0 border-0" : cn("rounded-lg", b[c]), o),
-		style: _ ? {} : {
-			width: E,
-			height: D
+		className: cn("chatbot-theme fixed z-40 bg-background overflow-hidden border shadow-2xl transition-all duration-300 ease-in-out", v ? "inset-0 z-50 h-full w-full rounded-none m-0 border-0" : cn("rounded-lg", E[c]), o),
+		style: v ? {} : {
+			width: D,
+			height: O
 		},
 		children: /* @__PURE__ */ jsx(Chatbot, {
-			...p,
+			...m,
 			header: {
-				...p.header,
-				onClose: () => h(!1),
+				...m.header,
+				onClose: () => _(!1),
 				allowMaximize: !0,
-				onMaximizeToggle: v
+				onMaximizeToggle: y
 			},
 			className: "h-full",
-			isMaximized: _
+			isMaximized: v
 		})
 	}) })] });
 }

@@ -1,7 +1,17 @@
 {
   "name": "chatui",
-  "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "A premium, highly customizable React chatbot library with streaming support and modern UI.",
+  "author": "Anuj Joshi",
+  "keywords": [
+    "react",
+    "chatbot",
+    "ui-library",
+    "streaming",
+    "tailwindcss",
+    "framer-motion"
+  ],
+  "license": "MIT",
   "type": "module",
   "main": "./dist/chatui.umd.js",
   "module": "./dist/chatui.es.js",
@@ -15,14 +25,20 @@
       "require": "./dist/chatui.umd.js",
       "types": "./dist/lib.d.ts"
     },
-    "./dist/chatui.css": "./dist/chatui.css"
+    "./dist/chatui.css": "./dist/chatui.css",
+    "./dist/index.css": "./dist/chatui.css",
+    "./chatui.css": "./dist/chatui.css",
+    "./style.css": "./dist/chatui.css"
   },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "prepare": "npm run build"
+    "preview": "vite preview"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",
@@ -43,8 +59,6 @@
     "framer-motion": "^11.18.2",
     "lucide-react": "^0.562.0",
     "next-themes": "^0.4.6",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "remeda": "^2.33.1",

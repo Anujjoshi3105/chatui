@@ -10,5 +10,6 @@ export interface PopupChatbotProps extends ChatbotProps {
     height?: number | string;
     tooltip?: string;
     tooltipDelay?: number;
+    defaultOpen?: boolean;
 }
-export declare function PopupChatbot({ buttonClassName, buttonStyle, popupClassName, children, position, width, height, tooltip, tooltipDelay, ...chatbotProps }: PopupChatbotProps): import("react/jsx-runtime").JSX.Element;
+export declare function PopupChatbot({ buttonClassName, buttonStyle, popupClassName, children, position, width, height, tooltip, tooltipDelay, defaultOpen, ...chatbotProps }: PopupChatbotProps): import("react/jsx-runtime").JSX.Element;

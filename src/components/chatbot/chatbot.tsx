@@ -229,15 +229,19 @@ export function Chatbot({
     }
   }, [metadata, selectedAgent, selectedModel])
 
-  // Initialize starter prompt suggestions if provided
-  const [initialSuggestions, setInitialSuggestions] = useState<string[]>([])
+  // Initialize with starterSuggestions directly to avoid timing issues
+  const [initialSuggestions, setInitialSuggestions] = useState<string[]>(
+    () => starterSuggestions ?? []
+  )
 
   useEffect(() => {
     const hasUserMessages = messages.some(m => m.role === "user")
-    if (starterSuggestions && starterSuggestions.length > 0 && !hasUserMessages) {
-      setInitialSuggestions(starterSuggestions)
-    } else {
+    if (hasUserMessages) {
+      // Clear suggestions once user has sent a message
       setInitialSuggestions([])
+    } else if (starterSuggestions && starterSuggestions.length > 0) {
+      // Restore suggestions if needed (e.g., after refresh)
+      setInitialSuggestions(starterSuggestions)
     }
   }, [starterSuggestions, messages])
 

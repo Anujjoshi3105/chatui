@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react"
+import React, { useState, useRef, useEffect, useCallback } from "react"
 import { MessageCircle } from "lucide-react"
 import { Chatbot, type ChatbotProps } from "./chatbot"
 import { cn } from "@/lib/utils"
@@ -9,6 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useIsMobile } from "@/hooks/use-is-mobile"
 
 export interface PopupChatbotProps extends ChatbotProps {
   buttonClassName?: string
@@ -21,6 +22,13 @@ export interface PopupChatbotProps extends ChatbotProps {
   tooltip?: string
   tooltipDelay?: number
   defaultOpen?: boolean
+}
+
+const positionClasses = {
+  "bottom-right": "bottom-4 right-4",
+  "bottom-left": "bottom-4 left-4",
+  "top-right": "top-4 right-4",
+  "top-left": "top-4 left-4",
 }
 
 export function PopupChatbot({
@@ -39,18 +47,18 @@ export function PopupChatbot({
   const [isOpen, setIsOpen] = useState(defaultOpen)
   const [isMaximized, setIsMaximized] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const isMobile = useIsMobile(width, height)
+
+  const isFullScreen = isMobile || isMaximized
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // Don't close if maximized or already closed
-      if (isMaximized || !isOpen) return
+      if (isFullScreen || !isOpen) return
 
       if (
         containerRef.current &&
         !containerRef.current.contains(event.target as Node)
       ) {
-        // Check if the click target or any parent is a Radix portal element
-        // (common for dropdowns, popovers, tooltips that render outside the container)
         const target = event.target as HTMLElement
         const isPortal =
           target.closest?.("[data-radix-portal]") ||
@@ -73,18 +81,16 @@ export function PopupChatbot({
     return () => {
       document.removeEventListener("mousedown", handleClickOutside)
     }
-  }, [isOpen, isMaximized])
+  }, [isOpen, isFullScreen])
 
-  const positionClasses = {
-    "bottom-right": "bottom-4 right-4",
-    "bottom-left": "bottom-4 left-4",
-    "top-right": "top-4 right-4",
-    "top-left": "top-4 left-4",
-  }
-
-  // Convert number to px if needed
   const w = typeof width === "number" ? `${width}px` : width
   const h = typeof height === "number" ? `${height}px` : height
+
+  const handleMaximizeToggle = useCallback((maximized: boolean) => {
+    if (!isMobile) {
+      setIsMaximized(maximized)
+    }
+  }, [isMobile])
 
   return (
     <>
@@ -140,23 +146,23 @@ export function PopupChatbot({
             transition={{ duration: 0.2 }}
             className={cn(
               "chatbot-theme fixed z-40 bg-background overflow-hidden border shadow-2xl transition-all duration-300 ease-in-out",
-              isMaximized
-                ? "inset-0 z-50 h-full w-full rounded-none m-0 border-0"
+              isFullScreen
+                ? "inset-0 z-50 h-dvh w-dvw max-h-dvh max-w-dvw rounded-none m-0 border-0"
                 : cn("rounded-lg", positionClasses[position]),
               popupClassName
             )}
-            style={isMaximized ? {} : { width: w, height: h }}
+            style={isFullScreen ? {} : { width: w, height: h }}
           >
             <Chatbot
               {...chatbotProps}
               header={{
                 ...chatbotProps.header,
                 onClose: () => setIsOpen(false),
-                allowMaximize: true,
-                onMaximizeToggle: setIsMaximized,
+                allowMaximize: !isMobile,
+                onMaximizeToggle: handleMaximizeToggle,
               }}
               className="h-full"
-              isMaximized={isMaximized}
+              isMaximized={isFullScreen}
             />
           </motion.div>
         )}

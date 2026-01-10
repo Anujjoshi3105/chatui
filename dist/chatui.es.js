@@ -757,13 +757,13 @@ var concatArrays = (i, a) => {
 		isPercent,
 		isArbitraryVariablePosition,
 		isArbitraryPosition
-	], dR = () => [
+	], pR = () => [
 		"",
 		"none",
 		v,
 		isArbitraryVariable,
 		isArbitraryValue
-	], fR = () => [
+	], mR = () => [
 		"none",
 		isNumber,
 		isArbitraryVariable,
@@ -1491,7 +1491,7 @@ var concatArrays = (i, a) => {
 				isArbitraryVariable,
 				isArbitraryValue
 			] }],
-			blur: [{ blur: dR() }],
+			blur: [{ blur: pR() }],
 			brightness: [{ brightness: [
 				isNumber,
 				isArbitraryVariable,
@@ -1544,7 +1544,7 @@ var concatArrays = (i, a) => {
 				isArbitraryVariable,
 				isArbitraryValue
 			] }],
-			"backdrop-blur": [{ "backdrop-blur": dR() }],
+			"backdrop-blur": [{ "backdrop-blur": pR() }],
 			"backdrop-brightness": [{ "backdrop-brightness": [
 				isNumber,
 				isArbitraryVariable,
@@ -1637,10 +1637,10 @@ var concatArrays = (i, a) => {
 				isArbitraryValue
 			] }],
 			"perspective-origin": [{ "perspective-origin": T() }],
-			rotate: [{ rotate: fR() }],
-			"rotate-x": [{ "rotate-x": fR() }],
-			"rotate-y": [{ "rotate-y": fR() }],
-			"rotate-z": [{ "rotate-z": fR() }],
+			rotate: [{ rotate: mR() }],
+			"rotate-x": [{ "rotate-x": mR() }],
+			"rotate-y": [{ "rotate-y": mR() }],
+			"rotate-z": [{ "rotate-z": mR() }],
 			scale: [{ scale: J() }],
 			"scale-x": [{ "scale-x": J() }],
 			"scale-y": [{ "scale-y": J() }],
@@ -3805,9 +3805,9 @@ var CONTENT_NAME$7 = "PopperContent", [PopperContentProvider, useContentContext]
 	useLayoutEffect2(() => {
 		z && U?.();
 	}, [z, U]);
-	let W = B.arrow?.x, G = B.arrow?.y, K = B.arrow?.centerOffset !== 0, [q, dR] = React$1.useState();
+	let W = B.arrow?.x, G = B.arrow?.y, K = B.arrow?.centerOffset !== 0, [q, pR] = React$1.useState();
 	return useLayoutEffect2(() => {
-		S && dR(window.getComputedStyle(S).zIndex);
+		S && pR(window.getComputedStyle(S).zIndex);
 	}, [S]), /* @__PURE__ */ jsx("div", {
 		ref: I.setFloating,
 		"data-radix-popper-content-wrapper": "",
@@ -13181,7 +13181,7 @@ function compiler(i) {
 			"strong"
 		],
 		enter: {
-			autolink: l(_R),
+			autolink: l(yR),
 			autolinkProtocol: k,
 			autolinkEmail: k,
 			atxHeading: l($),
@@ -13200,35 +13200,35 @@ function compiler(i) {
 			definitionDestinationString: u,
 			definitionLabelString: u,
 			definitionTitleString: u,
-			emphasis: l(pR),
-			hardBreakEscape: l(mR),
-			hardBreakTrailing: l(mR),
-			htmlFlow: l(hR, u),
+			emphasis: l(hR),
+			hardBreakEscape: l(gR),
+			hardBreakTrailing: l(gR),
+			htmlFlow: l(_R, u),
 			htmlFlowData: k,
-			htmlText: l(hR, u),
+			htmlText: l(_R, u),
 			htmlTextData: k,
-			image: l(gR),
+			image: l(vR),
 			label: u,
-			link: l(_R),
-			listItem: l(yR),
+			link: l(yR),
+			listItem: l(xR),
 			listItemValue: g,
-			listOrdered: l(vR, h),
-			listUnordered: l(vR),
-			paragraph: l(bR),
+			listOrdered: l(bR, h),
+			listUnordered: l(bR),
+			paragraph: l(SR),
 			reference: U,
 			referenceString: u,
 			resourceDestinationString: u,
 			resourceTitleString: u,
 			setextHeading: l($),
-			strong: l(xR),
-			thematicBreak: l(CR)
+			strong: l(CR),
+			thematicBreak: l(TR)
 		},
 		exit: {
 			atxHeading: f(),
 			atxHeadingSequence: T,
 			autolink: f(),
-			autolinkEmail: fR,
-			autolinkProtocol: dR,
+			autolinkEmail: mR,
+			autolinkProtocol: pR,
 			blockQuote: f(),
 			characterEscapeValue: A,
 			characterReferenceMarkerHexadecimal: G,
@@ -13460,7 +13460,7 @@ function compiler(i) {
 	}
 	function k(i) {
 		let a = this.stack[this.stack.length - 1].children, o = a[a.length - 1];
-		(!o || o.type !== "text") && (o = SR(), o.position = {
+		(!o || o.type !== "text") && (o = wR(), o.position = {
 			start: point(i.start),
 			end: void 0
 		}, a.push(o)), this.stack.push(o);
@@ -13548,12 +13548,12 @@ function compiler(i) {
 		let a = this.stack.pop();
 		a.position.end = point(i.end);
 	}
-	function dR(i) {
+	function pR(i) {
 		A.call(this, i);
 		let a = this.stack[this.stack.length - 1];
 		a.url = this.sliceSerialize(i);
 	}
-	function fR(i) {
+	function mR(i) {
 		A.call(this, i);
 		let a = this.stack[this.stack.length - 1];
 		a.url = "mailto:" + this.sliceSerialize(i);
@@ -13587,7 +13587,7 @@ function compiler(i) {
 			url: ""
 		};
 	}
-	function pR() {
+	function hR() {
 		return {
 			type: "emphasis",
 			children: []
@@ -13600,16 +13600,16 @@ function compiler(i) {
 			children: []
 		};
 	}
-	function mR() {
+	function gR() {
 		return { type: "break" };
 	}
-	function hR() {
+	function _R() {
 		return {
 			type: "html",
 			value: ""
 		};
 	}
-	function gR() {
+	function vR() {
 		return {
 			type: "image",
 			title: null,
@@ -13617,7 +13617,7 @@ function compiler(i) {
 			alt: null
 		};
 	}
-	function _R() {
+	function yR() {
 		return {
 			type: "link",
 			title: null,
@@ -13625,7 +13625,7 @@ function compiler(i) {
 			children: []
 		};
 	}
-	function vR(i) {
+	function bR(i) {
 		return {
 			type: "list",
 			ordered: i.type === "listOrdered",
@@ -13634,7 +13634,7 @@ function compiler(i) {
 			children: []
 		};
 	}
-	function yR(i) {
+	function xR(i) {
 		return {
 			type: "listItem",
 			spread: i._spread,
@@ -13642,25 +13642,25 @@ function compiler(i) {
 			children: []
 		};
 	}
-	function bR() {
+	function SR() {
 		return {
 			type: "paragraph",
 			children: []
 		};
 	}
-	function xR() {
+	function CR() {
 		return {
 			type: "strong",
 			children: []
 		};
 	}
-	function SR() {
+	function wR() {
 		return {
 			type: "text",
 			value: ""
 		};
 	}
-	function CR() {
+	function TR() {
 		return { type: "thematicBreak" };
 	}
 }
@@ -20672,7 +20672,7 @@ var CONTENT_MARGIN = 10, [SelectContentProvider, useSelectContentContext] = crea
 	}, [C.value]), G = React$1.useCallback(() => T?.focus(), [T]), K = React$1.useCallback((i, a, o) => {
 		let s = !L.current && !o;
 		(C.value !== void 0 && C.value === a || s) && N(i);
-	}, [C.value]), q = c === "popper" ? SelectPopperPosition : SelectItemAlignedPosition, dR = q === SelectPopperPosition ? {
+	}, [C.value]), q = c === "popper" ? SelectPopperPosition : SelectItemAlignedPosition, pR = q === SelectPopperPosition ? {
 		side: f,
 		sideOffset: p,
 		align: m,
@@ -20724,7 +20724,7 @@ var CONTENT_MARGIN = 10, [SelectContentProvider, useSelectContentContext] = crea
 						dir: C.dir,
 						onContextMenu: (i) => i.preventDefault(),
 						...S,
-						...dR,
+						...pR,
 						onPlaced: () => I(!0),
 						ref: k,
 						style: {
@@ -22212,7 +22212,7 @@ function Disclaimer({ onAccept: i, open: a }) {
 }
 var MemoizedChat = memo(Chat);
 function Chatbot({ url: i, agent: a, model: o, placeholder: s = "Hi, how can I help you?", threadId: c, userId: l, stream: u = !0, className: d, storageKey: f, header: p = {}, footer: h = {}, starter: _ = {}, isMaximized: v }) {
-	let { show: y = !0, title: C, titleUrl: E, subtitle: D, avatar: O, allowMaximize: k = !1, onMaximizeToggle: A, onClose: j, onRefresh: M } = p, { show: N = !0, text: P, subtitle: F } = h, { message: I, suggestions: L } = _, [R, z] = useState(a || ""), [B, V] = useState(o || ""), [H, U] = useState([]), [W, G] = useState(""), [K, q] = useState(!1), [dR, fR] = useState(!1), J = v ?? dR, [Y, Z] = useState([]), Q = useRef(""), pR = useRef(null), $ = useRef([]);
+	let { show: y = !0, title: C, titleUrl: E, subtitle: D, avatar: O, allowMaximize: k = !1, onMaximizeToggle: A, onClose: j, onRefresh: M } = p, { show: N = !0, text: P, subtitle: F } = h, { message: I, suggestions: L } = _, [R, z] = useState(a || ""), [B, V] = useState(o || ""), [H, U] = useState([]), [W, G] = useState(""), [K, q] = useState(!1), [pR, mR] = useState(!1), J = v ?? pR, [Y, Z] = useState([]), Q = useRef(""), hR = useRef(null), $ = useRef([]);
 	useEffect(() => {
 		if (f) {
 			let i = localStorage.getItem(f);
@@ -22240,28 +22240,28 @@ function Chatbot({ url: i, agent: a, model: o, placeholder: s = "Hi, how can I h
 			return () => clearTimeout(i);
 		}
 	}, [H, f]);
-	let { isListening: mR, transcript: hR, startListening: gR, stopListening: _R, speak: vR, availableVoices: yR, selectedVoice: bR, setSelectedVoice: xR, voiceConfig: SR, updateConfig: CR, isRecognitionSupported: wR } = useVoice(), [TR, ER] = useState(!1), [DR, OR] = useState(!1);
+	let { isListening: gR, transcript: _R, startListening: vR, stopListening: yR, speak: bR, availableVoices: xR, selectedVoice: SR, setSelectedVoice: CR, voiceConfig: wR, updateConfig: TR, isRecognitionSupported: ER } = useVoice(), [DR, OR] = useState(!1), [kR, AR] = useState(!1);
 	useEffect(() => {
 		let i = localStorage.getItem("voice-config");
 		if (i) try {
-			CR(JSON.parse(i));
+			TR(JSON.parse(i));
 		} catch (i) {
 			console.error("Failed to load voice config", i);
 		}
 		let a = localStorage.getItem("auto-speak");
-		a && ER(a === "true"), localStorage.getItem("chatbot-consent") || OR(!0);
-	}, [CR]);
-	let kR = useCallback(() => {
-		localStorage.setItem("chatbot-consent", "true"), OR(!1);
+		a && OR(a === "true"), localStorage.getItem("chatbot-consent") || AR(!0);
+	}, [TR]);
+	let jR = useCallback(() => {
+		localStorage.setItem("chatbot-consent", "true"), AR(!1);
 	}, []);
 	useEffect(() => {
-		localStorage.setItem("voice-config", JSON.stringify(SR));
-	}, [SR]), useEffect(() => {
-		localStorage.setItem("auto-speak", String(TR));
-	}, [TR]), useEffect(() => {
-		hR && G(hR);
-	}, [hR]);
-	let { metadata: AR, streamMessage: jR, stopStream: MR, sendFeedback: NR } = useChatbotApi({
+		localStorage.setItem("voice-config", JSON.stringify(wR));
+	}, [wR]), useEffect(() => {
+		localStorage.setItem("auto-speak", String(DR));
+	}, [DR]), useEffect(() => {
+		_R && G(_R);
+	}, [_R]);
+	let { metadata: MR, streamMessage: NR, stopStream: PR, sendFeedback: FR } = useChatbotApi({
 		url: i,
 		agent: R,
 		model: B,
@@ -22270,26 +22270,26 @@ function Chatbot({ url: i, agent: a, model: o, placeholder: s = "Hi, how can I h
 		stream: u
 	});
 	useEffect(() => {
-		AR && !R && z(AR.default_agent), AR && !B && V(AR.default_model);
+		MR && !R && z(MR.default_agent), MR && !B && V(MR.default_model);
 	}, [
-		AR,
+		MR,
 		R,
 		B
 	]);
-	let [PR, FR] = useState([]);
+	let [IR, LR] = useState(() => L ?? []);
 	useEffect(() => {
-		L && L.length > 0 && H.length === 0 ? FR(L) : FR([]);
-	}, [L, H.length]);
-	let IR = useCallback(() => {
+		H.some((i) => i.role === "user") ? LR([]) : L && L.length > 0 && LR(L);
+	}, [L, H]);
+	let RR = useCallback(() => {
 		Z([]), G(""), f && localStorage.removeItem(f), U(I ? [{
 			id: `greeting-${Date.now()}`,
 			role: "assistant",
 			content: I,
 			createdAt: /* @__PURE__ */ new Date()
 		}] : []);
-	}, [f, I]), LR = M || IR, RR = useCallback((i) => {
+	}, [f, I]), zR = M || RR, BR = useCallback((i) => {
 		U((a) => [...a, i]);
-	}, []), zR = useCallback((i, a) => {
+	}, []), VR = useCallback((i, a) => {
 		U((o) => {
 			let s = [...o], c = s.length - 1;
 			return s[c]?.id === i && (s[c] = {
@@ -22297,23 +22297,23 @@ function Chatbot({ url: i, agent: a, model: o, placeholder: s = "Hi, how can I h
 				...a
 			}), s;
 		});
-	}, []), BR = useCallback(async (i) => {
+	}, []), HR = useCallback(async (i) => {
 		if (K) return;
-		q(!0), Z([]), $.current = [], pR.current = Date.now(), RR({
+		q(!0), Z([]), $.current = [], hR.current = Date.now(), BR({
 			id: `user-${Date.now()}`,
 			role: "user",
 			content: i,
 			createdAt: /* @__PURE__ */ new Date()
 		});
 		let a = `ai-${Date.now()}`;
-		RR({
+		BR({
 			id: a,
 			role: "assistant",
 			content: "",
 			createdAt: /* @__PURE__ */ new Date()
 		}), Q.current = "";
 		try {
-			for await (let o of jR(i)) if (console.log("Event: ", o), o.type === "token" && typeof o.content == "string") Q.current += o.content, zR(a, { content: Q.current });
+			for await (let o of NR(i)) if (console.log("Event: ", o), o.type === "token" && typeof o.content == "string") Q.current += o.content, VR(a, { content: Q.current });
 			else if (o.type === "message" && o.content) {
 				let i = o.content;
 				if (i.type === "tool") {
@@ -22353,7 +22353,7 @@ function Chatbot({ url: i, agent: a, model: o, placeholder: s = "Hi, how can I h
 				}
 				Q.current = i.content;
 				let s = i.content;
-				$.current.length > 0 && (s += "\n\n**Follow-up suggestions:**\n" + $.current.map((i) => `- ${i}`).join("\n"), $.current = []), zR(a, {
+				$.current.length > 0 && (s += "\n\n**Follow-up suggestions:**\n" + $.current.map((i) => `- ${i}`).join("\n"), $.current = []), VR(a, {
 					content: s,
 					custom_data: {
 						...i.custom_data,
@@ -22363,64 +22363,64 @@ function Chatbot({ url: i, agent: a, model: o, placeholder: s = "Hi, how can I h
 			} else if (o.type === "update" && o.updates) {
 				let i = o.updates.follow_up;
 				Array.isArray(i) && (Z(i), $.current = i);
-			} else o.type === "error" && zR(a, { content: `Error: ${o.content}` });
+			} else o.type === "error" && VR(a, { content: `Error: ${o.content}` });
 		} catch (i) {
-			console.error("Stream error:", i), zR(a, { content: `Error: ${i instanceof Error ? i.message : "Unknown error"}` });
+			console.error("Stream error:", i), VR(a, { content: `Error: ${i instanceof Error ? i.message : "Unknown error"}` });
 		} finally {
-			q(!1), TR && Q.current && vR && vR(Q.current), Q.current = "", pR.current = null;
+			q(!1), DR && Q.current && bR && bR(Q.current), Q.current = "", hR.current = null;
 		}
 	}, [
 		K,
-		jR,
-		RR,
-		zR,
-		TR,
-		vR
-	]), VR = useCallback(async (i) => {
+		NR,
+		BR,
+		VR,
+		DR,
+		bR
+	]), UR = useCallback(async (i) => {
 		i?.preventDefault?.();
 		let a = W.trim();
-		a && (G(""), await BR(a));
-	}, [W, BR]), HR = useCallback(async (i) => {
-		await BR(i.content);
-	}, [BR]), UR = useCallback(() => {
-		MR(), q(!1);
-	}, [MR]), WR = useCallback(async (i, a) => {
+		a && (G(""), await HR(a));
+	}, [W, HR]), WR = useCallback(async (i) => {
+		await HR(i.content);
+	}, [HR]), GR = useCallback(() => {
+		PR(), q(!1);
+	}, [PR]), KR = useCallback(async (i, a) => {
 		let o = H.find((a) => a.id === i)?.custom_data?.run_id;
 		if (o) try {
-			await NR(o, "human-feedback", a === "thumbs-up" ? 1 : 0);
+			await FR(o, "human-feedback", a === "thumbs-up" ? 1 : 0);
 		} catch (i) {
 			console.error("Failed to send feedback:", i);
 		}
-	}, [H, NR]), GR = useCallback((i) => {
+	}, [H, FR]), qR = useCallback((i) => {
 		G(i.target.value);
-	}, []), KR = useCallback(() => {
+	}, []), JR = useCallback(() => {
 		let i = !J;
-		fR(i), A?.(i);
-	}, [J, A]), qR = useMemo(() => Y.length > 0 ? Y : PR.length > 0 ? PR : [], [Y, PR]);
+		mR(i), A?.(i);
+	}, [J, A]), YR = useMemo(() => Y.length > 0 ? Y : IR.length > 0 ? IR : [], [Y, IR]);
 	return /* @__PURE__ */ jsxs("div", {
 		className: cn("chatbot-theme flex flex-col h-full transition-all duration-300 ease-in-out relative", d, J && "fixed inset-0 z-50 m-0 h-full max-h-none w-full max-w-none rounded-none border-0"),
 		children: [
 			/* @__PURE__ */ jsx(Disclaimer, {
-				open: DR,
-				onAccept: kR
+				open: kR,
+				onAccept: jR
 			}),
 			y && /* @__PURE__ */ jsx(Header, {
-				metadata: AR,
+				metadata: MR,
 				selectedAgent: R,
 				selectedModel: B,
 				onAgentChange: z,
 				onModelChange: V,
 				onClose: j,
-				onRefresh: LR,
-				voiceConfig: SR,
-				onVoiceConfigChange: CR,
-				availableVoices: yR,
-				selectedVoice: bR,
-				onVoiceChange: xR,
-				autoSpeak: TR,
-				onAutoSpeakChange: ER,
+				onRefresh: zR,
+				voiceConfig: wR,
+				onVoiceConfigChange: TR,
+				availableVoices: xR,
+				selectedVoice: SR,
+				onVoiceChange: CR,
+				autoSpeak: DR,
+				onAutoSpeakChange: OR,
 				isMaximized: J,
-				onMaximize: k ? KR : void 0,
+				onMaximize: k ? JR : void 0,
 				title: C,
 				titleUrl: E,
 				subtitle: D,
@@ -22430,21 +22430,21 @@ function Chatbot({ url: i, agent: a, model: o, placeholder: s = "Hi, how can I h
 				className: "flex-1 overflow-hidden",
 				children: /* @__PURE__ */ jsx(MemoizedChat, {
 					messages: H,
-					handleSubmit: VR,
+					handleSubmit: UR,
 					input: W,
-					handleInputChange: GR,
-					stop: UR,
+					handleInputChange: qR,
+					stop: GR,
 					isGenerating: K,
-					append: HR,
-					suggestions: qR,
-					onRateResponse: WR,
+					append: WR,
+					suggestions: YR,
+					onRateResponse: KR,
 					setMessages: U,
 					placeholder: s,
-					voiceConfig: SR,
-					isListening: mR,
-					startListening: gR,
-					stopListening: _R,
-					isSpeechSupported: wR
+					voiceConfig: wR,
+					isListening: gR,
+					startListening: vR,
+					stopListening: yR,
+					isSpeechSupported: ER
 				})
 			}),
 			N && /* @__PURE__ */ jsx(Footer, {
@@ -22460,33 +22460,46 @@ function FullChatbot(i) {
 		children: /* @__PURE__ */ jsx(Chatbot, { ...i })
 	});
 }
-function PopupChatbot({ buttonClassName: i, buttonStyle: a, popupClassName: o, children: s, position: c = "bottom-right", width: l = 450, height: u = 600, tooltip: d, tooltipDelay: f = 0, defaultOpen: p = !1, ...m }) {
-	let [h, _] = useState(p), [v, y] = useState(!1), b = useRef(null);
+function useIsMobile(i = 640, a = 0) {
+	let [o, s] = useState(!1);
+	return useEffect(() => {
+		let o = () => {
+			let o = window.innerWidth, c = window.innerHeight, l = typeof i == "number" ? i : parseInt(String(i)) || 0, u = typeof a == "number" ? a : parseInt(String(a)) || 0;
+			s(o < l || u > 0 && c < u);
+		};
+		return o(), window.addEventListener("resize", o), () => window.removeEventListener("resize", o);
+	}, [i, a]), o;
+}
+var positionClasses = {
+	"bottom-right": "bottom-4 right-4",
+	"bottom-left": "bottom-4 left-4",
+	"top-right": "top-4 right-4",
+	"top-left": "top-4 left-4"
+};
+function PopupChatbot({ buttonClassName: i, buttonStyle: a, popupClassName: o, children: s, position: c = "bottom-right", width: l = 450, height: u = 600, tooltip: d, tooltipDelay: f = 0, defaultOpen: p = !1, ...h }) {
+	let [_, v] = useState(p), [y, b] = useState(!1), E = useRef(null), D = useIsMobile(l, u), O = D || y;
 	useEffect(() => {
 		let i = (i) => {
-			if (!(v || !h) && b.current && !b.current.contains(i.target)) {
+			if (!(O || !_) && E.current && !E.current.contains(i.target)) {
 				let a = i.target;
 				if (a.closest?.("[data-radix-portal]") || a.closest?.("[role=\"menu\"]") || a.closest?.("[role=\"listbox\"]") || a.closest?.("[role=\"dialog\"]") || a.closest?.("[data-radix-dialog-overlay]") || a.closest?.(".radix-themes")) return;
-				_(!1);
+				v(!1);
 			}
 		};
-		return h && document.addEventListener("mousedown", i), () => {
+		return _ && document.addEventListener("mousedown", i), () => {
 			document.removeEventListener("mousedown", i);
 		};
-	}, [h, v]);
-	let E = {
-		"bottom-right": "bottom-4 right-4",
-		"bottom-left": "bottom-4 left-4",
-		"top-right": "top-4 right-4",
-		"top-left": "top-4 left-4"
-	}, D = typeof l == "number" ? `${l}px` : l, O = typeof u == "number" ? `${u}px` : u;
-	return /* @__PURE__ */ jsxs(Fragment$1, { children: [d && !h ? /* @__PURE__ */ jsx(TooltipProvider, {
+	}, [_, O]);
+	let k = typeof l == "number" ? `${l}px` : l, A = typeof u == "number" ? `${u}px` : u, j = useCallback((i) => {
+		D || b(i);
+	}, [D]);
+	return /* @__PURE__ */ jsxs(Fragment$1, { children: [d && !_ ? /* @__PURE__ */ jsx(TooltipProvider, {
 		delayDuration: f,
 		children: /* @__PURE__ */ jsxs(Tooltip, { children: [/* @__PURE__ */ jsx(TooltipTrigger, {
 			asChild: !0,
 			children: /* @__PURE__ */ jsx(motion.button, {
-				onClick: () => _(!h),
-				className: cn("chatbot-theme fixed z-50 flex items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors", E[c], i),
+				onClick: () => v(!_),
+				className: cn("chatbot-theme fixed z-50 flex items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors", positionClasses[c], i),
 				whileHover: { scale: 1.05 },
 				whileTap: { scale: .95 },
 				style: {
@@ -22502,8 +22515,8 @@ function PopupChatbot({ buttonClassName: i, buttonStyle: a, popupClassName: o, c
 			children: /* @__PURE__ */ jsx("p", { children: d })
 		})] })
 	}) : /* @__PURE__ */ jsx(motion.button, {
-		onClick: () => _(!h),
-		className: cn("chatbot-theme fixed z-50 flex items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors", E[c], h && "hidden", i),
+		onClick: () => v(!_),
+		className: cn("chatbot-theme fixed z-50 flex items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors", positionClasses[c], _ && "hidden", i),
 		whileHover: { scale: 1.05 },
 		whileTap: { scale: .95 },
 		style: {
@@ -22512,8 +22525,8 @@ function PopupChatbot({ buttonClassName: i, buttonStyle: a, popupClassName: o, c
 			...a
 		},
 		children: s || /* @__PURE__ */ jsx(MessageCircle, { className: "h-6 w-6" })
-	}), /* @__PURE__ */ jsx(AnimatePresence, { children: h && /* @__PURE__ */ jsx(motion.div, {
-		ref: b,
+	}), /* @__PURE__ */ jsx(AnimatePresence, { children: _ && /* @__PURE__ */ jsx(motion.div, {
+		ref: E,
 		initial: {
 			opacity: 0,
 			scale: .8,
@@ -22530,21 +22543,21 @@ function PopupChatbot({ buttonClassName: i, buttonStyle: a, popupClassName: o, c
 			y: 20
 		},
 		transition: { duration: .2 },
-		className: cn("chatbot-theme fixed z-40 bg-background overflow-hidden border shadow-2xl transition-all duration-300 ease-in-out", v ? "inset-0 z-50 h-full w-full rounded-none m-0 border-0" : cn("rounded-lg", E[c]), o),
-		style: v ? {} : {
-			width: D,
-			height: O
+		className: cn("chatbot-theme fixed z-40 bg-background overflow-hidden border shadow-2xl transition-all duration-300 ease-in-out", O ? "inset-0 z-50 h-dvh w-dvw max-h-dvh max-w-dvw rounded-none m-0 border-0" : cn("rounded-lg", positionClasses[c]), o),
+		style: O ? {} : {
+			width: k,
+			height: A
 		},
 		children: /* @__PURE__ */ jsx(Chatbot, {
-			...m,
+			...h,
 			header: {
-				...m.header,
-				onClose: () => _(!1),
-				allowMaximize: !0,
-				onMaximizeToggle: y
+				...h.header,
+				onClose: () => v(!1),
+				allowMaximize: !D,
+				onMaximizeToggle: j
 			},
 			className: "h-full",
-			isMaximized: v
+			isMaximized: O
 		})
 	}) })] });
 }

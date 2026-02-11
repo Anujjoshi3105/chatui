@@ -77,7 +77,7 @@ export function ChatHistorySheet({
   const [searchInput, setSearchInput] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [loadingMore, setLoadingMore] = useState(false)
-  const loadMoreSentinelRef = useRef<HTMLDivElement>(null)
+  const loadMoreSentinelRef = useRef<HTMLLIElement>(null)
   const loadingMoreRef = useRef(false)
   const threadListLengthRef = useRef(threadList.length)
   threadListLengthRef.current = threadList.length

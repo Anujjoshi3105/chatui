@@ -39,7 +39,6 @@ export type ChatRuntimeConfig = {
     threadId?: string;
     userId?: string;
     stream?: boolean;
-    storageKey?: string;
     starterMessage?: string;
     starterSuggestions?: string[];
     /** Called when stream ends with the final assistant message content (e.g. for TTS). */

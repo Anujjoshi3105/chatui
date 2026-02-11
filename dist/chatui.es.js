@@ -316,6 +316,14 @@ var __create = Object.create, __defProp = Object.defineProperty, __getOwnPropDes
 }], ["path", {
 	d: "M3 3v5h5",
 	key: "1xhq8a"
+}]]), Search = createLucideIcon("search", [["path", {
+	d: "m21 21-4.34-4.34",
+	key: "14j7rj"
+}], ["circle", {
+	cx: "11",
+	cy: "11",
+	r: "8",
+	key: "4ej97u"
 }]]), Settings = createLucideIcon("settings", [["path", {
 	d: "M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915",
 	key: "1i5ecw"
@@ -8695,52 +8703,34 @@ var ChatService = class {
 		if (!s.ok) throw Error(`Failed to get history: ${s.statusText}`);
 		return (await s.json()).messages ?? [];
 	}
-	async getThreads(i) {
-		let a = i?.trim();
-		if (!a) return { threads: [] };
+	async getThreads(i, a) {
+		let o = i?.trim();
+		if (!o) return {
+			threads: [],
+			total: 0
+		};
 		try {
-			let i = await fetch(`${this.config.baseUrl}/history/threads`, {
+			let i = { user_id: o };
+			a?.limit != null && (i.limit = a.limit), a?.offset != null && (i.offset = a.offset), a?.search != null && a.search !== "" && (i.search = a.search);
+			let s = await fetch(`${this.config.baseUrl}/history/threads`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ user_id: a })
+				body: JSON.stringify(i)
 			});
-			if (!i.ok) throw Error(`Failed to get threads: ${i.statusText}`);
-			return { threads: (await i.json()).threads ?? [] };
+			if (!s.ok) throw Error(`Failed to get threads: ${s.statusText}`);
+			let c = await s.json();
+			return {
+				threads: c.threads ?? [],
+				total: c.total ?? c.threads?.length ?? 0
+			};
 		} catch {
-			return { threads: [] };
+			return {
+				threads: [],
+				total: 0
+			};
 		}
 	}
-}, DATE_KEYS = ["createdAt"];
-function reviver(i, a) {
-	if (typeof a == "string" && DATE_KEYS.includes(i)) {
-		let i = new Date(a);
-		return isNaN(i.getTime()) ? a : i;
-	}
-	return a;
-}
-function loadMessages(i) {
-	if (!i) return null;
-	try {
-		let a = localStorage.getItem(i);
-		if (!a) return null;
-		let o = JSON.parse(a, reviver);
-		return !Array.isArray(o) || o.length === 0 ? null : o;
-	} catch {
-		return null;
-	}
-}
-function saveMessages(i, a) {
-	if (!(!i || a.length === 0)) try {
-		localStorage.setItem(i, JSON.stringify(a));
-	} catch (i) {
-		console.error("Failed to save chat history:", i);
-	}
-}
-function clearMessages(i) {
-	if (i) try {
-		localStorage.removeItem(i);
-	} catch {}
-}
+};
 function updateMessageById(i, a, o) {
 	let s = i.findIndex((i) => i.id === a);
 	if (s === -1) return i;
@@ -8912,15 +8902,66 @@ function getInitialChatState(i, a) {
 		error: null
 	};
 }
-var DEBOUNCE_SAVE_MS = 500;
 function apiMessagesToUiMessages(i) {
-	return i.map((i, a) => ({
-		id: i.run_id ?? `msg-${a}-${Date.now()}`,
-		role: i.type === "human" ? "user" : "assistant",
-		content: i.content ?? "",
-		createdAt: /* @__PURE__ */ new Date(),
-		custom_data: i.custom_data
-	}));
+	let a = [], o = 0, s = Date.now();
+	for (; o < i.length;) {
+		let c = i[o];
+		if (c.type === "human") {
+			a.push({
+				id: c.run_id ?? `user-${a.length}-${s}`,
+				role: "user",
+				content: c.content ?? "",
+				createdAt: /* @__PURE__ */ new Date(),
+				custom_data: c.custom_data
+			}), o += 1;
+			continue;
+		}
+		if (c.type === "ai" || c.type === "tool") {
+			let c = o, l = "", u = [], d, f;
+			for (; o < i.length;) {
+				let a = i[o];
+				if (a.type === "human") break;
+				if (a.type !== "ai" && a.type !== "tool") {
+					o += 1;
+					continue;
+				}
+				if (a.type === "ai") {
+					a.run_id && d === void 0 && (d = a.run_id), f = a.custom_data;
+					let i = a.content ?? "";
+					if (i && (l = i), a.tool_calls?.length) for (let i of a.tool_calls) u.push({
+						state: "call",
+						toolName: i.name,
+						toolCallId: i.id,
+						args: i.args
+					});
+				} else {
+					let i = a.name ?? a.response_metadata?.name ?? a.custom_data?.name ?? "Tool", o = a.content, s = typeof o == "string" ? o.replace(/\\n/g, "\n") : o, c = a.tool_call_id ?? void 0, l = c ? u.findIndex((i) => i.state === "call" && i.toolCallId === c) : -1, d = {
+						state: "result",
+						toolName: i,
+						toolCallId: c,
+						result: s
+					};
+					l >= 0 ? u[l] = d : u.push(d);
+				}
+				o += 1;
+			}
+			a.push({
+				id: d ?? `assistant-${c}-${s}`,
+				role: "assistant",
+				content: l,
+				createdAt: /* @__PURE__ */ new Date(),
+				custom_data: f,
+				toolInvocations: u.length > 0 ? u : void 0
+			});
+			continue;
+		}
+		if (c.type === "custom") {
+			o += 1;
+			continue;
+		}
+		o += 1;
+	}
+	return a;
 }
 function useChatRuntime(i) {
 	let [a, o] = useReducer(chatRuntimeReducer, getInitialChatState(i, null)), s = useRef(i);
@@ -8978,33 +9019,24 @@ function useChatRuntime(i) {
 			type: "SET_THREAD_ID",
 			payload: i.threadId
 		});
-	}, [i.threadId]), useEffect(() => {
-		if (!i.storageKey) return;
-		let a = loadMessages(i.storageKey);
-		if (a && a.length > 0) {
-			o({
-				type: "SET_MESSAGES",
-				payload: a
-			});
-			return;
-		}
-		i.starterMessage && o({
-			type: "SET_MESSAGES",
-			payload: [{
+	}, [i.threadId]);
+	let f = useRef(void 0);
+	useEffect(() => {
+		let a = i.agent ?? "", s = f.current, c = s !== void 0 && s !== a;
+		f.current = a, c && (o({
+			type: "SET_THREAD_ID",
+			payload: void 0
+		}), i.starterMessage ? o({
+			type: "CLEAR_CHAT",
+			payload: { keepStarter: {
 				id: `greeting-${Date.now()}`,
 				role: "assistant",
 				content: i.starterMessage,
 				createdAt: /* @__PURE__ */ new Date()
-			}]
-		});
-	}, [i.storageKey, i.starterMessage]), useEffect(() => {
-		if (!i.storageKey || a.messages.length === 0) return;
-		let o = setTimeout(() => {
-			saveMessages(i.storageKey, a.messages);
-		}, DEBOUNCE_SAVE_MS);
-		return () => clearTimeout(o);
-	}, [i.storageKey, a.messages]);
-	let f = useCallback(async (i) => {
+			} }
+		}) : o({ type: "CLEAR_CHAT" }));
+	}, [i.agent, i.starterMessage]);
+	let p = useCallback(async (i) => {
 		if (a.isGenerating) return;
 		let c = a.metadata, f = s.current.agent ?? c?.default_agent, p = s.current.model ?? c?.default_model;
 		if (!f) return;
@@ -9091,14 +9123,14 @@ function useChatRuntime(i) {
 		a.metadata,
 		a.currentThreadId,
 		l
-	]), p = useCallback(() => {
+	]), h = useCallback(() => {
 		l().abortStream(), o({ type: "STREAM_END" });
-	}, [l]), h = useCallback((i) => {
+	}, [l]), _ = useCallback((i) => {
 		o({
 			type: "SET_INPUT",
 			payload: i
 		});
-	}, []), _ = useCallback((i) => {
+	}, []), v = useCallback((i) => {
 		o(typeof i == "function" ? {
 			type: "SET_MESSAGES",
 			payload: i(a.messages)
@@ -9106,8 +9138,8 @@ function useChatRuntime(i) {
 			type: "SET_MESSAGES",
 			payload: i
 		});
-	}, [a.messages]), v = useCallback((i) => {
-		s.current.storageKey && clearMessages(s.current.storageKey), i?.keepStarter && s.current.starterMessage ? o({
+	}, [a.messages]), y = useCallback((i) => {
+		i?.keepStarter && s.current.starterMessage ? o({
 			type: "CLEAR_CHAT",
 			payload: { keepStarter: {
 				id: `greeting-${Date.now()}`,
@@ -9116,17 +9148,17 @@ function useChatRuntime(i) {
 				createdAt: /* @__PURE__ */ new Date()
 			} }
 		}) : o({ type: "CLEAR_CHAT" });
-	}, []), y = useCallback((i) => {
+	}, []), C = useCallback((i) => {
 		c.current = null, o({
 			type: "SET_METADATA",
 			payload: a.metadata
 		});
-	}, [a.metadata]), C = useCallback((i) => {}, []), w = useCallback((i) => {
+	}, [a.metadata]), w = useCallback((i) => {}, []), T = useCallback((i) => {
 		o({
 			type: "SET_THREAD_ID",
 			payload: i
 		});
-	}, []), T = useCallback(async (i) => {
+	}, []), E = useCallback(async (i) => {
 		let a = s.current.userId?.trim();
 		a && (o({
 			type: "SET_MESSAGES",
@@ -9135,36 +9167,35 @@ function useChatRuntime(i) {
 			type: "SET_THREAD_ID",
 			payload: i
 		}));
-	}, [l]), E = useCallback(async (i, o) => {
+	}, [l]), D = useCallback(async (i, o) => {
 		let s = a.messages.find((a) => a.id === i)?.custom_data?.run_id;
 		s && await l().sendFeedback(s, "human-feedback", o === "thumbs-up" ? 1 : 0);
-	}, [a.messages, l]), D = useCallback(async () => {
+	}, [a.messages, l]), O = useCallback(async () => {
 		o({
 			type: "SET_METADATA",
 			payload: await l().getMetadata(!0)
 		});
-	}, [l]), O = useCallback(async () => {
-		let i = s.current.userId?.trim(), { threads: a } = await l().getThreads(i);
-		return a;
-	}, [l]), k = useCallback(async (i) => l().getHistory(i, s.current.userId), [l]), A = useMemo(() => ({
-		setInput: h,
-		sendMessage: f,
-		stopGeneration: p,
-		setMessages: _,
-		clearChat: v,
-		setAgent: y,
-		setModel: C,
-		setThreadId: w,
-		loadThread: T,
-		rateResponse: E,
-		refetchMetadata: D,
-		getThreads: O,
-		getHistory: k
+	}, [l]), k = useCallback(async (i) => {
+		let a = s.current.userId?.trim();
+		return l().getThreads(a, i);
+	}, [l]), A = useCallback(async (i) => l().getHistory(i, s.current.userId), [l]), j = useMemo(() => ({
+		setInput: _,
+		sendMessage: p,
+		stopGeneration: h,
+		setMessages: v,
+		clearChat: y,
+		setAgent: C,
+		setModel: w,
+		setThreadId: T,
+		loadThread: E,
+		rateResponse: D,
+		refetchMetadata: O,
+		getThreads: k,
+		getHistory: A
 	}), [
-		h,
-		f,
-		p,
 		_,
+		p,
+		h,
 		v,
 		y,
 		C,
@@ -9173,11 +9204,12 @@ function useChatRuntime(i) {
 		E,
 		D,
 		O,
-		k
+		k,
+		A
 	]);
 	return {
 		...a,
-		...A
+		...j
 	};
 }
 var ChatContext = createContext(null);
@@ -17227,10 +17259,10 @@ function compiler(i) {
 			"strong"
 		],
 		enter: {
-			autolink: l(Lz),
+			autolink: l(Pz),
 			autolinkProtocol: k,
 			autolinkEmail: k,
-			atxHeading: l(Nz),
+			atxHeading: l(Az),
 			blockQuote: l(Z),
 			characterEscape: k,
 			characterReference: k,
@@ -17242,32 +17274,32 @@ function compiler(i) {
 			codeTextData: k,
 			data: k,
 			codeFlowValue: k,
-			definition: l(jz),
+			definition: l(Oz),
 			definitionDestinationString: u,
 			definitionLabelString: u,
 			definitionTitleString: u,
-			emphasis: l(Mz),
-			hardBreakEscape: l(Pz),
-			hardBreakTrailing: l(Pz),
-			htmlFlow: l(Fz, u),
+			emphasis: l(kz),
+			hardBreakEscape: l(jz),
+			hardBreakTrailing: l(jz),
+			htmlFlow: l(Mz, u),
 			htmlFlowData: k,
-			htmlText: l(Fz, u),
+			htmlText: l(Mz, u),
 			htmlTextData: k,
-			image: l(Iz),
+			image: l(Nz),
 			label: u,
-			link: l(Lz),
-			listItem: l(zz),
+			link: l(Pz),
+			listItem: l(Iz),
 			listItemValue: g,
-			listOrdered: l(Rz, h),
-			listUnordered: l(Rz),
-			paragraph: l(Bz),
+			listOrdered: l(Fz, h),
+			listUnordered: l(Fz),
+			paragraph: l(Lz),
 			reference: U,
 			referenceString: u,
 			resourceDestinationString: u,
 			resourceTitleString: u,
-			setextHeading: l(Nz),
-			strong: l(Vz),
-			thematicBreak: l(Uz)
+			setextHeading: l(Az),
+			strong: l(Rz),
+			thematicBreak: l(Bz)
 		},
 		exit: {
 			atxHeading: f(),
@@ -17506,7 +17538,7 @@ function compiler(i) {
 	}
 	function k(i) {
 		let a = this.stack[this.stack.length - 1].children, o = a[a.length - 1];
-		(!o || o.type !== "text") && (o = Hz(), o.position = {
+		(!o || o.type !== "text") && (o = zz(), o.position = {
 			start: point(i.start),
 			end: void 0
 		}, a.push(o)), this.stack.push(o);
@@ -17624,7 +17656,7 @@ function compiler(i) {
 			value: ""
 		};
 	}
-	function jz() {
+	function Oz() {
 		return {
 			type: "definition",
 			identifier: "",
@@ -17633,29 +17665,29 @@ function compiler(i) {
 			url: ""
 		};
 	}
-	function Mz() {
+	function kz() {
 		return {
 			type: "emphasis",
 			children: []
 		};
 	}
-	function Nz() {
+	function Az() {
 		return {
 			type: "heading",
 			depth: 0,
 			children: []
 		};
 	}
-	function Pz() {
+	function jz() {
 		return { type: "break" };
 	}
-	function Fz() {
+	function Mz() {
 		return {
 			type: "html",
 			value: ""
 		};
 	}
-	function Iz() {
+	function Nz() {
 		return {
 			type: "image",
 			title: null,
@@ -17663,7 +17695,7 @@ function compiler(i) {
 			alt: null
 		};
 	}
-	function Lz() {
+	function Pz() {
 		return {
 			type: "link",
 			title: null,
@@ -17671,7 +17703,7 @@ function compiler(i) {
 			children: []
 		};
 	}
-	function Rz(i) {
+	function Fz(i) {
 		return {
 			type: "list",
 			ordered: i.type === "listOrdered",
@@ -17680,7 +17712,7 @@ function compiler(i) {
 			children: []
 		};
 	}
-	function zz(i) {
+	function Iz(i) {
 		return {
 			type: "listItem",
 			spread: i._spread,
@@ -17688,25 +17720,25 @@ function compiler(i) {
 			children: []
 		};
 	}
-	function Bz() {
+	function Lz() {
 		return {
 			type: "paragraph",
 			children: []
 		};
 	}
-	function Vz() {
+	function Rz() {
 		return {
 			type: "strong",
 			children: []
 		};
 	}
-	function Hz() {
+	function zz() {
 		return {
 			type: "text",
 			value: ""
 		};
 	}
-	function Uz() {
+	function Bz() {
 		return { type: "thematicBreak" };
 	}
 }
@@ -21399,7 +21431,7 @@ const ChatMessage = ({ role: i, content: a, createdAt: o, showTimeStamp: s = !1,
 		}) : null]
 	}, `text-${a}`) : i.type === "reasoning" ? /* @__PURE__ */ jsx(ReasoningBlock, { part: i }, `reasoning-${a}`) : i.type === "tool-invocation" ? /* @__PURE__ */ jsx(ToolCall, { toolInvocations: [i.toolInvocation] }, `tool-${a}`) : null) : /* @__PURE__ */ jsxs("div", {
 		className: cn("flex flex-col gap-3", h ? "items-end" : "items-start"),
-		children: [d && d.length > 0 && /* @__PURE__ */ jsx(ToolCall, { toolInvocations: d }), /* @__PURE__ */ jsxs("div", {
+		children: [d && d.length > 0 && /* @__PURE__ */ jsx(ToolCall, { toolInvocations: d }), a || p ? /* @__PURE__ */ jsxs("div", {
 			className: cn("flex flex-col mr-12 ml-4", h ? "items-end" : "items-start"),
 			children: [/* @__PURE__ */ jsxs("div", {
 				className: cn(chatBubbleVariants({
@@ -21415,6 +21447,13 @@ const ChatMessage = ({ role: i, content: a, createdAt: o, showTimeStamp: s = !1,
 				className: cn("mt-2 block px-1 text-xs opacity-60", c !== "none" && "duration-500 animate-in fade-in-0"),
 				children: g
 			}) : null]
+		}) : s && o && /* @__PURE__ */ jsx("div", {
+			className: cn("flex flex-col mr-12 ml-4", h ? "items-end" : "items-start"),
+			children: /* @__PURE__ */ jsx("time", {
+				dateTime: o.toISOString(),
+				className: cn("mt-2 block px-1 text-xs opacity-60", c !== "none" && "duration-500 animate-in fade-in-0"),
+				children: g
+			})
 		})]
 	});
 };
@@ -23004,11 +23043,11 @@ function ChatInput({ placeholder: i = "Hi, how can I help you?", className: a, t
 	});
 }
 function ChatSuggestions() {
-	let { suggestions: i, sendMessage: o } = useChatContext(), s = React.useCallback((i) => {
-		o(i.content);
-	}, [o]);
+	let { suggestions: i, sendMessage: a } = useChatContext(), o = useCallback((i) => {
+		a(i.content);
+	}, [a]);
 	return i.length === 0 ? null : /* @__PURE__ */ jsx(PromptSuggestions, {
-		append: s,
+		append: o,
 		suggestions: i
 	});
 }
@@ -23018,239 +23057,6 @@ const Chat = {
 	Input: ChatInput,
 	Suggestions: ChatSuggestions
 };
-var DISCLAIMER = "\nThis content is generated by an artificial intelligence. While we strive for accuracy, the AI may occasionally produce incorrect or biased information. \n\n**Important Notes:**\n- Please verify critical information.\n- The AI does not have real-time access to personal data unless shared in this session.\n- Responses are based on training data and specific portfolio context.\n\nBy using this chatbot, you agree to our terms of service regarding AI-generated content.\n", DisclaimerModal = memo(({ disclaimer: i, onClose: a }) => /* @__PURE__ */ jsxs("div", {
-	className: "fixed inset-0 z-[60] flex items-center justify-center p-4",
-	children: [/* @__PURE__ */ jsx(motion.div, {
-		className: "absolute inset-0 bg-background/80 backdrop-blur-sm",
-		initial: { opacity: 0 },
-		animate: { opacity: 1 },
-		exit: { opacity: 0 },
-		onClick: a
-	}), /* @__PURE__ */ jsxs(motion.div, {
-		className: "relative z-[70] w-full max-w-md rounded-xl border bg-background p-6 shadow-2xl",
-		initial: {
-			opacity: 0,
-			scale: .95,
-			y: 12
-		},
-		animate: {
-			opacity: 1,
-			scale: 1,
-			y: 0
-		},
-		exit: {
-			opacity: 0,
-			scale: .95,
-			y: 12
-		},
-		role: "dialog",
-		"aria-modal": "true",
-		children: [
-			/* @__PURE__ */ jsxs("header", {
-				className: "mb-4 flex items-center justify-between border-b pb-2",
-				children: [/* @__PURE__ */ jsx("h2", {
-					className: "text-lg font-bold",
-					children: "Disclaimer"
-				}), /* @__PURE__ */ jsx(Button, {
-					variant: "ghost",
-					size: "icon",
-					onClick: a,
-					"aria-label": "Close dialog",
-					children: /* @__PURE__ */ jsx(X, {})
-				})]
-			}),
-			/* @__PURE__ */ jsx("div", {
-				className: "max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar text-sm",
-				children: /* @__PURE__ */ jsx(MarkdownRenderer, { children: i })
-			}),
-			/* @__PURE__ */ jsx("footer", {
-				className: "mt-6 flex justify-end",
-				children: /* @__PURE__ */ jsx(Button, {
-					onClick: a,
-					children: "Understood"
-				})
-			})
-		]
-	})]
-}));
-DisclaimerModal.displayName = "DisclaimerModal";
-function Footer({ disclaimer: i = DISCLAIMER, subtitle: a }) {
-	let [o, s] = useState(!1), c = useCallback(() => s(!0), []), l = useCallback(() => s(!1), []);
-	return /* @__PURE__ */ jsxs("footer", {
-		className: "border-t bg-muted/50 px-6 py-3 flex items-center justify-between",
-		children: [
-			/* @__PURE__ */ jsx("button", {
-				onClick: c,
-				className: "text-xs text-muted-foreground hover:text-primary cursor-pointer hover:underline transition-colors font-medium",
-				children: "Terms & Conditions"
-			}),
-			a ? /* @__PURE__ */ jsx("div", {
-				className: "text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/60",
-				children: a
-			}) : /* @__PURE__ */ jsxs("div", {
-				className: "flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/60",
-				children: [/* @__PURE__ */ jsx("span", { children: "Powered by" }), /* @__PURE__ */ jsx("span", {
-					className: "text-primary/70",
-					children: "ChatUI"
-				})]
-			}),
-			/* @__PURE__ */ jsx(AnimatePresence, { children: o && /* @__PURE__ */ jsx(DisclaimerModal, {
-				disclaimer: i,
-				onClose: l
-			}) })
-		]
-	});
-}
-function useVoice(i = {}) {
-	let { config: a, onTranscript: o, onSpeechStart: s, onSpeechEnd: c, onError: l } = i, [u, d] = useState(!1), [f, p] = useState(!1), [h, _] = useState(""), [v, y] = useState(""), [b, x] = useState(null), [w, T] = useState([]), [E, D] = useState(null), [O, k] = useState({
-		...defaultVoiceConfig,
-		...a
-	}), [A, j] = useState(() => getVoiceSupport()), M = useRef(null), N = useRef(null);
-	useEffect(() => {
-		let i = getVoiceSupport();
-		if (j(i), i.speechRecognition && (M.current = new SpeechRecognitionManager(O), M.current.onStart = () => {
-			d(!0), x(null), s?.();
-		}, M.current.onEnd = () => {
-			d(!1), c?.();
-		}, M.current.onError = (i) => {
-			x(i), d(!1), l?.(i);
-		}, M.current.onResult = (i, a) => {
-			a ? (_((a) => a + i), y("")) : y(i), o?.(i, a);
-		}), i.speechSynthesis) {
-			N.current = new SpeechSynthesisManager(O), N.current.onStart = () => {
-				p(!0);
-			}, N.current.onEnd = () => {
-				p(!1);
-			}, N.current.onError = (i) => {
-				x(i), p(!1);
-			};
-			let i = () => {
-				let i = N.current?.getVoices() || [];
-				if (T(i), !E && i.length > 0) {
-					let a = i.filter((i) => i.lang.toLowerCase().startsWith(O.lang.toLowerCase().split("-")[0]));
-					a.length > 0 && D(a[0]);
-				}
-			};
-			i(), typeof window < "u" && window.speechSynthesis && (window.speechSynthesis.onvoiceschanged = i);
-		}
-		return () => {
-			M.current?.destroy(), N.current?.destroy();
-		};
-	}, []);
-	let P = useCallback((i) => {
-		k((a) => {
-			let o = {
-				...a,
-				...i
-			};
-			return M.current?.updateConfig(o), N.current?.updateConfig(o), o;
-		});
-	}, []), F = useCallback(() => {
-		x(null), y(""), M.current?.start();
-	}, []), I = useCallback(() => {
-		M.current?.stop();
-	}, []), L = useCallback(() => {
-		u ? I() : F();
-	}, [
-		u,
-		F,
-		I
-	]), R = useCallback(() => {
-		_(""), y("");
-	}, []), z = useCallback((i) => {
-		x(null);
-		let a = stripMarkdownForSpeech(i);
-		E && N.current?.updateConfig({ voiceURI: E.voiceURI }), N.current?.speak(a);
-	}, [E]), B = useCallback(() => {
-		N.current?.stop();
-	}, []), V = useCallback(() => {
-		N.current?.pause();
-	}, []), H = useCallback(() => {
-		N.current?.resume();
-	}, []), U = useCallback((i) => {
-		D(i), i && P({ voiceURI: i.voiceURI });
-	}, [P]);
-	return {
-		isListening: u,
-		isSpeaking: f,
-		transcript: h,
-		interimTranscript: v,
-		error: b,
-		isRecognitionSupported: A.speechRecognition,
-		isSynthesisSupported: A.speechSynthesis,
-		startListening: F,
-		stopListening: I,
-		toggleListening: L,
-		clearTranscript: R,
-		speak: z,
-		stopSpeaking: B,
-		pauseSpeaking: V,
-		resumeSpeaking: H,
-		availableVoices: w,
-		selectedVoice: E,
-		setSelectedVoice: U,
-		voiceConfig: O,
-		updateConfig: P
-	};
-}
-function Disclaimer({ onAccept: i, open: a }) {
-	return /* @__PURE__ */ jsx(AnimatePresence, { children: a && /* @__PURE__ */ jsx(motion.div, {
-		initial: { opacity: 0 },
-		animate: { opacity: 1 },
-		exit: { opacity: 0 },
-		className: "absolute inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm p-6",
-		children: /* @__PURE__ */ jsxs(motion.div, {
-			initial: {
-				scale: .95,
-				opacity: 0,
-				y: 10
-			},
-			animate: {
-				scale: 1,
-				opacity: 1,
-				y: 0
-			},
-			exit: {
-				scale: .95,
-				opacity: 0,
-				y: 10
-			},
-			transition: {
-				type: "spring",
-				damping: 25,
-				stiffness: 300
-			},
-			className: "bg-card border border-border shadow-2xl rounded-2xl p-6 max-w-[320px] w-full space-y-5",
-			children: [
-				/* @__PURE__ */ jsxs("div", {
-					className: "flex flex-col items-center text-center space-y-3",
-					children: [/* @__PURE__ */ jsx("div", {
-						className: "p-3 bg-primary/10 rounded-full text-primary",
-						children: /* @__PURE__ */ jsx(ShieldCheck, { className: "h-8 w-8" })
-					}), /* @__PURE__ */ jsx("h2", {
-						className: "text-lg font-bold tracking-tight",
-						children: "Welcome"
-					})]
-				}),
-				/* @__PURE__ */ jsxs("div", {
-					className: "space-y-3 text-center",
-					children: [/* @__PURE__ */ jsx("p", {
-						className: "text-sm text-muted-foreground leading-relaxed",
-						children: "This AI assistant is designed to help you explore my portfolio."
-					}), /* @__PURE__ */ jsxs("div", {
-						className: "bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground text-left border border-border/50 flex gap-2",
-						children: [/* @__PURE__ */ jsx(Cookie, { className: "h-4 w-4 shrink-0 mt-0.5" }), /* @__PURE__ */ jsx("span", { children: "We use local storage to save your chat history and preferences for a better experience." })]
-					})]
-				}),
-				/* @__PURE__ */ jsx(Button, {
-					onClick: i,
-					className: "w-full font-medium shadow-primary/20 shadow-lg",
-					children: "Accept & Continue"
-				})
-			]
-		})
-	}) });
-}
 /* @__NO_SIDE_EFFECTS__ */
 function createSlot(a) {
 	let o = /* @__PURE__ */ createSlotClone(a), s = React$1.forwardRef((a, s) => {
@@ -23549,237 +23355,574 @@ function SheetDescription({ className: i, ...a }) {
 		...a
 	});
 }
-var MemoizedChatMessages = memo(Chat.Messages), MemoizedChatInput = memo(Chat.Input), MemoizedChatSuggestions = memo(Chat.Suggestions);
-function NoAgentView({ setSelectedAgent: i }) {
-	let { metadata: a, metadataLoading: o } = useChatContext();
-	return /* @__PURE__ */ jsx(AgentSelector, {
-		agents: a?.agents ?? [],
-		loading: o,
-		onSelect: i
-	});
+var PAGE_SIZE = 20, SEARCH_DEBOUNCE_MS = 300;
+function formatThreadDate(i) {
+	if (!i) return "";
+	try {
+		let a = new Date(i);
+		if (Number.isNaN(a.getTime())) return "";
+		let o = /* @__PURE__ */ new Date();
+		return a.getDate() === o.getDate() && a.getMonth() === o.getMonth() && a.getFullYear() === o.getFullYear() ? a.toLocaleTimeString(void 0, {
+			hour: "numeric",
+			minute: "2-digit"
+		}) : a.toLocaleDateString(void 0, {
+			month: "short",
+			day: "numeric"
+		});
+	} catch {
+		return "";
+	}
 }
-function ChatbotLayout({ setSelectedAgent: i, setSelectedModel: a, selectedAgent: o, selectedModel: s, showHeader: c, headerTitle: l, headerTitleUrl: u, headerSubtitle: d, avatar: f, allowMaximize: p, onClose: h, onRefresh: _, onHome: v, showFooter: y, footerContent: b, footerSubtitle: x, placeholder: S, starterMessage: C, userId: D, currentThreadId: O, setCurrentThreadId: k, historySheetOpen: A, setHistorySheetOpen: j, threadList: M, setThreadList: N, threadsLoading: P, setThreadsLoading: F, isMaximized: I, toggleMaximize: L, voiceConfig: R, onVoiceConfigChange: z, availableVoices: B, selectedVoice: V, onVoiceChange: H, autoSpeak: U, onAutoSpeakChange: W }) {
-	let { metadata: G, clearChat: K, loadThread: q, getThreads: J, setThreadId: Y } = useChatContext(), Z = useCallback((a) => {
-		K({ keepStarter: !!C }), i(a);
+function ChatHistorySheet({ open: i, onOpenChange: a, userId: o, threadList: s, setThreadList: c, totalThreads: l, setTotalThreads: u, threadsLoading: d, setThreadsLoading: f, currentThreadId: p, onSelectThread: h, getThreads: _ }) {
+	let [v, y] = useState(""), [b, x] = useState(""), [w, D] = useState(!1), O = useRef(null), k = useRef(!1), A = useRef(s.length);
+	A.current = s.length, useEffect(() => {
+		i || (y(""), x(""));
+	}, [i]), useEffect(() => {
+		if (!v.trim()) {
+			x("");
+			return;
+		}
+		let i = setTimeout(() => x(v.trim()), SEARCH_DEBOUNCE_MS);
+		return () => clearTimeout(i);
+	}, [v]);
+	let j = useCallback((i) => {
+		a(i), i || (c([]), u(0));
 	}, [
-		K,
-		C,
-		i
-	]), Q = useCallback(() => {
-		K({ keepStarter: !!C });
-	}, [K, C]), $ = _ ?? Q, jz = useCallback(() => {
-		i(""), v?.();
-	}, [v, i]), Mz = useCallback(() => j(!0), [j]), Nz = useCallback((i) => {
-		j(i), i || N([]);
-	}, [j, N]);
-	useEffect(() => {
-		if (!A || !D?.trim()) return;
-		let i = !1;
-		return F(!0), J().then((a) => {
-			i || N(a);
+		a,
+		c,
+		u
+	]);
+	return useEffect(() => {
+		if (!i || !o?.trim()) return;
+		let a = !1;
+		return f(!0), c([]), u(0), _({
+			limit: PAGE_SIZE,
+			offset: 0,
+			search: b
+		}).then(({ threads: i, total: o }) => {
+			a || (c(i), u(o ?? 0));
 		}).finally(() => {
-			i || F(!1);
+			a || f(!1);
 		}), () => {
-			i = !0;
+			a = !0;
 		};
 	}, [
-		A,
-		D,
-		J,
-		N,
-		F
-	]);
-	let Pz = useCallback((i) => {
-		j(!1), q(i), k(i), Y(i);
+		i,
+		o,
+		b,
+		_,
+		c,
+		u,
+		f
+	]), useEffect(() => {
+		if (!i || !o?.trim() || d || s.length >= l || l <= 0) return;
+		let a = O.current;
+		if (!a) return;
+		let u = new IntersectionObserver((i) => {
+			if (!i[0]?.isIntersecting || k.current) return;
+			let a = A.current;
+			a >= l || (k.current = !0, D(!0), _({
+				limit: PAGE_SIZE,
+				offset: a,
+				search: b || void 0
+			}).then(({ threads: i }) => {
+				c((a) => [...a, ...i]);
+			}).finally(() => {
+				k.current = !1, D(!1);
+			}));
+		}, {
+			root: null,
+			rootMargin: "100px",
+			threshold: 0
+		});
+		return u.observe(a), () => u.disconnect();
 	}, [
-		q,
-		j,
-		k,
-		Y
+		i,
+		o,
+		d,
+		s.length,
+		l,
+		b,
+		_,
+		c
+	]), /* @__PURE__ */ jsx(Sheet, {
+		open: i,
+		onOpenChange: j,
+		children: /* @__PURE__ */ jsxs(SheetContent, {
+			side: "right",
+			className: "flex flex-col",
+			children: [
+				/* @__PURE__ */ jsxs(SheetHeader, { children: [/* @__PURE__ */ jsx(SheetTitle, { children: "Chat history" }), /* @__PURE__ */ jsx(SheetDescription, { children: o?.trim() ? "Select a conversation to load." : "Sign in to see your conversations." })] }),
+				o?.trim() ? /* @__PURE__ */ jsxs("div", {
+					className: "relative flex items-center border rounded-md px-3 py-2 mt-2 bg-muted/50",
+					children: [/* @__PURE__ */ jsx(Search, { className: "h-4 w-4 shrink-0 text-muted-foreground" }), /* @__PURE__ */ jsx("input", {
+						type: "search",
+						placeholder: "Search conversations…",
+						value: v,
+						onChange: (i) => y(i.target.value),
+						className: "flex-1 bg-transparent border-0 outline-none text-sm ml-2 placeholder:text-muted-foreground",
+						"aria-label": "Search conversations"
+					})]
+				}) : null,
+				/* @__PURE__ */ jsx("div", {
+					className: "flex-1 overflow-y-auto py-4 min-h-0",
+					children: o?.trim() ? d ? /* @__PURE__ */ jsxs("div", {
+						className: "flex items-center justify-center gap-2 py-8 text-muted-foreground",
+						children: [/* @__PURE__ */ jsx(LoaderCircle, { className: "h-5 w-5 animate-spin" }), /* @__PURE__ */ jsx("span", { children: "Loading conversations…" })]
+					}) : s.length === 0 ? /* @__PURE__ */ jsx("p", {
+						className: "text-center text-sm text-muted-foreground py-8",
+						children: b ? "No conversations match your search." : "No conversations yet."
+					}) : /* @__PURE__ */ jsxs("ul", {
+						className: "space-y-1",
+						children: [s.map((i) => {
+							let a = i.preview?.trim().slice(0, 60) || (i.updated_at ? `Conversation · ${formatThreadDate(i.updated_at)}` : "Conversation"), o = i.thread_id.slice(0, 8);
+							return /* @__PURE__ */ jsx("li", { children: /* @__PURE__ */ jsxs(Button, {
+								variant: "ghost",
+								className: cn("w-full justify-start font-normal h-auto py-2 flex flex-col items-start gap-0.5", i.thread_id === p && "bg-muted"),
+								onClick: () => h(i.thread_id),
+								children: [/* @__PURE__ */ jsxs("span", {
+									className: "truncate w-full text-left text-sm",
+									children: [a, a.length >= 60 ? "…" : ""]
+								}), /* @__PURE__ */ jsx("span", {
+									className: "text-xs text-muted-foreground",
+									children: o
+								})]
+							}) }, i.thread_id);
+						}), s.length < l ? /* @__PURE__ */ jsx("li", {
+							ref: O,
+							className: "py-2 flex justify-center",
+							children: w ? /* @__PURE__ */ jsx(LoaderCircle, { className: "h-4 w-4 animate-spin text-muted-foreground" }) : null
+						}) : null]
+					}) : null
+				})
+			]
+		})
+	});
+}
+var DISCLAIMER = "\nThis content is generated by an artificial intelligence. While we strive for accuracy, the AI may occasionally produce incorrect or biased information. \n\n**Important Notes:**\n- Please verify critical information.\n- The AI does not have real-time access to personal data unless shared in this session.\n- Responses are based on training data and specific portfolio context.\n\nBy using this chatbot, you agree to our terms of service regarding AI-generated content.\n", DisclaimerModal = memo(({ disclaimer: i, onClose: a }) => /* @__PURE__ */ jsxs("div", {
+	className: "fixed inset-0 z-[60] flex items-center justify-center p-4",
+	children: [/* @__PURE__ */ jsx(motion.div, {
+		className: "absolute inset-0 bg-background/80 backdrop-blur-sm",
+		initial: { opacity: 0 },
+		animate: { opacity: 1 },
+		exit: { opacity: 0 },
+		onClick: a
+	}), /* @__PURE__ */ jsxs(motion.div, {
+		className: "relative z-[70] w-full max-w-md rounded-xl border bg-background p-6 shadow-2xl",
+		initial: {
+			opacity: 0,
+			scale: .95,
+			y: 12
+		},
+		animate: {
+			opacity: 1,
+			scale: 1,
+			y: 0
+		},
+		exit: {
+			opacity: 0,
+			scale: .95,
+			y: 12
+		},
+		role: "dialog",
+		"aria-modal": "true",
+		children: [
+			/* @__PURE__ */ jsxs("header", {
+				className: "mb-4 flex items-center justify-between border-b pb-2",
+				children: [/* @__PURE__ */ jsx("h2", {
+					className: "text-lg font-bold",
+					children: "Disclaimer"
+				}), /* @__PURE__ */ jsx(Button, {
+					variant: "ghost",
+					size: "icon",
+					onClick: a,
+					"aria-label": "Close dialog",
+					children: /* @__PURE__ */ jsx(X, {})
+				})]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar text-sm",
+				children: /* @__PURE__ */ jsx(MarkdownRenderer, { children: i })
+			}),
+			/* @__PURE__ */ jsx("footer", {
+				className: "mt-6 flex justify-end",
+				children: /* @__PURE__ */ jsx(Button, {
+					onClick: a,
+					children: "Understood"
+				})
+			})
+		]
+	})]
+}));
+DisclaimerModal.displayName = "DisclaimerModal";
+function Footer({ disclaimer: i = DISCLAIMER, subtitle: a }) {
+	let [o, s] = useState(!1), c = useCallback(() => s(!0), []), l = useCallback(() => s(!1), []);
+	return /* @__PURE__ */ jsxs("footer", {
+		className: "border-t bg-muted/50 px-6 py-3 flex items-center justify-between",
+		children: [
+			/* @__PURE__ */ jsx("button", {
+				onClick: c,
+				className: "text-xs text-muted-foreground hover:text-primary cursor-pointer hover:underline transition-colors font-medium",
+				children: "Terms & Conditions"
+			}),
+			a ? /* @__PURE__ */ jsx("div", {
+				className: "text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/60",
+				children: a
+			}) : /* @__PURE__ */ jsxs("div", {
+				className: "flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/60",
+				children: [/* @__PURE__ */ jsx("span", { children: "Powered by" }), /* @__PURE__ */ jsx("span", {
+					className: "text-primary/70",
+					children: "ChatUI"
+				})]
+			}),
+			/* @__PURE__ */ jsx(AnimatePresence, { children: o && /* @__PURE__ */ jsx(DisclaimerModal, {
+				disclaimer: i,
+				onClose: l
+			}) })
+		]
+	});
+}
+function useVoice(i = {}) {
+	let { config: a, onTranscript: o, onSpeechStart: s, onSpeechEnd: c, onError: l } = i, [u, d] = useState(!1), [f, p] = useState(!1), [h, _] = useState(""), [v, y] = useState(""), [b, x] = useState(null), [w, T] = useState([]), [E, D] = useState(null), [O, k] = useState({
+		...defaultVoiceConfig,
+		...a
+	}), [A, j] = useState(() => getVoiceSupport()), M = useRef(null), N = useRef(null);
+	useEffect(() => {
+		let i = getVoiceSupport();
+		if (j(i), i.speechRecognition && (M.current = new SpeechRecognitionManager(O), M.current.onStart = () => {
+			d(!0), x(null), s?.();
+		}, M.current.onEnd = () => {
+			d(!1), c?.();
+		}, M.current.onError = (i) => {
+			x(i), d(!1), l?.(i);
+		}, M.current.onResult = (i, a) => {
+			a ? (_((a) => a + i), y("")) : y(i), o?.(i, a);
+		}), i.speechSynthesis) {
+			N.current = new SpeechSynthesisManager(O), N.current.onStart = () => {
+				p(!0);
+			}, N.current.onEnd = () => {
+				p(!1);
+			}, N.current.onError = (i) => {
+				x(i), p(!1);
+			};
+			let i = () => {
+				let i = N.current?.getVoices() || [];
+				if (T(i), !E && i.length > 0) {
+					let a = i.filter((i) => i.lang.toLowerCase().startsWith(O.lang.toLowerCase().split("-")[0]));
+					a.length > 0 && D(a[0]);
+				}
+			};
+			i(), typeof window < "u" && window.speechSynthesis && (window.speechSynthesis.onvoiceschanged = i);
+		}
+		return () => {
+			M.current?.destroy(), N.current?.destroy();
+		};
+	}, []);
+	let P = useCallback((i) => {
+		k((a) => {
+			let o = {
+				...a,
+				...i
+			};
+			return M.current?.updateConfig(o), N.current?.updateConfig(o), o;
+		});
+	}, []), F = useCallback(() => {
+		x(null), y(""), M.current?.start();
+	}, []), I = useCallback(() => {
+		M.current?.stop();
+	}, []), L = useCallback(() => {
+		u ? I() : F();
+	}, [
+		u,
+		F,
+		I
+	]), R = useCallback(() => {
+		_(""), y("");
+	}, []), z = useCallback((i) => {
+		x(null);
+		let a = stripMarkdownForSpeech(i);
+		E && N.current?.updateConfig({ voiceURI: E.voiceURI }), N.current?.speak(a);
+	}, [E]), B = useCallback(() => {
+		N.current?.stop();
+	}, []), V = useCallback(() => {
+		N.current?.pause();
+	}, []), H = useCallback(() => {
+		N.current?.resume();
+	}, []), U = useCallback((i) => {
+		D(i), i && P({ voiceURI: i.voiceURI });
+	}, [P]);
+	return {
+		isListening: u,
+		isSpeaking: f,
+		transcript: h,
+		interimTranscript: v,
+		error: b,
+		isRecognitionSupported: A.speechRecognition,
+		isSynthesisSupported: A.speechSynthesis,
+		startListening: F,
+		stopListening: I,
+		toggleListening: L,
+		clearTranscript: R,
+		speak: z,
+		stopSpeaking: B,
+		pauseSpeaking: V,
+		resumeSpeaking: H,
+		availableVoices: w,
+		selectedVoice: E,
+		setSelectedVoice: U,
+		voiceConfig: O,
+		updateConfig: P
+	};
+}
+function Disclaimer({ onAccept: i, open: a }) {
+	return /* @__PURE__ */ jsx(AnimatePresence, { children: a && /* @__PURE__ */ jsx(motion.div, {
+		initial: { opacity: 0 },
+		animate: { opacity: 1 },
+		exit: { opacity: 0 },
+		className: "absolute inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm p-6",
+		children: /* @__PURE__ */ jsxs(motion.div, {
+			initial: {
+				scale: .95,
+				opacity: 0,
+				y: 10
+			},
+			animate: {
+				scale: 1,
+				opacity: 1,
+				y: 0
+			},
+			exit: {
+				scale: .95,
+				opacity: 0,
+				y: 10
+			},
+			transition: {
+				type: "spring",
+				damping: 25,
+				stiffness: 300
+			},
+			className: "bg-card border border-border shadow-2xl rounded-2xl p-6 max-w-[320px] w-full space-y-5",
+			children: [
+				/* @__PURE__ */ jsxs("div", {
+					className: "flex flex-col items-center text-center space-y-3",
+					children: [/* @__PURE__ */ jsx("div", {
+						className: "p-3 bg-primary/10 rounded-full text-primary",
+						children: /* @__PURE__ */ jsx(ShieldCheck, { className: "h-8 w-8" })
+					}), /* @__PURE__ */ jsx("h2", {
+						className: "text-lg font-bold tracking-tight",
+						children: "Welcome"
+					})]
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "space-y-3 text-center",
+					children: [/* @__PURE__ */ jsx("p", {
+						className: "text-sm text-muted-foreground leading-relaxed",
+						children: "This AI assistant is designed to help you explore my portfolio."
+					}), /* @__PURE__ */ jsxs("div", {
+						className: "bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground text-left border border-border/50 flex gap-2",
+						children: [/* @__PURE__ */ jsx(Cookie, { className: "h-4 w-4 shrink-0 mt-0.5" }), /* @__PURE__ */ jsx("span", { children: "We use local storage to save your preferences (e.g. voice settings) for a better experience." })]
+					})]
+				}),
+				/* @__PURE__ */ jsx(Button, {
+					onClick: i,
+					className: "w-full font-medium shadow-primary/20 shadow-lg",
+					children: "Accept & Continue"
+				})
+			]
+		})
+	}) });
+}
+var MemoizedChatMessages = memo(Chat.Messages), MemoizedChatInput = memo(Chat.Input), MemoizedChatSuggestions = memo(Chat.Suggestions);
+function ChatbotLayout({ setSelectedAgent: i, setSelectedModel: a, selectedAgent: o, selectedModel: s, showHeader: c, headerTitle: l, headerTitleUrl: u, headerSubtitle: d, avatar: f, allowMaximize: p, onClose: h, onRefresh: g, onHome: _, showFooter: v, footerContent: y, footerSubtitle: b, placeholder: x, starterMessage: S, userId: C, currentThreadId: D, setCurrentThreadId: O, historySheetOpen: k, setHistorySheetOpen: A, threadList: j, setThreadList: M, totalThreads: N, setTotalThreads: P, threadsLoading: F, setThreadsLoading: I, isMaximized: L, toggleMaximize: R, voiceConfig: z, onVoiceConfigChange: B, availableVoices: V, selectedVoice: H, onVoiceChange: U, autoSpeak: W, onAutoSpeakChange: G }) {
+	let { metadata: K, metadataLoading: q, clearChat: J, loadThread: Y, getThreads: Z, setThreadId: Q } = useChatContext(), $ = useCallback((a) => {
+		J({ keepStarter: !!S }), O(void 0), Q(void 0), i(a);
+	}, [
+		J,
+		S,
+		i,
+		O,
+		Q
+	]), Oz = useCallback(() => {
+		J({ keepStarter: !!S });
+	}, [J, S]), kz = g ?? Oz, Az = useCallback(() => {
+		i(""), _?.();
+	}, [_, i]), jz = useCallback(() => A(!0), [A]), Mz = useCallback((i) => {
+		A(!1), Y(i), O(i), Q(i);
+	}, [
+		Y,
+		A,
+		O,
+		Q
 	]);
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
 		c && /* @__PURE__ */ jsx(Header, {
-			metadata: G,
+			metadata: K,
 			selectedAgent: o,
 			selectedModel: s,
-			onAgentChange: Z,
+			onAgentChange: $,
 			onModelChange: a,
 			onClose: h,
-			onRefresh: $,
-			onHome: jz,
-			onHistory: D?.trim() ? Mz : void 0,
-			voiceConfig: R,
-			onVoiceConfigChange: z,
-			availableVoices: B,
-			selectedVoice: V,
-			onVoiceChange: H,
-			autoSpeak: U,
-			onAutoSpeakChange: W,
-			isMaximized: I,
-			onMaximize: p ? L : void 0,
+			onRefresh: kz,
+			onHome: Az,
+			onHistory: C?.trim() ? jz : void 0,
+			voiceConfig: z,
+			onVoiceConfigChange: B,
+			availableVoices: V,
+			selectedVoice: H,
+			onVoiceChange: U,
+			autoSpeak: W,
+			onAutoSpeakChange: G,
+			isMaximized: L,
+			onMaximize: p ? R : void 0,
 			title: l,
 			titleUrl: u,
 			subtitle: d,
 			avatar: f
 		}),
-		/* @__PURE__ */ jsx(Sheet, {
-			open: A,
-			onOpenChange: Nz,
-			children: /* @__PURE__ */ jsxs(SheetContent, {
-				side: "right",
-				className: "flex flex-col",
-				children: [/* @__PURE__ */ jsxs(SheetHeader, { children: [/* @__PURE__ */ jsx(SheetTitle, { children: "Chat history" }), /* @__PURE__ */ jsx(SheetDescription, { children: D?.trim() ? "Select a conversation to load." : "Sign in to see your conversations." })] }), /* @__PURE__ */ jsx("div", {
-					className: "flex-1 overflow-y-auto py-4",
-					children: D?.trim() ? P ? /* @__PURE__ */ jsxs("div", {
-						className: "flex items-center justify-center gap-2 py-8 text-muted-foreground",
-						children: [/* @__PURE__ */ jsx(LoaderCircle, { className: "h-5 w-5 animate-spin" }), /* @__PURE__ */ jsx("span", { children: "Loading threads…" })]
-					}) : M.length === 0 ? /* @__PURE__ */ jsx("p", {
-						className: "text-center text-sm text-muted-foreground py-8",
-						children: "No conversations yet."
-					}) : /* @__PURE__ */ jsx("ul", {
-						className: "space-y-1",
-						children: M.map((i) => /* @__PURE__ */ jsx("li", { children: /* @__PURE__ */ jsx(Button, {
-							variant: "ghost",
-							className: "w-full justify-start font-normal",
-							onClick: () => Pz(i.thread_id),
-							children: /* @__PURE__ */ jsx("span", {
-								className: "truncate",
-								children: i.thread_id
-							})
-						}) }, i.thread_id))
-					}) : null
-				})]
-			})
+		/* @__PURE__ */ jsx(ChatHistorySheet, {
+			open: k,
+			onOpenChange: A,
+			userId: C,
+			threadList: j,
+			setThreadList: M,
+			totalThreads: N,
+			setTotalThreads: P,
+			threadsLoading: F,
+			setThreadsLoading: I,
+			currentThreadId: D,
+			onSelectThread: Mz,
+			getThreads: Z
 		}),
-		/* @__PURE__ */ jsxs("div", {
+		/* @__PURE__ */ jsx("div", {
 			className: "flex-1 overflow-hidden flex flex-col",
-			children: [
+			children: o ? /* @__PURE__ */ jsxs(Fragment$1, { children: [
 				/* @__PURE__ */ jsx(MemoizedChatMessages, { className: "flex-1 min-h-0" }),
 				/* @__PURE__ */ jsx(MemoizedChatSuggestions, {}),
-				/* @__PURE__ */ jsx(MemoizedChatInput, { placeholder: S })
-			]
+				/* @__PURE__ */ jsx(MemoizedChatInput, { placeholder: x })
+			] }) : /* @__PURE__ */ jsx(AgentSelector, {
+				agents: K?.agents ?? [],
+				loading: q,
+				onSelect: i
+			})
 		}),
-		y && /* @__PURE__ */ jsx(Footer, {
-			disclaimer: b,
-			subtitle: x
+		v && /* @__PURE__ */ jsx(Footer, {
+			disclaimer: y,
+			subtitle: b
 		})
 	] });
 }
-function Chatbot({ url: i, agent: a, model: o, placeholder: s = "Hi, how can I help you?", threadId: c, userId: l, stream: u = !0, className: d, storageKey: f, header: p = {}, footer: h = {}, starter: _ = {}, isMaximized: v }) {
-	let { show: y = !0, title: x, titleUrl: S, subtitle: w, avatar: D, allowMaximize: O = !1, onMaximizeToggle: k, onClose: A, onRefresh: j, onHome: M } = p, { show: N = !0, text: P, subtitle: F } = h, { message: I, suggestions: L } = _, [R, z] = useState(a ?? ""), [B, V] = useState(o ?? ""), [H, U] = useState(!1), W = v ?? H, [G, K] = useState(c), [q, J] = useState(!1), [Y, Z] = useState(!1), [Q, $] = useState([]), { isListening: jz, startListening: Mz, stopListening: Nz, speak: Pz, availableVoices: Fz, selectedVoice: Iz, setSelectedVoice: Lz, voiceConfig: Rz, updateConfig: zz, isRecognitionSupported: Bz } = useVoice(), [Vz, Hz] = useState(!1), [Uz, Wz] = useState(!1);
+function Chatbot({ url: i, agent: a, model: o, placeholder: s = "Hi, how can I help you?", threadId: c, userId: l, stream: u = !0, className: d, header: f = {}, footer: p = {}, starter: h = {}, isMaximized: _ }) {
+	let { show: v = !0, title: y, titleUrl: x, subtitle: S, avatar: w, allowMaximize: D = !1, onMaximizeToggle: O, onClose: k, onRefresh: A, onHome: j } = f, { show: M = !0, text: N, subtitle: P } = p, { message: F, suggestions: I } = h, [L, R] = useState(a ?? ""), [z, B] = useState(o ?? ""), [V, H] = useState(!1), U = _ ?? V, [W, G] = useState(c), [K, q] = useState(!1), [J, Y] = useState(!1), [Z, Q] = useState([]), [$, Oz] = useState(0), { isListening: kz, startListening: Az, stopListening: jz, speak: Mz, availableVoices: Nz, selectedVoice: Pz, setSelectedVoice: Fz, voiceConfig: Iz, updateConfig: Lz, isRecognitionSupported: Rz } = useVoice(), [zz, Bz] = useState(!1), [Vz, Hz] = useState(!1);
 	useEffect(() => {
 		let i = localStorage.getItem("voice-config");
 		if (i) try {
-			zz(JSON.parse(i));
+			Lz(JSON.parse(i));
 		} catch (i) {
 			console.error("Failed to load voice config", i);
 		}
 		let a = localStorage.getItem("auto-speak");
-		a && Hz(a === "true"), localStorage.getItem("chatbot-consent") || Wz(!0);
-	}, [zz]);
-	let Gz = useCallback(() => {
-		localStorage.setItem("chatbot-consent", "true"), Wz(!1);
+		a && Bz(a === "true"), localStorage.getItem("chatbot-consent") || Hz(!0);
+	}, [Lz]);
+	let Uz = useCallback(() => {
+		localStorage.setItem("chatbot-consent", "true"), Hz(!1);
 	}, []);
 	useEffect(() => {
-		localStorage.setItem("voice-config", JSON.stringify(Rz));
-	}, [Rz]), useEffect(() => {
-		localStorage.setItem("auto-speak", String(Vz));
-	}, [Vz]);
-	let [Kz, qz] = useState(null), Jz = useCallback((i) => {
-		qz(i), z((a) => a || i.default_agent), V((a) => a || i.default_model);
-	}, []), Yz = useMemo(() => L === void 0 ? Kz?.agents?.find((i) => i.key === R)?.prompts ?? [] : L, [
-		L,
-		Kz?.agents,
-		R
-	]), Xz = useMemo(() => ({
+		localStorage.setItem("voice-config", JSON.stringify(Iz));
+	}, [Iz]), useEffect(() => {
+		localStorage.setItem("auto-speak", String(zz));
+	}, [zz]);
+	let [Wz, Gz] = useState(null), Kz = useCallback((i) => {
+		Gz(i), R((a) => a || i.default_agent), B((a) => a || i.default_model);
+	}, []), qz = useMemo(() => I === void 0 ? Wz?.agents?.find((i) => i.key === L)?.prompts ?? [] : I, [
+		I,
+		Wz?.agents,
+		L
+	]), Jz = useMemo(() => ({
 		url: i,
-		agent: R || void 0,
-		model: B || void 0,
-		threadId: G ?? c,
+		agent: L || void 0,
+		model: z || void 0,
+		threadId: W ?? c,
 		userId: l,
 		stream: u,
-		storageKey: f,
-		starterMessage: I,
-		starterSuggestions: L,
+		starterMessage: F,
+		starterSuggestions: I,
 		onStreamEnd: (i) => {
-			Vz && i && Pz && Pz(i);
+			zz && i && Mz && Mz(i);
 		}
 	}), [
 		i,
-		R,
-		B,
-		G,
+		L,
+		z,
+		W,
 		c,
 		l,
 		u,
-		f,
+		F,
 		I,
-		L,
-		Vz,
-		Pz
+		zz,
+		Mz
 	]);
 	useEffect(() => {
-		c != null && K(c);
+		c != null && G(c);
 	}, [c]);
-	let Zz = useCallback(() => {
-		let i = !W;
-		U(i), k?.(i);
-	}, [W, k]);
+	let Yz = useCallback(() => {
+		let i = !U;
+		H(i), O?.(i);
+	}, [U, O]);
 	return /* @__PURE__ */ jsxs("div", {
-		className: cn("chatbot-theme flex flex-col h-full transition-all duration-300 ease-in-out relative", d, W && "fixed inset-0 z-50 m-0 h-full max-h-none w-full max-w-none rounded-none border-0"),
+		className: cn("chatbot-theme flex flex-col h-full transition-all duration-300 ease-in-out relative", d, U && "fixed inset-0 z-50 m-0 h-full max-h-none w-full max-w-none rounded-none border-0"),
 		children: [/* @__PURE__ */ jsx(Disclaimer, {
-			open: Uz,
-			onAccept: Gz
+			open: Vz,
+			onAccept: Uz
 		}), /* @__PURE__ */ jsx(Chat.Root, {
-			config: Xz,
-			initialSuggestions: Yz,
-			voiceConfig: Rz,
-			isListening: jz,
-			startListening: Mz,
-			stopListening: Nz,
-			isSpeechSupported: Bz,
-			onMetadata: Jz,
-			children: a == null && !R ? /* @__PURE__ */ jsx("div", {
-				className: "flex-1 overflow-hidden flex flex-col",
-				children: /* @__PURE__ */ jsx(NoAgentView, { setSelectedAgent: z })
-			}) : /* @__PURE__ */ jsx(ChatbotLayout, {
-				setSelectedAgent: z,
-				setSelectedModel: V,
-				selectedAgent: R,
-				selectedModel: B,
-				showHeader: y,
-				headerTitle: x,
-				headerTitleUrl: S,
-				headerSubtitle: w,
-				avatar: D,
-				allowMaximize: O,
-				onClose: A,
-				onRefresh: j,
-				onHome: M,
-				showFooter: N,
-				footerContent: P,
-				footerSubtitle: F,
+			config: Jz,
+			initialSuggestions: qz,
+			voiceConfig: Iz,
+			isListening: kz,
+			startListening: Az,
+			stopListening: jz,
+			isSpeechSupported: Rz,
+			onMetadata: Kz,
+			children: /* @__PURE__ */ jsx(ChatbotLayout, {
+				setSelectedAgent: R,
+				setSelectedModel: B,
+				selectedAgent: L,
+				selectedModel: z,
+				showHeader: v,
+				headerTitle: y,
+				headerTitleUrl: x,
+				headerSubtitle: S,
+				avatar: w,
+				allowMaximize: D,
+				onClose: k,
+				onRefresh: A,
+				onHome: j,
+				showFooter: M,
+				footerContent: N,
+				footerSubtitle: P,
 				placeholder: s,
-				starterMessage: I,
+				starterMessage: F,
 				userId: l,
 				threadId: c,
-				currentThreadId: G,
-				setCurrentThreadId: K,
-				historySheetOpen: q,
-				setHistorySheetOpen: J,
-				threadList: Q,
-				setThreadList: $,
-				threadsLoading: Y,
-				setThreadsLoading: Z,
-				isMaximized: W,
-				toggleMaximize: Zz,
-				voiceConfig: Rz,
-				onVoiceConfigChange: zz,
-				availableVoices: Fz,
-				selectedVoice: Iz,
-				onVoiceChange: Lz,
-				autoSpeak: Vz,
-				onAutoSpeakChange: Hz
+				currentThreadId: W,
+				setCurrentThreadId: G,
+				historySheetOpen: K,
+				setHistorySheetOpen: q,
+				threadList: Z,
+				setThreadList: Q,
+				totalThreads: $,
+				setTotalThreads: Oz,
+				threadsLoading: J,
+				setThreadsLoading: Y,
+				isMaximized: U,
+				toggleMaximize: Yz,
+				voiceConfig: Iz,
+				onVoiceConfigChange: Lz,
+				availableVoices: Nz,
+				selectedVoice: Pz,
+				onVoiceChange: Fz,
+				autoSpeak: zz,
+				onAutoSpeakChange: Bz
 			})
 		})]
 	});
@@ -23891,4 +24034,4 @@ function PopupChatbot({ buttonClassName: i, buttonStyle: a, popupClassName: o, c
 		})
 	}) })] });
 }
-export { Chat, ChatProvider, ChatService, Chatbot, FullChatbot, Header, PopupChatbot, clearChatServiceMetadataCache, clearMessages, loadMessages, saveMessages, useChatContext, useChatRuntime };
+export { Chat, ChatProvider, ChatService, Chatbot, FullChatbot, Header, PopupChatbot, clearChatServiceMetadataCache, useChatContext, useChatRuntime };

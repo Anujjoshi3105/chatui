@@ -14,9 +14,7 @@ export interface ChatRuntimeActions {
     loadThread: (threadId: string) => Promise<void>;
     rateResponse: (messageId: string, rating: "thumbs-up" | "thumbs-down") => Promise<void>;
     refetchMetadata: () => Promise<void>;
-    getThreads: () => Promise<{
-        thread_id: string;
-    }[]>;
+    getThreads: (options?: import('../services/types').GetThreadsOptions) => Promise<import('../services/types').ThreadListResponse>;
     getHistory: (threadId: string) => Promise<ApiChatMessage[]>;
 }
 export type UseChatRuntimeReturn = ChatRuntimeState & ChatRuntimeActions;

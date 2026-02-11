@@ -1,7 +1,3 @@
-/**
- * Abstraction for persisting chat messages (and optional thread id) to localStorage.
- * Used by useChatRuntime; keeps persistence out of UI and testable.
- */
 export interface PersistedMessage {
     id: string;
     role: string;

@@ -1,4 +1,4 @@
-import { ServiceMetadata, ApiChatMessage, StreamEvent, StreamOptions } from './types';
+import { ServiceMetadata, ApiChatMessage, StreamEvent, StreamOptions, GetThreadsOptions, ThreadListResponse } from './types';
 export declare function clearChatServiceMetadataCache(): void;
 export interface ChatServiceConfig {
     baseUrl: string;
@@ -18,9 +18,5 @@ export declare class ChatService {
     abortStream(): void;
     sendFeedback(runId: string, key: string, score: number): Promise<unknown>;
     getHistory(threadId: string, userId?: string): Promise<ApiChatMessage[]>;
-    getThreads(userId?: string): Promise<{
-        threads: {
-            thread_id: string;
-        }[];
-    }>;
+    getThreads(userId?: string, options?: GetThreadsOptions): Promise<ThreadListResponse>;
 }

@@ -6,4 +6,3 @@ export type { ChatRuntimeActions, UseChatRuntimeReturn } from './core/runtime';
 export type { Message as RuntimeMessage, ChatRuntimeConfig } from './core/runtime/chat-state';
 export { ChatService, clearChatServiceMetadataCache } from './core/services';
 export type { ChatServiceConfig, ServiceMetadata, ApiChatMessage, StreamEvent } from './core/services';
-export { loadMessages, saveMessages, clearMessages } from './core/persistence';

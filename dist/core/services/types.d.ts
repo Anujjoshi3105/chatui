@@ -1,7 +1,3 @@
-/**
- * API and stream types for the chat service layer.
- * Kept in sync with backend contract.
- */
 export interface AgentInfo {
     key: string;
     description: string;
@@ -37,4 +33,18 @@ export interface StreamOptions {
     threadId?: string;
     userId?: string;
     streamTokens?: boolean;
+}
+export interface ThreadSummary {
+    thread_id: string;
+    updated_at?: string | null;
+    preview?: string | null;
+}
+export interface GetThreadsOptions {
+    limit?: number;
+    offset?: number;
+    search?: string | null;
+}
+export interface ThreadListResponse {
+    threads: ThreadSummary[];
+    total?: number;
 }

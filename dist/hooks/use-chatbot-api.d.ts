@@ -53,10 +53,17 @@ export declare function useChatbotApi({ url, agent: optionsAgent, model: options
     stopStream: () => void;
     sendFeedback: (runId: string, key: string, score: number) => Promise<any>;
     getHistory: (threadId: string, requestUserId?: string) => Promise<ChatMessage[]>;
-    getThreads: (requestUserId?: string) => Promise<{
+    getThreads: (requestUserId?: string, options?: {
+        limit?: number;
+        offset?: number;
+        search?: string | null;
+    }) => Promise<{
         threads: {
             thread_id: string;
+            updated_at?: string | null;
+            preview?: string | null;
         }[];
+        total: number;
     }>;
     refetchMetadata: () => Promise<void>;
 };

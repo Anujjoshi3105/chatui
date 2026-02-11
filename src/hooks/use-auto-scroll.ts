@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react"
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react"
 
 // How many pixels from the bottom of the container to enable auto-scroll
 const ACTIVATION_THRESHOLD = 50
@@ -12,6 +12,8 @@ export function useAutoScroll(dependencies: React.DependencyList) {
   const previousScrollTop = useRef<number | null>(null)
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
   const [isScrollable, setIsScrollable] = useState(false)
+  const shouldAutoScrollRef = useRef(shouldAutoScroll)
+  shouldAutoScrollRef.current = shouldAutoScroll
 
   const checkScrollable = useCallback(() => {
     if (containerRef.current) {
@@ -21,11 +23,11 @@ export function useAutoScroll(dependencies: React.DependencyList) {
     }
   }, [])
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
     }
-  }
+  }, [])
 
   const handleScroll = () => {
     if (containerRef.current) {
@@ -70,12 +72,18 @@ export function useAutoScroll(dependencies: React.DependencyList) {
     }
   }, [])
 
-  // Check scrollable state whenever dependencies change (e.g., messages)
-  useEffect(() => {
+  // Scroll to bottom when messages/content change: use useLayoutEffect so we run
+  // after DOM updates, then requestAnimationFrame so layout is complete (fixes
+  // streaming and new messages not scrolling into view).
+  useLayoutEffect(() => {
     checkScrollable()
-    if (shouldAutoScroll) {
-      scrollToBottom()
-    }
+    if (!shouldAutoScrollRef.current) return
+    const raf = requestAnimationFrame(() => {
+      if (containerRef.current && shouldAutoScrollRef.current) {
+        containerRef.current.scrollTop = containerRef.current.scrollHeight
+      }
+    })
+    return () => cancelAnimationFrame(raf)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, dependencies)
 

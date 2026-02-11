@@ -8,6 +8,8 @@ interface HeaderProps {
     onModelChange: (model: string) => void;
     onClose?: () => void;
     onRefresh?: () => void;
+    onHome?: () => void;
+    onHistory?: () => void;
     className?: string;
     title?: string;
     titleUrl?: string;
@@ -23,5 +25,5 @@ interface HeaderProps {
     onMaximize?: () => void;
     avatar?: string;
 }
-export declare function Header({ metadata, selectedAgent, selectedModel, onAgentChange, onModelChange, onClose, onRefresh, className, title, titleUrl, subtitle, voiceConfig, onVoiceConfigChange, availableVoices, selectedVoice, onVoiceChange, autoSpeak, onAutoSpeakChange, isMaximized, onMaximize, avatar, }: HeaderProps): import("react/jsx-runtime").JSX.Element;
+export declare function Header({ metadata, selectedAgent, selectedModel, onAgentChange, onModelChange, onClose, onRefresh, onHome, onHistory, className, title, titleUrl, subtitle, voiceConfig, onVoiceConfigChange, availableVoices, selectedVoice, onVoiceChange, autoSpeak, onAutoSpeakChange, isMaximized, onMaximize, avatar, }: HeaderProps): import("react/jsx-runtime").JSX.Element;
 export {};

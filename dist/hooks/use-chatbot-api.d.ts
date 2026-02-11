@@ -1,6 +1,11 @@
+/**
+ * @deprecated Use `useChatRuntime` from `@/core/runtime` with `ChatService` from `@/core/services` instead.
+ * This hook is kept for backward compatibility and will be removed in a future major version.
+ */
 export interface AgentInfo {
     key: string;
     description: string;
+    prompts?: string[];
 }
 export interface ServiceMetadata {
     agents: AgentInfo[];
@@ -37,6 +42,9 @@ export interface ChatbotApiOptions {
     stream?: boolean;
 }
 export declare function clearMetadataCache(): void;
+/**
+ * @deprecated Use `useChatRuntime` from `@/core/runtime` for new code. This hook is kept for backward compatibility.
+ */
 export declare function useChatbotApi({ url, agent: optionsAgent, model: optionsModel, threadId, userId, stream: optionsStream, }: ChatbotApiOptions): {
     metadata: ServiceMetadata | null;
     loading: boolean;
@@ -44,6 +52,11 @@ export declare function useChatbotApi({ url, agent: optionsAgent, model: options
     streamMessage: (message: string, onUpdate?: (event: StreamEvent) => void) => AsyncGenerator<StreamEvent, void, unknown>;
     stopStream: () => void;
     sendFeedback: (runId: string, key: string, score: number) => Promise<any>;
-    getHistory: (threadId: string) => Promise<ChatMessage[]>;
+    getHistory: (threadId: string, requestUserId?: string) => Promise<ChatMessage[]>;
+    getThreads: (requestUserId?: string) => Promise<{
+        threads: {
+            thread_id: string;
+        }[];
+    }>;
     refetchMetadata: () => Promise<void>;
 };

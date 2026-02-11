@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { RefreshCw, X, Maximize2, Minimize2 } from "lucide-react"
+import { RefreshCw, X, Maximize2, Minimize2, Home, History } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { ServiceMetadata } from "@/hooks/use-chatbot-api"
@@ -21,6 +21,8 @@ interface HeaderProps {
   onModelChange: (model: string) => void
   onClose?: () => void
   onRefresh?: () => void
+  onHome?: () => void
+  onHistory?: () => void
   className?: string
 
   title?: string
@@ -47,6 +49,8 @@ export function Header({
   onModelChange,
   onClose,
   onRefresh,
+  onHome,
+  onHistory,
   className,
   title = "Portfolio Assistant",
   titleUrl,
@@ -122,6 +126,40 @@ export function Header({
 
         {/* Right */}
         <div className="flex items-center gap-0.5">
+          {onHome && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onHome}
+                  className="rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Home className="h-4 w-4" />
+                  <span className="sr-only">Home</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Home</TooltipContent>
+            </Tooltip>
+          )}
+
+          {onHistory && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onHistory}
+                  className="rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <History className="h-4 w-4" />
+                  <span className="sr-only">Chat history</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Chat history</TooltipContent>
+            </Tooltip>
+          )}
+
           {onMaximize && (
             <Tooltip>
               <TooltipTrigger asChild>

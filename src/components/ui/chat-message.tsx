@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { motion } from "framer-motion"
-import { Ban, ChevronRight, Code2, Loader2, Terminal } from "lucide-react"
+import { Ban, ChevronRight, Loader2, Terminal } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import {
@@ -12,15 +12,7 @@ import {
 import { FilePreview } from "@/components/ui/file-preview"
 import MarkdownRenderer from "@/components/ui/markdown-renderer"
 import { TypingIndicator } from "@/components/ui/typing-indicator"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Badge } from "./badge"
+import { ToolResult } from "@/components/ui/tool-result"
 
 const chatBubbleVariants = cva(
   "group/message relative break-words rounded-lg p-4 text-sm shadow-sm transition-all duration-200 hover:shadow-md",
@@ -264,32 +256,48 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         <ToolCall toolInvocations={toolInvocations} />
       )}
 
-      <div className={cn("flex flex-col mr-12 ml-4", isUser ? "items-end" : "items-start")}>
-        <div className={cn(chatBubbleVariants({ isUser, animation }))}>
-          {isGenerating && !content ? (
-            <TypingIndicator />
-          ) : (
-            <MarkdownRenderer>{content}</MarkdownRenderer>
-          )}
-          {actions ? (
-            <div className="absolute -bottom-6 right-2 flex space-x-1 rounded-lg border bg-background/95 backdrop-blur-sm p-1 text-foreground opacity-0 transition-all duration-200 group-hover/message:opacity-100 shadow-sm">
-              {actions}
-            </div>
+      {(content || isGenerating) ? (
+        <div className={cn("flex flex-col mr-12 ml-4", isUser ? "items-end" : "items-start")}>
+          <div className={cn(chatBubbleVariants({ isUser, animation }))}>
+            {isGenerating && !content ? (
+              <TypingIndicator />
+            ) : (
+              <MarkdownRenderer>{content}</MarkdownRenderer>
+            )}
+            {actions ? (
+              <div className="absolute -bottom-6 right-2 flex space-x-1 rounded-lg border bg-background/95 backdrop-blur-sm p-1 text-foreground opacity-0 transition-all duration-200 group-hover/message:opacity-100 shadow-sm">
+                {actions}
+              </div>
+            ) : null}
+          </div>
+
+          {showTimeStamp && createdAt ? (
+            <time
+              dateTime={createdAt.toISOString()}
+              className={cn(
+                "mt-2 block px-1 text-xs opacity-60",
+                animation !== "none" && "duration-500 animate-in fade-in-0"
+              )}
+            >
+              {formattedTime}
+            </time>
           ) : null}
         </div>
-
-        {showTimeStamp && createdAt ? (
-          <time
-            dateTime={createdAt.toISOString()}
-            className={cn(
-              "mt-2 block px-1 text-xs opacity-60",
-              animation !== "none" && "duration-500 animate-in fade-in-0"
-            )}
-          >
-            {formattedTime}
-          </time>
-        ) : null}
-      </div>
+      ) : (
+        showTimeStamp && createdAt && (
+          <div className={cn("flex flex-col mr-12 ml-4", isUser ? "items-end" : "items-start")}>
+            <time
+              dateTime={createdAt.toISOString()}
+              className={cn(
+                "mt-2 block px-1 text-xs opacity-60",
+                animation !== "none" && "duration-500 animate-in fade-in-0"
+              )}
+            >
+              {formattedTime}
+            </time>
+          </div>
+        )
+      )}
     </div>
   )
 }
@@ -401,36 +409,7 @@ function ToolCall({
             )
           case "result":
             return (
-              <Dialog key={index}>
-                <DialogTrigger asChild>
-                  <Badge variant="outline" className="cursor-pointer hover:scale-[0.95]">
-                    <Code2 className="size-3" />
-                    {invocation.toolName}
-                  </Badge>
-                </DialogTrigger>
-                <DialogContent className="max-h-[80vh] w-full flex flex-col">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <Code2 className="size-5 text-primary" />
-                      Tool Result: {invocation.toolName}
-                    </DialogTitle>
-                    <DialogDescription>
-                      Full output from the tool execution.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="flex-1 overflow-y-auto mt-4 rounded-lg bg-muted/30 p-4">
-                    {typeof invocation.result === "string" ? (
-                      <MarkdownRenderer>
-                        {invocation.result.replace(/\\n/g, "\n")}
-                      </MarkdownRenderer>
-                    ) : (
-                      <pre className="whitespace-pre-wrap text-xs md:text-sm font-mono leading-relaxed">
-                        {JSON.stringify(invocation.result, null, 2)}
-                      </pre>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <ToolResult key={index} toolName={invocation.toolName} result={invocation.result} />
             )
           default:
             return null

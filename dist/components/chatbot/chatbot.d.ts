@@ -8,6 +8,7 @@ export interface ChatbotHeaderProps {
     onMaximizeToggle?: (isMaximized: boolean) => void;
     onClose?: () => void;
     onRefresh?: () => void;
+    onHome?: () => void;
 }
 export interface ChatbotFooterProps {
     show?: boolean;

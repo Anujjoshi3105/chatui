@@ -1,8 +1,13 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 
+/**
+ * @deprecated Use `useChatRuntime` from `@/core/runtime` with `ChatService` from `@/core/services` instead.
+ * This hook is kept for backward compatibility and will be removed in a future major version.
+ */
 export interface AgentInfo {
   key: string
   description: string
+  prompts?: string[]
 }
 
 export interface ServiceMetadata {
@@ -69,6 +74,9 @@ export function clearMetadataCache(): void {
   metadataCache.clear()
 }
 
+/**
+ * @deprecated Use `useChatRuntime` from `@/core/runtime` for new code. This hook is kept for backward compatibility.
+ */
 export function useChatbotApi({
   url,
   agent: optionsAgent,
@@ -165,7 +173,7 @@ export function useChatbotApi({
       }
       abortControllerRef.current = new AbortController()
 
-      const agent = optionsAgent || metadata?.default_agent || "portfolio-agent"
+      const agent = optionsAgent || metadata?.default_agent
       const endpoint = `${url}/${agent}/stream`
 
       const requestBody = {
@@ -306,12 +314,16 @@ export function useChatbotApi({
   )
 
   const getHistory = useCallback(
-    async (threadId: string) => {
+    async (threadId: string, requestUserId?: string) => {
+      if (!(requestUserId ?? userId)?.trim()) {
+        return [] as ChatMessage[]
+      }
+      const uid = (requestUserId ?? userId)!.trim()
       try {
         const response = await fetch(`${url}/history`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ thread_id: threadId }),
+          body: JSON.stringify({ thread_id: threadId, user_id: uid }),
         })
         if (!response.ok) {
           throw new Error(`Failed to get history: ${response.statusText}`)
@@ -323,7 +335,44 @@ export function useChatbotApi({
         throw err
       }
     },
-    [url]
+    [url, userId]
+  )
+
+  const getThreads = useCallback(
+    async (
+      requestUserId?: string,
+      options?: { limit?: number; offset?: number; search?: string | null }
+    ) => {
+      const uid = (requestUserId ?? userId)?.trim()
+      if (!uid) return { threads: [], total: 0 }
+      try {
+        const body: Record<string, unknown> = { user_id: uid }
+        if (options?.limit != null) body.limit = options.limit
+        if (options?.offset != null) body.offset = options.offset
+        if (options?.search != null && options.search !== "")
+          body.search = options.search
+        const response = await fetch(`${url}/history/threads`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+        if (!response.ok) {
+          throw new Error(`Failed to get threads: ${response.statusText}`)
+        }
+        const data = (await response.json()) as {
+          threads?: Array<{ thread_id: string; updated_at?: string | null; preview?: string | null }>
+          total?: number
+        }
+        return {
+          threads: data.threads ?? [],
+          total: data.total ?? (data.threads?.length ?? 0),
+        }
+      } catch (err) {
+        console.error("Error getting threads:", err)
+        return { threads: [], total: 0 }
+      }
+    },
+    [url, userId]
   )
 
   return useMemo(() => ({
@@ -334,6 +383,7 @@ export function useChatbotApi({
     stopStream,
     sendFeedback,
     getHistory,
+    getThreads,
     refetchMetadata: () => fetchMetadata(true),
-  }), [metadata, loading, error, streamMessage, stopStream, sendFeedback, getHistory, fetchMetadata])
+  }), [metadata, loading, error, streamMessage, stopStream, sendFeedback, getHistory, getThreads, fetchMetadata])
 }

@@ -1,5 +1,6 @@
 import { default as React } from 'react';
 import { VariantProps } from 'class-variance-authority';
+import { ToolResult } from './tool-result';
 declare const chatBubbleVariants: (props?: ({
     isUser?: boolean | null | undefined;
     animation?: "none" | "scale" | "slide" | "fade" | null | undefined;

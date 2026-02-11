@@ -225,12 +225,11 @@ export default function App() {
 
       <PopupChatbot
         url="http://localhost:8080"
-        agent="research-assistant"
         position="bottom-right"
-        storageKey="chatbot"
         placeholder="Ask me about anything..."
         tooltip="Chat with AI Assistant"
-        stream={false}
+        userId="019c4bfa-71fc-7937-ad35-8b161da9fdde"
+        stream={true}
         header={{
           show: true,
           title: "Research Assistant",
@@ -240,7 +239,6 @@ export default function App() {
         }}
         starter={{
           message: "👋 Hello! I'm here to help you. Ask me anything!",
-          suggestions: ["What is your name?", "How can I contact you?"]
         }}
         footer={{
           show: true,

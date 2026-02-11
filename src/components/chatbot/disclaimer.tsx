@@ -39,7 +39,7 @@ export function Disclaimer({ onAccept, open }: DisclaimerProps) {
                             <div className="bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground text-left border border-border/50 flex gap-2">
                                 <Cookie className="h-4 w-4 shrink-0 mt-0.5" />
                                 <span>
-                                    We use local storage to save your chat history and preferences for a better experience.
+                                    We use local storage to save your preferences (e.g. voice settings) for a better experience.
                                 </span>
                             </div>
                         </div>

@@ -153,11 +153,6 @@ function ChatbotLayout({
 
   const effectiveOnRefresh = onRefresh ?? handleRefresh
 
-  const handleHome = useCallback(() => {
-    setSelectedAgent("")
-    onHome?.()
-  }, [onHome, setSelectedAgent])
-
   const handleOpenHistorySheet = useCallback(
     () => setHistorySheetOpen(true),
     [setHistorySheetOpen]
@@ -184,7 +179,7 @@ function ChatbotLayout({
           onModelChange={setSelectedModel}
           onClose={onClose}
           onRefresh={effectiveOnRefresh}
-          onHome={handleHome}
+          onHome={onHome}
           onHistory={userId?.trim() ? handleOpenHistorySheet : undefined}
           voiceConfig={voiceConfig}
           onVoiceConfigChange={onVoiceConfigChange}
@@ -216,18 +211,18 @@ function ChatbotLayout({
         getThreads={getThreads}
       />
       <div className="flex-1 overflow-hidden flex flex-col">
-      {!selectedAgent ? (
-            <AgentSelector
-              agents={metadata?.agents ?? []}
-              loading={metadataLoading}
-              onSelect={setSelectedAgent}
-            />
-      ) : (
-        <>
-          <MemoizedChatMessages className="flex-1 min-h-0" />
-          <MemoizedChatSuggestions />
-          <MemoizedChatInput placeholder={placeholder} />
-        </>)}
+        {!selectedAgent ? (
+          <AgentSelector
+            agents={metadata?.agents ?? []}
+            loading={metadataLoading}
+            onSelect={setSelectedAgent}
+          />
+        ) : (
+          <>
+            <MemoizedChatMessages className="flex-1 min-h-0" />
+            <MemoizedChatSuggestions />
+            <MemoizedChatInput placeholder={placeholder} />
+          </>)}
       </div>
       {showFooter && (
         <Footer disclaimer={footerContent} subtitle={footerSubtitle} />
@@ -327,7 +322,6 @@ export function Chatbot({
 
   const onMetadataLoaded = useCallback((meta: ServiceMetadata) => {
     setMetadata(meta)
-    setSelectedAgent((prev) => (prev ? prev : meta.default_agent))
     setSelectedModel((prev) => (prev ? prev : meta.default_model))
   }, [])
 
@@ -381,7 +375,7 @@ export function Chatbot({
         "chatbot-theme flex flex-col h-full transition-all duration-300 ease-in-out relative",
         className,
         isMaximized &&
-          "fixed inset-0 z-50 m-0 h-full max-h-none w-full max-w-none rounded-none border-0"
+        "fixed inset-0 z-50 m-0 h-full max-h-none w-full max-w-none rounded-none border-0"
       )}
     >
       <Disclaimer open={showDisclaimer} onAccept={handleDisclaimerAccept} />

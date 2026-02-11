@@ -47,7 +47,7 @@ export function PopupChatbot({
   const [isOpen, setIsOpen] = useState(defaultOpen)
   const [isMaximized, setIsMaximized] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const isMobile = useIsMobile(width, height)
+  const isMobile = useIsMobile(Number(width))
 
   const isFullScreen = isMobile || isMaximized
 

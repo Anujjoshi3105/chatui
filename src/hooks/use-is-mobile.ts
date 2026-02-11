@@ -1,31 +1,22 @@
 import { useState, useEffect } from "react"
 
 /**
- * Hook to detect if the current viewport is mobile-sized based on width and/or height
- * @param width - Width in pixels or string below which is considered mobile. Default: 640
- * @param height - Height in pixels or string below which is considered mobile. Default: 0
- * @returns boolean indicating if the screen is mobile-sized
+ * Hook to detect if viewport is below breakpoint
  */
-export function useIsMobile(width: number | string = 640, height: number | string = 0): boolean {
-    const [isMobile, setIsMobile] = useState(false)
+export function useIsMobile(breakpoint: number): boolean {
+    const [isMobile, setIsMobile] = useState<boolean>(() => {
+        if (typeof window === "undefined") return false
+        return window.innerWidth < breakpoint || window.innerHeight < breakpoint
+    })
 
     useEffect(() => {
-        const checkSize = () => {
-            const windowWidth = window.innerWidth
-            const windowHeight = window.innerHeight
-            const targetWidth = typeof width === "number" ? width : parseInt(String(width)) || 0
-            const targetHeight = typeof height === "number" ? height : parseInt(String(height)) || 0
-
-            setIsMobile(windowWidth < targetWidth || (targetHeight > 0 && windowHeight < targetHeight))
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < Math.max(768, breakpoint) || window.innerHeight < Math.max(640, breakpoint))
         }
 
-        // Check on mount
-        checkSize()
-
-        // Listen for resize events
-        window.addEventListener("resize", checkSize)
-        return () => window.removeEventListener("resize", checkSize)
-    }, [width, height])
+        window.addEventListener("resize", handleResize)
+        return () => window.removeEventListener("resize", handleResize)
+    }, [breakpoint])
 
     return isMobile
 }

@@ -23744,9 +23744,7 @@ function ChatbotLayout({ setSelectedAgent: i, setSelectedModel: a, selectedAgent
 		Q
 	]), Oz = useCallback(() => {
 		J({ keepStarter: !!S });
-	}, [J, S]), kz = g ?? Oz, Az = useCallback(() => {
-		i(""), _?.();
-	}, [_, i]), jz = useCallback(() => A(!0), [A]), Mz = useCallback((i) => {
+	}, [J, S]), kz = g ?? Oz, Az = useCallback(() => A(!0), [A]), jz = useCallback((i) => {
 		A(!1), Y(i), O(i), Q(i);
 	}, [
 		Y,
@@ -23763,8 +23761,8 @@ function ChatbotLayout({ setSelectedAgent: i, setSelectedModel: a, selectedAgent
 			onModelChange: a,
 			onClose: h,
 			onRefresh: kz,
-			onHome: Az,
-			onHistory: C?.trim() ? jz : void 0,
+			onHome: _,
+			onHistory: C?.trim() ? Az : void 0,
 			voiceConfig: z,
 			onVoiceConfigChange: B,
 			availableVoices: V,
@@ -23790,7 +23788,7 @@ function ChatbotLayout({ setSelectedAgent: i, setSelectedModel: a, selectedAgent
 			threadsLoading: F,
 			setThreadsLoading: I,
 			currentThreadId: D,
-			onSelectThread: Mz,
+			onSelectThread: jz,
 			getThreads: Z
 		}),
 		/* @__PURE__ */ jsx("div", {
@@ -23832,7 +23830,7 @@ function Chatbot({ url: i, agent: a, model: o, placeholder: s = "Hi, how can I h
 		localStorage.setItem("auto-speak", String(zz));
 	}, [zz]);
 	let [Wz, Gz] = useState(null), Kz = useCallback((i) => {
-		Gz(i), R((a) => a || i.default_agent), B((a) => a || i.default_model);
+		Gz(i), B((a) => a || i.default_model);
 	}, []), qz = useMemo(() => I === void 0 ? Wz?.agents?.find((i) => i.key === L)?.prompts ?? [] : I, [
 		I,
 		Wz?.agents,
@@ -23933,15 +23931,14 @@ function FullChatbot(i) {
 		children: /* @__PURE__ */ jsx(Chatbot, { ...i })
 	});
 }
-function useIsMobile(i = 640, a = 0) {
-	let [o, s] = useState(!1);
+function useIsMobile(i) {
+	let [a, o] = useState(() => typeof window > "u" ? !1 : window.innerWidth < i || window.innerHeight < i);
 	return useEffect(() => {
-		let o = () => {
-			let o = window.innerWidth, c = window.innerHeight, l = typeof i == "number" ? i : parseInt(String(i)) || 0, u = typeof a == "number" ? a : parseInt(String(a)) || 0;
-			s(o < l || u > 0 && c < u);
+		let a = () => {
+			o(window.innerWidth < Math.max(768, i) || window.innerHeight < Math.max(640, i));
 		};
-		return o(), window.addEventListener("resize", o), () => window.removeEventListener("resize", o);
-	}, [i, a]), o;
+		return window.addEventListener("resize", a), () => window.removeEventListener("resize", a);
+	}, [i]), a;
 }
 var positionClasses = {
 	"bottom-right": "bottom-4 right-4",
@@ -23950,7 +23947,7 @@ var positionClasses = {
 	"top-left": "top-4 left-4"
 };
 function PopupChatbot({ buttonClassName: i, buttonStyle: a, popupClassName: o, children: s, position: c = "bottom-right", width: l = 450, height: u = 600, tooltip: d, tooltipDelay: f = 0, defaultOpen: p = !1, ...h }) {
-	let [_, v] = useState(p), [y, b] = useState(!1), x = useRef(null), D = useIsMobile(l, u), O = D || y;
+	let [_, v] = useState(p), [y, b] = useState(!1), x = useRef(null), D = useIsMobile(Number(l)), O = D || y;
 	useEffect(() => {
 		let i = (i) => {
 			if (!(O || !_) && x.current && !x.current.contains(i.target)) {

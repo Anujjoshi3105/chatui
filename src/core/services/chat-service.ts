@@ -252,7 +252,7 @@ export class ChatService {
     const parseResponse = (data: unknown): ChatHistoryResponse => {
       const d = data as { messages?: unknown[]; next_cursor?: string | null; prev_cursor?: string | null }
       return {
-        messages: Array.isArray(d.messages) ? d.messages : [],
+        messages: Array.isArray(d.messages) ? (d.messages as ApiChatMessage[]) : [],
         next_cursor: d.next_cursor ?? null,
         prev_cursor: d.prev_cursor ?? null,
       }

@@ -43,6 +43,7 @@ export type ChatRuntimeConfig = {
     starterSuggestions?: string[];
     /** Called when stream ends with the final assistant message content (e.g. for TTS). */
     onStreamEnd?: (lastContent: string) => void;
+    apiKey?: string;
 };
 export type ChatRuntimeAction = {
     type: "SET_INPUT";

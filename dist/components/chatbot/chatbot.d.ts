@@ -26,6 +26,7 @@ export interface ChatbotProps {
     placeholder?: string;
     threadId?: string;
     userId?: string;
+    apiKey?: string;
     stream?: boolean;
     className?: string;
     header?: ChatbotHeaderProps;
@@ -33,4 +34,4 @@ export interface ChatbotProps {
     starter?: ChatbotStarterProps;
     isMaximized?: boolean;
 }
-export declare function Chatbot({ url, agent: initialAgent, model: initialModel, placeholder, threadId, userId, stream, className, header, footer, starter, isMaximized: propsIsMaximized, }: ChatbotProps): import("react/jsx-runtime").JSX.Element;
+export declare function Chatbot({ url, agent: initialAgent, model: initialModel, placeholder, threadId, userId, apiKey, stream, className, header, footer, starter, isMaximized: propsIsMaximized, }: ChatbotProps): import("react/jsx-runtime").JSX.Element;

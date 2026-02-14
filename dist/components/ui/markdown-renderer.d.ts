@@ -1,5 +1,6 @@
 interface MarkdownRendererProps {
     children: string;
+    className?: string;
 }
-export default function MarkdownRenderer({ children }: MarkdownRendererProps): import("react/jsx-runtime").JSX.Element;
+export default function MarkdownRenderer({ children, className }: MarkdownRendererProps): import("react/jsx-runtime").JSX.Element;
 export {};

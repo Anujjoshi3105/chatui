@@ -129,31 +129,6 @@ var __create = Object.create, __defProp = Object.defineProperty, __getOwnPropDes
 		d: "m14.5 4-5 16",
 		key: "e7oirm"
 	}]
-]), Cookie = createLucideIcon("cookie", [
-	["path", {
-		d: "M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5",
-		key: "laymnq"
-	}],
-	["path", {
-		d: "M8.5 8.5v.01",
-		key: "ue8clq"
-	}],
-	["path", {
-		d: "M16 15.5v.01",
-		key: "14dtrp"
-	}],
-	["path", {
-		d: "M12 12v.01",
-		key: "u5ubse"
-	}],
-	["path", {
-		d: "M11 17v.01",
-		key: "1hyl5a"
-	}],
-	["path", {
-		d: "M7 14v.01",
-		key: "uct60s"
-	}]
 ]), Copy = createLucideIcon("copy", [["rect", {
 	width: "14",
 	height: "14",
@@ -8322,7 +8297,7 @@ function AvatarFallback({ className: i, ...a }) {
 		...a
 	});
 }
-function Header({ metadata: i, selectedAgent: a, selectedModel: o, onAgentChange: s, onModelChange: c, onClose: l, onRefresh: u, onHome: d, onHistory: f, className: p, title: m = "Portfolio Assistant", titleUrl: h, subtitle: g = "Online", voiceConfig: _, onVoiceConfigChange: v, availableVoices: y, selectedVoice: b, onVoiceChange: x, autoSpeak: S, onAutoSpeakChange: w, isMaximized: D, onMaximize: O, avatar: k }) {
+function Header({ metadata: i, selectedAgent: a, selectedModel: o, onAgentChange: s, onModelChange: c, onClose: l, onRefresh: u, onHome: d, onHistory: f, className: p, title: m = "Portfolio Assistant", titleUrl: h, subtitle: g, voiceConfig: _, onVoiceConfigChange: v, availableVoices: y, selectedVoice: b, onVoiceChange: x, autoSpeak: S, onAutoSpeakChange: w, isMaximized: D, onMaximize: O, avatar: k }) {
 	let [A, j] = useState(!1), M = () => {
 		A || (j(!0), u?.(), setTimeout(() => {
 			j(!1);
@@ -8340,9 +8315,9 @@ function Header({ metadata: i, selectedAgent: a, selectedModel: o, onAgentChange
 			children: [/* @__PURE__ */ jsx("h3", {
 				className: "text-sm font-semibold text-foreground/90 tracking-tight leading-none group-hover:text-primary transition-colors",
 				children: m
-			}), g && /* @__PURE__ */ jsx("p", {
-				className: "text-[11px] text-muted-foreground font-medium leading-none",
-				children: g
+			}), /* @__PURE__ */ jsx("p", {
+				className: "text-[11px] text-muted-foreground font-medium leading-none capitalize",
+				children: g || a.replace(/-/g, " ")
 			})]
 		})]
 	});
@@ -8494,7 +8469,7 @@ var AgentCard = memo(function({ agent: i, index: a, onSelect: o, selected: s }) 
 					className: "min-w-0 flex-1",
 					children: [/* @__PURE__ */ jsx("span", {
 						className: cn("block font-semibold text-foreground transition-colors group-hover:text-primary capitalize"),
-						children: i.key
+						children: i.key.replace(/-/g, " ")
 					}), i.description ? /* @__PURE__ */ jsx("span", {
 						className: "mt-0.5 line-clamp-2 block text-[13px] leading-snug text-muted-foreground",
 						children: i.description
@@ -8581,6 +8556,10 @@ var ChatService = class {
 	constructor(i) {
 		this.abortController = null, this.config = i;
 	}
+	getHeaders() {
+		let i = { "Content-Type": "application/json" };
+		return this.config.apiKey && (i.Authorization = `Bearer ${this.config.apiKey}`), i;
+	}
 	getMetadataFromCache() {
 		return getCachedMetadata(this.config.baseUrl);
 	}
@@ -8594,7 +8573,7 @@ var ChatService = class {
 			return await a.promise;
 		} catch {}
 		let o = (async () => {
-			let i = await fetch(`${this.config.baseUrl}/info`);
+			let i = await fetch(`${this.config.baseUrl}/info`, { headers: this.getHeaders() });
 			if (!i.ok) throw Error(`Failed to fetch metadata: ${i.statusText}`);
 			return await i.json();
 		})(), s = metadataCache.get(this.config.baseUrl) ?? {
@@ -8622,7 +8601,7 @@ var ChatService = class {
 		try {
 			let i = await fetch(s, {
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
+				headers: this.getHeaders(),
 				body: JSON.stringify(c),
 				signal: this.abortController.signal
 			});
@@ -8679,7 +8658,7 @@ var ChatService = class {
 	async sendFeedback(i, a, o) {
 		let s = await fetch(`${this.config.baseUrl}/feedback`, {
 			method: "POST",
-			headers: { "Content-Type": "application/json" },
+			headers: this.getHeaders(),
 			body: JSON.stringify({
 				run_id: i,
 				key: a,
@@ -8689,19 +8668,53 @@ var ChatService = class {
 		if (!s.ok) throw Error(`Failed to send feedback: ${s.statusText}`);
 		return s.json();
 	}
-	async getHistory(i, a) {
-		let o = a?.trim();
-		if (!o) return [];
-		let s = await fetch(`${this.config.baseUrl}/history`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
+	async getHistory(i, a, o) {
+		let s = a?.trim();
+		if (!s) return {
+			messages: [],
+			next_cursor: null,
+			prev_cursor: null
+		};
+		let c = o?.limit ?? 50, l = o?.view ?? "full", u = o?.cursor, d = (i) => {
+			let a = i;
+			return {
+				messages: Array.isArray(a.messages) ? a.messages : [],
+				next_cursor: a.next_cursor ?? null,
+				prev_cursor: a.prev_cursor ?? null
+			};
+		}, f = this.getHeaders();
+		try {
+			let a = new URLSearchParams({
+				user_id: s,
 				thread_id: i,
-				user_id: o
-			})
-		});
-		if (!s.ok) throw Error(`Failed to get history: ${s.statusText}`);
-		return (await s.json()).messages ?? [];
+				limit: String(c),
+				view: l
+			});
+			u != null && u !== "" && a.set("cursor", u);
+			let o = await fetch(`${this.config.baseUrl}/history?${a.toString()}`, {
+				method: "GET",
+				headers: f
+			});
+			if (o.ok) return d(await o.json());
+			if (o.status === 404 || o.status === 405) {
+				let a = {
+					user_id: s,
+					thread_id: i,
+					limit: c,
+					view: l
+				};
+				u != null && u !== "" && (a.cursor = u);
+				let o = await fetch(`${this.config.baseUrl}/history`, {
+					method: "POST",
+					headers: f,
+					body: JSON.stringify(a)
+				});
+				if (o.ok) return d(await o.json());
+			}
+			throw Error(`Failed to get history: ${o.statusText}`);
+		} catch (i) {
+			throw i instanceof Error ? i : Error("Failed to get history");
+		}
 	}
 	async getThreads(i, a) {
 		let o = i?.trim();
@@ -8714,7 +8727,7 @@ var ChatService = class {
 			a?.limit != null && (i.limit = a.limit), a?.offset != null && (i.offset = a.offset), a?.search != null && a.search !== "" && (i.search = a.search);
 			let s = await fetch(`${this.config.baseUrl}/history/threads`, {
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
+				headers: this.getHeaders(),
 				body: JSON.stringify(i)
 			});
 			if (!s.ok) throw Error(`Failed to get threads: ${s.statusText}`);
@@ -8730,7 +8743,54 @@ var ChatService = class {
 			};
 		}
 	}
-};
+}, DATE_KEYS = ["createdAt"];
+function reviver(i, a) {
+	if (typeof a == "string" && DATE_KEYS.includes(i)) {
+		let i = new Date(a);
+		return isNaN(i.getTime()) ? a : i;
+	}
+	return a;
+}
+function loadMessages(i) {
+	if (!i) return null;
+	try {
+		let a = localStorage.getItem(i);
+		if (!a) return null;
+		let o = JSON.parse(a, reviver);
+		return !Array.isArray(o) || o.length === 0 ? null : o;
+	} catch {
+		return null;
+	}
+}
+function saveMessages(i, a) {
+	if (!(!i || a.length === 0)) try {
+		localStorage.setItem(i, JSON.stringify(a));
+	} catch (i) {
+		console.error("Failed to save chat history:", i);
+	}
+}
+function clearMessages(i) {
+	if (i) try {
+		localStorage.removeItem(i);
+	} catch {}
+}
+var THREAD_KEY_PREFIX = "chatui-thread:", MESSAGES_KEY_PREFIX = "chatui-messages:";
+function getThreadMessagesKey(i, a) {
+	return !i || !a ? "" : `${MESSAGES_KEY_PREFIX}${i}:${a}`;
+}
+function loadCurrentThreadId(i) {
+	if (!i) return null;
+	try {
+		return localStorage.getItem(THREAD_KEY_PREFIX + i);
+	} catch {
+		return null;
+	}
+}
+function saveCurrentThreadId(i, a) {
+	if (i) try {
+		a == null ? localStorage.removeItem(THREAD_KEY_PREFIX + i) : localStorage.setItem(THREAD_KEY_PREFIX + i, a);
+	} catch {}
+}
 function updateMessageById(i, a, o) {
 	let s = i.findIndex((i) => i.id === a);
 	if (s === -1) return i;
@@ -8742,17 +8802,17 @@ function applyStreamMessage(i, a, o) {
 	if (!s || o.type !== "message") return { messages: i };
 	let c = s;
 	if (c.type === "tool") {
-		let o = c.name ?? c.response_metadata?.name ?? c.custom_data?.name ?? "Tool", s = c.content, l = typeof s == "string" ? s.replace(/\\n/g, "\n") : s, u = {
-			state: "result",
-			toolName: o,
-			toolCallId: c.tool_call_id,
-			result: l
-		};
+		let o = c.name ?? c.response_metadata?.name ?? c.custom_data?.name ?? "Tool", s = c.content, l = typeof s == "string" ? s.replace(/\\n/g, "\n") : s;
 		return { messages: updateMessageById(i, a, (i) => {
-			let a = (i.toolInvocations ?? []).filter((i) => !(i.state === "call" && i.toolCallId === c.tool_call_id));
+			let a = i.toolInvocations ?? [], s = c.tool_call_id ? a.findIndex((i) => i.state === "call" && i.toolCallId === c.tool_call_id) : -1, u = s >= 0 ? a[s] : void 0, d = {
+				state: "result",
+				toolName: o && o !== "Tool" ? o : u?.toolName ?? o,
+				toolCallId: c.tool_call_id,
+				result: l
+			}, f = a.filter((i) => !(i.state === "call" && i.toolCallId === c.tool_call_id));
 			return {
 				...i,
-				toolInvocations: [...a, u]
+				toolInvocations: [...f, d]
 			};
 		}) };
 	}
@@ -8763,10 +8823,15 @@ function applyStreamMessage(i, a, o) {
 			toolCallId: i.id,
 			args: i.args
 		}));
-		return { messages: updateMessageById(i, a, (i) => ({
-			...i,
-			toolInvocations: o
-		})) };
+		return { messages: updateMessageById(i, a, (i) => {
+			let a = i.toolInvocations ?? [], s = a.filter((i) => i.state === "call"), c = a.filter((i) => i.state === "result"), l = new Set(s.map((i) => i.toolCallId).filter(Boolean)), u = [...s];
+			for (let i of o) i.toolCallId && !l.has(i.toolCallId) && (u.push(i), l.add(i.toolCallId));
+			let d = [...u, ...c];
+			return {
+				...i,
+				toolInvocations: d
+			};
+		}) };
 	}
 	if (c.type === "custom") {
 		let a = c.custom_data?.follow_up;
@@ -8902,6 +8967,23 @@ function getInitialChatState(i, a) {
 		error: null
 	};
 }
+function generateThreadId() {
+	return typeof crypto < "u" && crypto.randomUUID ? crypto.randomUUID() : `thread-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+function getStorageBaseKey(i) {
+	return `${(i.url ?? "").replace(/\/$/, "")}:${i.userId?.trim() ?? "anon"}:${i.agent?.trim() ?? "default"}`;
+}
+function persistedToMessages(i) {
+	return !i || !Array.isArray(i) || i.length === 0 ? null : i.map((i) => ({
+		id: i.id,
+		role: i.role === "user" || i.role === "assistant" ? i.role : "user",
+		content: i.content,
+		createdAt: i.createdAt ? new Date(i.createdAt) : void 0,
+		custom_data: i.custom_data,
+		toolInvocations: i.toolInvocations,
+		parts: i.parts
+	}));
+}
 function apiMessagesToUiMessages(i) {
 	let a = [], o = 0, s = Date.now();
 	for (; o < i.length;) {
@@ -8935,13 +9017,13 @@ function apiMessagesToUiMessages(i) {
 						args: i.args
 					});
 				} else {
-					let i = a.name ?? a.response_metadata?.name ?? a.custom_data?.name ?? "Tool", o = a.content, s = typeof o == "string" ? o.replace(/\\n/g, "\n") : o, c = a.tool_call_id ?? void 0, l = c ? u.findIndex((i) => i.state === "call" && i.toolCallId === c) : -1, d = {
+					let i = a.name ?? a.response_metadata?.name ?? a.custom_data?.name ?? "Tool", o = a.content, s = typeof o == "string" ? o.replace(/\\n/g, "\n") : o, c = a.tool_call_id ?? void 0, l = c ? u.findIndex((i) => i.state === "call" && i.toolCallId === c) : -1, d = l >= 0 ? u[l] : void 0, f = {
 						state: "result",
-						toolName: i,
+						toolName: i && i !== "Tool" ? i : d?.toolName ?? i,
 						toolCallId: c,
 						result: s
 					};
-					l >= 0 ? u[l] = d : u.push(d);
+					l >= 0 ? u[l] = f : u.push(f);
 				}
 				o += 1;
 			}
@@ -8972,7 +9054,8 @@ function useChatRuntime(i) {
 			c.current = new ChatService({
 				baseUrl: s.current.url,
 				defaultAgent: s.current.agent ?? i?.default_agent ?? "",
-				defaultModel: s.current.model ?? i?.default_model ?? ""
+				defaultModel: s.current.model ?? i?.default_model ?? "",
+				apiKey: s.current.apiKey
 			});
 		}
 		return c.current;
@@ -8981,7 +9064,8 @@ function useChatRuntime(i) {
 		let a = !1, s = new ChatService({
 			baseUrl: i.url,
 			defaultAgent: i.agent ?? "",
-			defaultModel: i.model ?? ""
+			defaultModel: i.model ?? "",
+			apiKey: i.apiKey
 		}), c = s.getMetadataFromCache();
 		if (c) {
 			o({
@@ -9014,103 +9098,204 @@ function useChatRuntime(i) {
 		}), () => {
 			a = !0;
 		};
-	}, [i.url]), useEffect(() => {
-		i.threadId !== void 0 && o({
-			type: "SET_THREAD_ID",
-			payload: i.threadId
-		});
-	}, [i.threadId]);
-	let f = useRef(void 0);
+	}, [i.url]);
+	let f = useMemo(() => getStorageBaseKey(i), [
+		i.url,
+		i.userId,
+		i.agent
+	]), p = useRef(null);
 	useEffect(() => {
-		let a = i.agent ?? "", s = f.current, c = s !== void 0 && s !== a;
-		f.current = a, c && (o({
+		let a = `${f}:${i.threadId ?? "none"}`;
+		if (p.current === a) return;
+		p.current = a;
+		let c = f, u = i.threadId;
+		if (u != null && u !== "") {
+			o({
+				type: "SET_THREAD_ID",
+				payload: u
+			}), (async (i) => {
+				let a = s.current.userId?.trim();
+				if (a) try {
+					let { messages: s } = await l().getHistory(i, a);
+					s.length > 0 && o({
+						type: "SET_MESSAGES",
+						payload: apiMessagesToUiMessages(s)
+					});
+				} catch {
+					let a = persistedToMessages(loadMessages(getThreadMessagesKey(c, i)));
+					a && a.length > 0 && o({
+						type: "SET_MESSAGES",
+						payload: a
+					});
+				}
+				else {
+					let a = persistedToMessages(loadMessages(getThreadMessagesKey(c, i)));
+					a && a.length > 0 && o({
+						type: "SET_MESSAGES",
+						payload: a
+					});
+				}
+			})(u);
+			return;
+		}
+		let d = loadCurrentThreadId(c);
+		if (d) o({
 			type: "SET_THREAD_ID",
-			payload: void 0
-		}), i.starterMessage ? o({
-			type: "CLEAR_CHAT",
-			payload: { keepStarter: {
-				id: `greeting-${Date.now()}`,
-				role: "assistant",
-				content: i.starterMessage,
-				createdAt: /* @__PURE__ */ new Date()
-			} }
-		}) : o({ type: "CLEAR_CHAT" }));
-	}, [i.agent, i.starterMessage]);
-	let p = useCallback(async (i) => {
+			payload: d
+		}), (async (i) => {
+			let a = s.current.userId?.trim();
+			if (a) try {
+				let { messages: s } = await l().getHistory(i, a);
+				s.length > 0 && o({
+					type: "SET_MESSAGES",
+					payload: apiMessagesToUiMessages(s)
+				});
+			} catch {
+				let a = persistedToMessages(loadMessages(getThreadMessagesKey(c, i)));
+				a && a.length > 0 && o({
+					type: "SET_MESSAGES",
+					payload: a
+				});
+			}
+			else {
+				let a = persistedToMessages(loadMessages(getThreadMessagesKey(c, i)));
+				a && a.length > 0 && o({
+					type: "SET_MESSAGES",
+					payload: a
+				});
+			}
+		})(d);
+		else {
+			let i = generateThreadId();
+			saveCurrentThreadId(c, i), o({
+				type: "SET_THREAD_ID",
+				payload: i
+			});
+		}
+	}, [
+		f,
+		i.threadId,
+		l
+	]), useEffect(() => {
+		if (!f) return;
+		let i = a.currentThreadId;
+		saveCurrentThreadId(f, i ?? null);
+	}, [f, a.currentThreadId]), useEffect(() => {
+		if (!(!f || !a.currentThreadId)) {
+			if (a.messages.length === 0) {
+				clearMessages(getThreadMessagesKey(f, a.currentThreadId));
+				return;
+			}
+			saveMessages(getThreadMessagesKey(f, a.currentThreadId), a.messages);
+		}
+	}, [
+		f,
+		a.currentThreadId,
+		a.messages
+	]);
+	let h = useRef(void 0);
+	useEffect(() => {
+		let a = i.agent ?? "", s = h.current, c = s !== void 0 && s !== a;
+		if (h.current = a, c) {
+			let a = generateThreadId();
+			saveCurrentThreadId(f, a), o({
+				type: "SET_THREAD_ID",
+				payload: a
+			}), i.starterMessage ? o({
+				type: "CLEAR_CHAT",
+				payload: { keepStarter: {
+					id: `greeting-${Date.now()}`,
+					role: "assistant",
+					content: i.starterMessage,
+					createdAt: /* @__PURE__ */ new Date()
+				} }
+			}) : o({ type: "CLEAR_CHAT" });
+		}
+	}, [
+		i.agent,
+		i.starterMessage,
+		f
+	]);
+	let _ = useCallback(async (i) => {
 		if (a.isGenerating) return;
 		let c = a.metadata, f = s.current.agent ?? c?.default_agent, p = s.current.model ?? c?.default_model;
 		if (!f) return;
-		let m = {
+		let m = a.currentThreadId;
+		m || (m = generateThreadId(), o({
+			type: "SET_THREAD_ID",
+			payload: m
+		}), saveCurrentThreadId(getStorageBaseKey(s.current), m));
+		let h = {
 			id: `user-${Date.now()}`,
 			role: "user",
 			content: i,
 			createdAt: /* @__PURE__ */ new Date()
-		}, h = `ai-${Date.now()}`;
+		}, g = `ai-${Date.now()}`;
 		o({
 			type: "START_SEND",
 			payload: {
-				userMessage: m,
+				userMessage: h,
 				assistantMessage: {
-					id: h,
+					id: g,
 					role: "assistant",
 					content: "",
 					createdAt: /* @__PURE__ */ new Date()
 				}
 			}
 		}), u.current = "", d.current = [];
-		let g = l();
+		let _ = l();
 		try {
-			for await (let c of g.stream(i, {
+			for await (let a of _.stream(i, {
 				agent: f,
 				model: p,
-				threadId: a.currentThreadId,
+				threadId: m,
 				userId: s.current.userId,
 				streamTokens: s.current.stream !== !1
-			})) if (c.type === "token" && typeof c.content == "string") u.current += c.content, o({
+			})) if (a.type === "token" && typeof a.content == "string") u.current += a.content, o({
 				type: "STREAM_TOKEN",
 				payload: {
-					messageId: h,
+					messageId: g,
 					content: u.current
 				}
 			});
-			else if (c.type === "message" && c.content) {
+			else if (a.type === "message" && a.content) {
 				o({
 					type: "STREAM_MESSAGE",
 					payload: {
-						messageId: h,
-						event: c
+						messageId: g,
+						event: a
 					}
 				});
-				let i = c.content;
+				let i = a.content;
 				if (i.type === "custom" && Array.isArray(i.custom_data?.follow_up)) d.current = i.custom_data.follow_up;
 				else if (typeof i.content == "string" && (u.current = i.content, d.current.length > 0)) {
 					let i = u.current + "\n\n**Follow-up suggestions:**\n" + d.current.map((i) => `- ${i}`).join("\n");
 					d.current = [], o({
 						type: "STREAM_TOKEN",
 						payload: {
-							messageId: h,
+							messageId: g,
 							content: i
 						}
 					});
 				}
-			} else if (c.type === "update" && c.updates?.follow_up) {
-				let i = c.updates.follow_up;
+			} else if (a.type === "update" && a.updates?.follow_up) {
+				let i = a.updates.follow_up;
 				Array.isArray(i) && (o({
 					type: "SET_FOLLOW_UP",
 					payload: i
 				}), d.current = i);
-			} else c.type === "error" && o({
+			} else a.type === "error" && o({
 				type: "STREAM_ERROR",
 				payload: {
-					messageId: h,
-					error: typeof c.content == "string" ? c.content : "Unknown error"
+					messageId: g,
+					error: typeof a.content == "string" ? a.content : "Unknown error"
 				}
 			});
 		} catch (i) {
 			o({
 				type: "STREAM_ERROR",
 				payload: {
-					messageId: h,
+					messageId: g,
 					error: i instanceof Error ? i.message : "Unknown error"
 				}
 			});
@@ -9123,14 +9308,14 @@ function useChatRuntime(i) {
 		a.metadata,
 		a.currentThreadId,
 		l
-	]), h = useCallback(() => {
+	]), v = useCallback(() => {
 		l().abortStream(), o({ type: "STREAM_END" });
-	}, [l]), _ = useCallback((i) => {
+	}, [l]), y = useCallback((i) => {
 		o({
 			type: "SET_INPUT",
 			payload: i
 		});
-	}, []), v = useCallback((i) => {
+	}, []), C = useCallback((i) => {
 		o(typeof i == "function" ? {
 			type: "SET_MESSAGES",
 			payload: i(a.messages)
@@ -9138,7 +9323,15 @@ function useChatRuntime(i) {
 			type: "SET_MESSAGES",
 			payload: i
 		});
-	}, [a.messages]), y = useCallback((i) => {
+	}, [a.messages]), w = useCallback((i) => {
+		let a = getStorageBaseKey(s.current);
+		if (i?.createNewThread) {
+			let i = generateThreadId();
+			saveCurrentThreadId(a, i), o({
+				type: "SET_THREAD_ID",
+				payload: i
+			});
+		}
 		i?.keepStarter && s.current.starterMessage ? o({
 			type: "CLEAR_CHAT",
 			payload: { keepStarter: {
@@ -9148,56 +9341,67 @@ function useChatRuntime(i) {
 				createdAt: /* @__PURE__ */ new Date()
 			} }
 		}) : o({ type: "CLEAR_CHAT" });
-	}, []), C = useCallback((i) => {
+	}, []), T = useCallback((i) => {
 		c.current = null, o({
 			type: "SET_METADATA",
 			payload: a.metadata
 		});
-	}, [a.metadata]), w = useCallback((i) => {}, []), T = useCallback((i) => {
+	}, [a.metadata]), E = useCallback((i) => {}, []), D = useCallback((i) => {
 		o({
 			type: "SET_THREAD_ID",
 			payload: i
 		});
-	}, []), E = useCallback(async (i) => {
-		let a = s.current.userId?.trim();
-		a && (o({
-			type: "SET_MESSAGES",
-			payload: apiMessagesToUiMessages(await l().getHistory(i, a))
-		}), o({
-			type: "SET_THREAD_ID",
-			payload: i
-		}));
-	}, [l]), D = useCallback(async (i, o) => {
+	}, []), O = useCallback(async (i, a) => {
+		let c = (a ?? s.current.userId)?.trim();
+		if (!c) return;
+		let u = l();
+		try {
+			let { messages: a } = await u.getHistory(i, c);
+			o({
+				type: "SET_MESSAGES",
+				payload: apiMessagesToUiMessages(a)
+			}), o({
+				type: "SET_THREAD_ID",
+				payload: i
+			}), o({
+				type: "SET_ERROR",
+				payload: null
+			});
+		} catch (i) {
+			console.error("Failed to load thread history:", i), o({
+				type: "SET_ERROR",
+				payload: i instanceof Error ? i.message : "Failed to load conversation"
+			});
+		}
+	}, [l]), k = useCallback(async (i, o) => {
 		let s = a.messages.find((a) => a.id === i)?.custom_data?.run_id;
 		s && await l().sendFeedback(s, "human-feedback", o === "thumbs-up" ? 1 : 0);
-	}, [a.messages, l]), O = useCallback(async () => {
+	}, [a.messages, l]), A = useCallback(async () => {
 		o({
 			type: "SET_METADATA",
 			payload: await l().getMetadata(!0)
 		});
-	}, [l]), k = useCallback(async (i) => {
+	}, [l]), j = useCallback(async (i) => {
 		let a = s.current.userId?.trim();
 		return l().getThreads(a, i);
-	}, [l]), A = useCallback(async (i) => l().getHistory(i, s.current.userId), [l]), j = useMemo(() => ({
-		setInput: _,
-		sendMessage: p,
-		stopGeneration: h,
-		setMessages: v,
-		clearChat: y,
-		setAgent: C,
-		setModel: w,
-		setThreadId: T,
-		loadThread: E,
-		rateResponse: D,
-		refetchMetadata: O,
-		getThreads: k,
-		getHistory: A
+	}, [l]), M = useCallback(async (i, a) => l().getHistory(i, s.current.userId, a), [l]), N = useMemo(() => ({
+		setInput: y,
+		sendMessage: _,
+		stopGeneration: v,
+		setMessages: C,
+		clearChat: w,
+		setAgent: T,
+		setModel: E,
+		setThreadId: D,
+		loadThread: O,
+		rateResponse: k,
+		refetchMetadata: A,
+		getThreads: j,
+		getHistory: M
 	}), [
-		_,
-		p,
-		h,
-		v,
 		y,
+		_,
+		v,
 		C,
 		w,
 		T,
@@ -9205,11 +9409,13 @@ function useChatRuntime(i) {
 		D,
 		O,
 		k,
-		A
+		A,
+		j,
+		M
 	]);
 	return {
 		...a,
-		...j
+		...N
 	};
 }
 var ChatContext = createContext(null);
@@ -17259,10 +17465,10 @@ function compiler(i) {
 			"strong"
 		],
 		enter: {
-			autolink: l(Pz),
+			autolink: l(Wz),
 			autolinkProtocol: k,
 			autolinkEmail: k,
-			atxHeading: l(Az),
+			atxHeading: l(Bz),
 			blockQuote: l(Z),
 			characterEscape: k,
 			characterReference: k,
@@ -17274,32 +17480,32 @@ function compiler(i) {
 			codeTextData: k,
 			data: k,
 			codeFlowValue: k,
-			definition: l(Oz),
+			definition: l(Rz),
 			definitionDestinationString: u,
 			definitionLabelString: u,
 			definitionTitleString: u,
-			emphasis: l(kz),
-			hardBreakEscape: l(jz),
-			hardBreakTrailing: l(jz),
-			htmlFlow: l(Mz, u),
+			emphasis: l(zz),
+			hardBreakEscape: l(Vz),
+			hardBreakTrailing: l(Vz),
+			htmlFlow: l(Hz, u),
 			htmlFlowData: k,
-			htmlText: l(Mz, u),
+			htmlText: l(Hz, u),
 			htmlTextData: k,
-			image: l(Nz),
+			image: l(Uz),
 			label: u,
-			link: l(Pz),
-			listItem: l(Iz),
+			link: l(Wz),
+			listItem: l(Kz),
 			listItemValue: g,
-			listOrdered: l(Fz, h),
-			listUnordered: l(Fz),
-			paragraph: l(Lz),
+			listOrdered: l(Gz, h),
+			listUnordered: l(Gz),
+			paragraph: l(qz),
 			reference: U,
 			referenceString: u,
 			resourceDestinationString: u,
 			resourceTitleString: u,
-			setextHeading: l(Az),
-			strong: l(Rz),
-			thematicBreak: l(Bz)
+			setextHeading: l(Bz),
+			strong: l(Jz),
+			thematicBreak: l(Xz)
 		},
 		exit: {
 			atxHeading: f(),
@@ -17538,7 +17744,7 @@ function compiler(i) {
 	}
 	function k(i) {
 		let a = this.stack[this.stack.length - 1].children, o = a[a.length - 1];
-		(!o || o.type !== "text") && (o = zz(), o.position = {
+		(!o || o.type !== "text") && (o = Yz(), o.position = {
 			start: point(i.start),
 			end: void 0
 		}, a.push(o)), this.stack.push(o);
@@ -17656,7 +17862,7 @@ function compiler(i) {
 			value: ""
 		};
 	}
-	function Oz() {
+	function Rz() {
 		return {
 			type: "definition",
 			identifier: "",
@@ -17665,29 +17871,29 @@ function compiler(i) {
 			url: ""
 		};
 	}
-	function kz() {
+	function zz() {
 		return {
 			type: "emphasis",
 			children: []
 		};
 	}
-	function Az() {
+	function Bz() {
 		return {
 			type: "heading",
 			depth: 0,
 			children: []
 		};
 	}
-	function jz() {
+	function Vz() {
 		return { type: "break" };
 	}
-	function Mz() {
+	function Hz() {
 		return {
 			type: "html",
 			value: ""
 		};
 	}
-	function Nz() {
+	function Uz() {
 		return {
 			type: "image",
 			title: null,
@@ -17695,7 +17901,7 @@ function compiler(i) {
 			alt: null
 		};
 	}
-	function Pz() {
+	function Wz() {
 		return {
 			type: "link",
 			title: null,
@@ -17703,7 +17909,7 @@ function compiler(i) {
 			children: []
 		};
 	}
-	function Fz(i) {
+	function Gz(i) {
 		return {
 			type: "list",
 			ordered: i.type === "listOrdered",
@@ -17712,7 +17918,7 @@ function compiler(i) {
 			children: []
 		};
 	}
-	function Iz(i) {
+	function Kz(i) {
 		return {
 			type: "listItem",
 			spread: i._spread,
@@ -17720,25 +17926,25 @@ function compiler(i) {
 			children: []
 		};
 	}
-	function Lz() {
+	function qz() {
 		return {
 			type: "paragraph",
 			children: []
 		};
 	}
-	function Rz() {
+	function Jz() {
 		return {
 			type: "strong",
 			children: []
 		};
 	}
-	function zz() {
+	function Yz() {
 		return {
 			type: "text",
 			value: ""
 		};
 	}
-	function Bz() {
+	function Xz() {
 		return { type: "thematicBreak" };
 	}
 }
@@ -21272,9 +21478,9 @@ var components = {
 		return /* @__PURE__ */ jsx(Fragment$1, { children: i });
 	}
 };
-function MarkdownRenderer({ children: i }) {
+function MarkdownRenderer({ children: i, className: a }) {
 	return /* @__PURE__ */ jsx("div", {
-		className: "prose-sm max-w-none",
+		className: cn("prose-sm max-w-none", a),
 		children: /* @__PURE__ */ jsx(Markdown, {
 			remarkPlugins: [remarkGfm],
 			components,
@@ -21544,32 +21750,27 @@ function ToolCall({ toolInvocations: i }) {
 				})]
 			}, a);
 			switch (i.state) {
-				case "partial-call":
-				case "call": return /* @__PURE__ */ jsxs("div", {
-					className: "flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary shadow-sm",
-					children: [
-						/* @__PURE__ */ jsx("div", {
-							className: "flex h-6 w-6 items-center justify-center rounded-full bg-primary/10",
-							children: /* @__PURE__ */ jsx(Terminal, { className: "h-3 w-3" })
-						}),
-						/* @__PURE__ */ jsxs("span", {
-							className: "font-medium",
-							children: [
-								"Calling",
-								" ",
-								/* @__PURE__ */ jsx("code", {
-									className: "rounded bg-primary/10 px-1.5 py-0.5 text-xs font-mono",
-									children: i.toolName
-								}),
-								"..."
-							]
-						}),
-						/* @__PURE__ */ jsx(LoaderCircle, { className: "h-4 w-4 animate-spin" })
-					]
-				}, a);
 				case "result": return /* @__PURE__ */ jsx(ToolResult, {
 					toolName: i.toolName,
 					result: i.result
+				}, a);
+				case "partial-call":
+				case "call": return /* @__PURE__ */ jsxs("div", {
+					className: "flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary shadow-sm",
+					children: [/* @__PURE__ */ jsx("div", {
+						className: "flex h-6 w-6 items-center justify-center rounded-full bg-primary/10",
+						children: /* @__PURE__ */ jsx(Terminal, { className: "h-3 w-3" })
+					}), /* @__PURE__ */ jsxs("span", {
+						className: "font-medium",
+						children: [
+							"Calling",
+							" ",
+							/* @__PURE__ */ jsx("code", {
+								className: "rounded bg-primary/10 px-1.5 py-0.5 text-xs font-mono",
+								children: i.toolName
+							})
+						]
+					})]
 				}, a);
 				default: return null;
 			}
@@ -23475,17 +23676,17 @@ function ChatHistorySheet({ open: i, onOpenChange: a, userId: o, threadList: s, 
 					}) : /* @__PURE__ */ jsxs("ul", {
 						className: "space-y-1",
 						children: [s.map((i) => {
-							let a = i.preview?.trim().slice(0, 60) || (i.updated_at ? `Conversation · ${formatThreadDate(i.updated_at)}` : "Conversation"), o = i.thread_id.slice(0, 8);
+							let a = i.preview?.trim().slice(0, 60) || (i.updated_at ? `Conversation · ${formatThreadDate(i.updated_at)}` : "Conversation");
 							return /* @__PURE__ */ jsx("li", { children: /* @__PURE__ */ jsxs(Button, {
 								variant: "ghost",
-								className: cn("w-full justify-start font-normal h-auto py-2 flex flex-col items-start gap-0.5", i.thread_id === p && "bg-muted"),
+								className: cn("w-full justify-start font-normal h-auto py-2 flex flex-col items-start", i.thread_id === p && "bg-muted"),
 								onClick: () => h(i.thread_id),
-								children: [/* @__PURE__ */ jsxs("span", {
+								children: [/* @__PURE__ */ jsx("span", {
 									className: "truncate w-full text-left text-sm",
-									children: [a, a.length >= 60 ? "…" : ""]
+									children: a.replace(/```[\s\S]*?```|`([^`]*)`|!\[.*?\]\(.*?\)|\[(.*?)\]\(.*?\)|(\*\*|__|\*|_|~~)(.*?)\3|^#{1,6}\s*|^>\s*|^\s*[-*+]\s+|^\s*\d+\.\s+|<[^>]+>/gm, "$1$2$4").slice(0, 60)
 								}), /* @__PURE__ */ jsx("span", {
 									className: "text-xs text-muted-foreground",
-									children: o
+									children: i.thread_id
 								})]
 							}) }, i.thread_id);
 						}), s.length < l ? /* @__PURE__ */ jsx("li", {
@@ -23718,9 +23919,9 @@ function Disclaimer({ onAccept: i, open: a }) {
 					children: [/* @__PURE__ */ jsx("p", {
 						className: "text-sm text-muted-foreground leading-relaxed",
 						children: "This AI assistant is designed to help you explore my portfolio."
-					}), /* @__PURE__ */ jsxs("div", {
-						className: "bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground text-left border border-border/50 flex gap-2",
-						children: [/* @__PURE__ */ jsx(Cookie, { className: "h-4 w-4 shrink-0 mt-0.5" }), /* @__PURE__ */ jsx("span", { children: "We use local storage to save your preferences (e.g. voice settings) for a better experience." })]
+					}), /* @__PURE__ */ jsx("div", {
+						className: "text-center w-full bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground text-left border border-border/50",
+						children: "We use local storage to save your preferences for a better experience."
 					})]
 				}),
 				/* @__PURE__ */ jsx(Button, {
@@ -23733,194 +23934,207 @@ function Disclaimer({ onAccept: i, open: a }) {
 	}) });
 }
 var MemoizedChatMessages = memo(Chat.Messages), MemoizedChatInput = memo(Chat.Input), MemoizedChatSuggestions = memo(Chat.Suggestions);
-function ChatbotLayout({ setSelectedAgent: i, setSelectedModel: a, selectedAgent: o, selectedModel: s, showHeader: c, headerTitle: l, headerTitleUrl: u, headerSubtitle: d, avatar: f, allowMaximize: p, onClose: h, onRefresh: g, onHome: _, showFooter: v, footerContent: y, footerSubtitle: b, placeholder: x, starterMessage: S, userId: C, currentThreadId: D, setCurrentThreadId: O, historySheetOpen: k, setHistorySheetOpen: A, threadList: j, setThreadList: M, totalThreads: N, setTotalThreads: P, threadsLoading: F, setThreadsLoading: I, isMaximized: L, toggleMaximize: R, voiceConfig: z, onVoiceConfigChange: B, availableVoices: V, selectedVoice: H, onVoiceChange: U, autoSpeak: W, onAutoSpeakChange: G }) {
-	let { metadata: K, metadataLoading: q, clearChat: J, loadThread: Y, getThreads: Z, setThreadId: Q } = useChatContext(), $ = useCallback((a) => {
-		J({ keepStarter: !!S }), O(void 0), Q(void 0), i(a);
-	}, [
-		J,
-		S,
-		i,
-		O,
-		Q
-	]), Oz = useCallback(() => {
-		J({ keepStarter: !!S });
-	}, [J, S]), kz = g ?? Oz, Az = useCallback(() => A(!0), [A]), jz = useCallback((i) => {
-		A(!1), Y(i), O(i), Q(i);
+function ChatbotLayout({ setSelectedAgent: i, setSelectedModel: a, selectedAgent: o, effectiveAgent: s, selectedModel: c, showHeader: l, headerTitle: u, headerTitleUrl: d, headerSubtitle: f, avatar: p, allowMaximize: h, onClose: g, onRefresh: _, onHome: v, showFooter: y, footerContent: b, footerSubtitle: x, placeholder: S, starterMessage: C, userId: D, currentThreadId: O, setCurrentThreadId: k, historySheetOpen: A, setHistorySheetOpen: j, threadList: M, setThreadList: N, totalThreads: P, setTotalThreads: F, threadsLoading: I, setThreadsLoading: L, isMaximized: R, toggleMaximize: z, voiceConfig: B, onVoiceConfigChange: V, availableVoices: H, selectedVoice: U, onVoiceChange: W, autoSpeak: G, onAutoSpeakChange: K }) {
+	let { metadata: q, metadataLoading: J, clearChat: Y, loadThread: Z, getThreads: Q, setThreadId: $ } = useChatContext(), Rz = useCallback((a) => {
+		Y({ keepStarter: !!C }), k(void 0), $(void 0), i(a);
 	}, [
 		Y,
-		A,
-		O,
-		Q
+		C,
+		i,
+		k,
+		$
+	]), zz = useCallback(() => {
+		Y({
+			keepStarter: !!C,
+			createNewThread: !0
+		});
+	}, [Y, C]), Bz = _ ?? zz, Vz = useCallback(() => j(!0), [j]), Hz = useCallback((i) => {
+		j(!1), Z(i, D), k(i), $(i);
+	}, [
+		Z,
+		j,
+		k,
+		$,
+		D
 	]);
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
-		c && /* @__PURE__ */ jsx(Header, {
-			metadata: K,
+		l && /* @__PURE__ */ jsx(Header, {
+			metadata: q,
 			selectedAgent: o,
-			selectedModel: s,
-			onAgentChange: $,
+			selectedModel: c,
+			onAgentChange: Rz,
 			onModelChange: a,
-			onClose: h,
-			onRefresh: kz,
-			onHome: _,
-			onHistory: C?.trim() ? Az : void 0,
-			voiceConfig: z,
-			onVoiceConfigChange: B,
-			availableVoices: V,
-			selectedVoice: H,
-			onVoiceChange: U,
-			autoSpeak: W,
-			onAutoSpeakChange: G,
-			isMaximized: L,
-			onMaximize: p ? R : void 0,
-			title: l,
-			titleUrl: u,
-			subtitle: d,
-			avatar: f
+			onClose: g,
+			onRefresh: Bz,
+			onHome: v,
+			onHistory: D?.trim() ? Vz : void 0,
+			voiceConfig: B,
+			onVoiceConfigChange: V,
+			availableVoices: H,
+			selectedVoice: U,
+			onVoiceChange: W,
+			autoSpeak: G,
+			onAutoSpeakChange: K,
+			isMaximized: R,
+			onMaximize: h ? z : void 0,
+			title: u,
+			titleUrl: d,
+			subtitle: f,
+			avatar: p
 		}),
 		/* @__PURE__ */ jsx(ChatHistorySheet, {
-			open: k,
-			onOpenChange: A,
-			userId: C,
-			threadList: j,
-			setThreadList: M,
-			totalThreads: N,
-			setTotalThreads: P,
-			threadsLoading: F,
-			setThreadsLoading: I,
-			currentThreadId: D,
-			onSelectThread: jz,
-			getThreads: Z
+			open: A,
+			onOpenChange: j,
+			userId: D,
+			threadList: M,
+			setThreadList: N,
+			totalThreads: P,
+			setTotalThreads: F,
+			threadsLoading: I,
+			setThreadsLoading: L,
+			currentThreadId: O,
+			onSelectThread: Hz,
+			getThreads: Q
 		}),
 		/* @__PURE__ */ jsx("div", {
 			className: "flex-1 overflow-hidden flex flex-col",
-			children: o ? /* @__PURE__ */ jsxs(Fragment$1, { children: [
+			children: s ? /* @__PURE__ */ jsxs(Fragment$1, { children: [
 				/* @__PURE__ */ jsx(MemoizedChatMessages, { className: "flex-1 min-h-0" }),
 				/* @__PURE__ */ jsx(MemoizedChatSuggestions, {}),
-				/* @__PURE__ */ jsx(MemoizedChatInput, { placeholder: x })
+				/* @__PURE__ */ jsx(MemoizedChatInput, { placeholder: S })
 			] }) : /* @__PURE__ */ jsx(AgentSelector, {
-				agents: K?.agents ?? [],
-				loading: q,
+				agents: q?.agents ?? [],
+				loading: J,
 				onSelect: i
 			})
 		}),
-		v && /* @__PURE__ */ jsx(Footer, {
-			disclaimer: y,
-			subtitle: b
+		y && /* @__PURE__ */ jsx(Footer, {
+			disclaimer: b,
+			subtitle: x
 		})
 	] });
 }
-function Chatbot({ url: i, agent: a, model: o, placeholder: s = "Hi, how can I help you?", threadId: c, userId: l, stream: u = !0, className: d, header: f = {}, footer: p = {}, starter: h = {}, isMaximized: _ }) {
-	let { show: v = !0, title: y, titleUrl: x, subtitle: S, avatar: w, allowMaximize: D = !1, onMaximizeToggle: O, onClose: k, onRefresh: A, onHome: j } = f, { show: M = !0, text: N, subtitle: P } = p, { message: F, suggestions: I } = h, [L, R] = useState(a ?? ""), [z, B] = useState(o ?? ""), [V, H] = useState(!1), U = _ ?? V, [W, G] = useState(c), [K, q] = useState(!1), [J, Y] = useState(!1), [Z, Q] = useState([]), [$, Oz] = useState(0), { isListening: kz, startListening: Az, stopListening: jz, speak: Mz, availableVoices: Nz, selectedVoice: Pz, setSelectedVoice: Fz, voiceConfig: Iz, updateConfig: Lz, isRecognitionSupported: Rz } = useVoice(), [zz, Bz] = useState(!1), [Vz, Hz] = useState(!1);
+function Chatbot({ url: i, agent: a, model: o, placeholder: s = "Hi, how can I help you?", threadId: c, userId: l, apiKey: u, stream: d = !0, className: f, header: p = {}, footer: h = {}, starter: _ = {}, isMaximized: v }) {
+	let { show: y = !0, title: x, titleUrl: S, subtitle: w, avatar: D, allowMaximize: O = !1, onMaximizeToggle: k, onClose: A, onRefresh: j, onHome: M } = p, { show: N = !0, text: P, subtitle: F } = h, { message: I, suggestions: L } = _, [R, z] = useState(a ?? ""), [B, V] = useState(o ?? ""), [H, U] = useState(!1), W = v ?? H, [G, K] = useState(c), [q, J] = useState(!1), [Y, Z] = useState(!1), [Q, $] = useState([]), [Rz, zz] = useState(0), { isListening: Bz, startListening: Vz, stopListening: Hz, speak: Uz, availableVoices: Wz, selectedVoice: Gz, setSelectedVoice: Kz, voiceConfig: qz, updateConfig: Jz, isRecognitionSupported: Yz } = useVoice(), [Xz, Zz] = useState(!1), [Qz, $z] = useState(!1);
 	useEffect(() => {
 		let i = localStorage.getItem("voice-config");
 		if (i) try {
-			Lz(JSON.parse(i));
+			Jz(JSON.parse(i));
 		} catch (i) {
 			console.error("Failed to load voice config", i);
 		}
 		let a = localStorage.getItem("auto-speak");
-		a && Bz(a === "true"), localStorage.getItem("chatbot-consent") || Hz(!0);
-	}, [Lz]);
-	let Uz = useCallback(() => {
-		localStorage.setItem("chatbot-consent", "true"), Hz(!1);
+		a && Zz(a === "true"), localStorage.getItem("chatbot-consent") || $z(!0);
+	}, [Jz]);
+	let eB = useCallback(() => {
+		localStorage.setItem("chatbot-consent", "true"), $z(!1);
 	}, []);
 	useEffect(() => {
-		localStorage.setItem("voice-config", JSON.stringify(Iz));
-	}, [Iz]), useEffect(() => {
-		localStorage.setItem("auto-speak", String(zz));
-	}, [zz]);
-	let [Wz, Gz] = useState(null), Kz = useCallback((i) => {
-		Gz(i), B((a) => a || i.default_model);
-	}, []), qz = useMemo(() => I === void 0 ? Wz?.agents?.find((i) => i.key === L)?.prompts ?? [] : I, [
-		I,
-		Wz?.agents,
-		L
-	]), Jz = useMemo(() => ({
+		localStorage.setItem("voice-config", JSON.stringify(qz));
+	}, [qz]), useEffect(() => {
+		localStorage.setItem("auto-speak", String(Xz));
+	}, [Xz]);
+	let [tB, nB] = useState(null), rB = useCallback((i) => {
+		nB(i), V((a) => a || i.default_model);
+	}, []), iB = useMemo(() => L === void 0 ? tB?.agents?.find((i) => i.key === R)?.prompts ?? [] : L, [
+		L,
+		tB?.agents,
+		R
+	]), aB = R || G && tB?.default_agent || "", oB = useMemo(() => ({
 		url: i,
-		agent: L || void 0,
-		model: z || void 0,
-		threadId: W ?? c,
+		agent: aB || void 0,
+		model: B || void 0,
+		threadId: G ?? c,
 		userId: l,
-		stream: u,
-		starterMessage: F,
-		starterSuggestions: I,
+		stream: d,
+		starterMessage: I,
+		starterSuggestions: L,
+		apiKey: u,
 		onStreamEnd: (i) => {
-			zz && i && Mz && Mz(i);
+			Xz && i && Uz && Uz(i);
 		}
 	}), [
 		i,
-		L,
-		z,
-		W,
+		R,
+		B,
+		G,
 		c,
 		l,
-		u,
-		F,
+		d,
 		I,
-		zz,
-		Mz
+		L,
+		Xz,
+		u,
+		Uz
 	]);
 	useEffect(() => {
-		c != null && G(c);
-	}, [c]);
-	let Yz = useCallback(() => {
-		let i = !U;
-		H(i), O?.(i);
-	}, [U, O]);
+		c != null && K(c);
+	}, [c]), useEffect(() => {
+		G && !R && tB?.default_agent && z(tB.default_agent);
+	}, [
+		G,
+		R,
+		tB?.default_agent
+	]);
+	let sB = useCallback(() => {
+		let i = !W;
+		U(i), k?.(i);
+	}, [W, k]);
 	return /* @__PURE__ */ jsxs("div", {
-		className: cn("chatbot-theme flex flex-col h-full transition-all duration-300 ease-in-out relative", d, U && "fixed inset-0 z-50 m-0 h-full max-h-none w-full max-w-none rounded-none border-0"),
+		className: cn("chatbot-theme flex flex-col h-full transition-all duration-300 ease-in-out relative", f, W && "fixed inset-0 z-50 m-0 h-full max-h-none w-full max-w-none rounded-none border-0"),
 		children: [/* @__PURE__ */ jsx(Disclaimer, {
-			open: Vz,
-			onAccept: Uz
+			open: Qz,
+			onAccept: eB
 		}), /* @__PURE__ */ jsx(Chat.Root, {
-			config: Jz,
-			initialSuggestions: qz,
-			voiceConfig: Iz,
-			isListening: kz,
-			startListening: Az,
-			stopListening: jz,
-			isSpeechSupported: Rz,
-			onMetadata: Kz,
+			config: oB,
+			initialSuggestions: iB,
+			voiceConfig: qz,
+			isListening: Bz,
+			startListening: Vz,
+			stopListening: Hz,
+			isSpeechSupported: Yz,
+			onMetadata: rB,
 			children: /* @__PURE__ */ jsx(ChatbotLayout, {
-				setSelectedAgent: R,
-				setSelectedModel: B,
-				selectedAgent: L,
-				selectedModel: z,
-				showHeader: v,
-				headerTitle: y,
-				headerTitleUrl: x,
-				headerSubtitle: S,
-				avatar: w,
-				allowMaximize: D,
-				onClose: k,
-				onRefresh: A,
-				onHome: j,
-				showFooter: M,
-				footerContent: N,
-				footerSubtitle: P,
+				setSelectedAgent: z,
+				setSelectedModel: V,
+				selectedAgent: R,
+				effectiveAgent: aB,
+				selectedModel: B,
+				showHeader: y,
+				headerTitle: x,
+				headerTitleUrl: S,
+				headerSubtitle: w,
+				avatar: D,
+				allowMaximize: O,
+				onClose: A,
+				onRefresh: j,
+				onHome: M,
+				showFooter: N,
+				footerContent: P,
+				footerSubtitle: F,
 				placeholder: s,
-				starterMessage: F,
+				starterMessage: I,
 				userId: l,
 				threadId: c,
-				currentThreadId: W,
-				setCurrentThreadId: G,
-				historySheetOpen: K,
-				setHistorySheetOpen: q,
-				threadList: Z,
-				setThreadList: Q,
-				totalThreads: $,
-				setTotalThreads: Oz,
-				threadsLoading: J,
-				setThreadsLoading: Y,
-				isMaximized: U,
-				toggleMaximize: Yz,
-				voiceConfig: Iz,
-				onVoiceConfigChange: Lz,
-				availableVoices: Nz,
-				selectedVoice: Pz,
-				onVoiceChange: Fz,
-				autoSpeak: zz,
-				onAutoSpeakChange: Bz
+				currentThreadId: G,
+				setCurrentThreadId: K,
+				historySheetOpen: q,
+				setHistorySheetOpen: J,
+				threadList: Q,
+				setThreadList: $,
+				totalThreads: Rz,
+				setTotalThreads: zz,
+				threadsLoading: Y,
+				setThreadsLoading: Z,
+				isMaximized: W,
+				toggleMaximize: sB,
+				voiceConfig: qz,
+				onVoiceConfigChange: Jz,
+				availableVoices: Wz,
+				selectedVoice: Gz,
+				onVoiceChange: Kz,
+				autoSpeak: Xz,
+				onAutoSpeakChange: Zz
 			})
 		})]
 	});

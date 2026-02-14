@@ -13,5 +13,10 @@ export declare function saveMessages(storageKey: string, messages: (Omit<Persist
     createdAt?: string | Date;
 })[]): void;
 export declare function clearMessages(storageKey: string): void;
+/**
+ * Storage key for a thread's messages. Use this with loadMessages/saveMessages/clearMessages
+ * so each thread has its own history (no merging).
+ */
+export declare function getThreadMessagesKey(baseKey: string, threadId: string): string;
 export declare function loadCurrentThreadId(storageKey: string): string | null;
 export declare function saveCurrentThreadId(storageKey: string, threadId: string | null): void;

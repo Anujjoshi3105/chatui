@@ -228,23 +228,24 @@ export function ChatHistorySheet({
                   (t.updated_at
                     ? `Conversation · ${formatThreadDate(t.updated_at)}`
                     : "Conversation")
-                const shortId = t.thread_id.slice(0, 8)
+
                 return (
                   <li key={t.thread_id}>
                     <Button
                       variant="ghost"
                       className={cn(
-                        "w-full justify-start font-normal h-auto py-2 flex flex-col items-start gap-0.5",
+                        "w-full justify-start font-normal h-auto py-2 flex flex-col items-start",
                         t.thread_id === currentThreadId && "bg-muted"
                       )}
                       onClick={() => onSelectThread(t.thread_id)}
                     >
                       <span className="truncate w-full text-left text-sm">
-                        {preview}
-                        {preview.length >= 60 ? "…" : ""}
+                        {preview
+                          .replace(/```[\s\S]*?```|`([^`]*)`|!\[.*?\]\(.*?\)|\[(.*?)\]\(.*?\)|(\*\*|__|\*|_|~~)(.*?)\3|^#{1,6}\s*|^>\s*|^\s*[-*+]\s+|^\s*\d+\.\s+|<[^>]+>/gm, "$1$2$4")
+                          .slice(0, 60)}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {shortId}
+                        {t.thread_id}
                       </span>
                     </Button>
                   </li>

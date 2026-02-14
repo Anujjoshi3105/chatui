@@ -54,6 +54,16 @@ export function clearMessages(storageKey: string): void {
 }
 
 const THREAD_KEY_PREFIX = "chatui-thread:"
+const MESSAGES_KEY_PREFIX = "chatui-messages:"
+
+/**
+ * Storage key for a thread's messages. Use this with loadMessages/saveMessages/clearMessages
+ * so each thread has its own history (no merging).
+ */
+export function getThreadMessagesKey(baseKey: string, threadId: string): string {
+  if (!baseKey || !threadId) return ""
+  return `${MESSAGES_KEY_PREFIX}${baseKey}:${threadId}`
+}
 
 export function loadCurrentThreadId(storageKey: string): string | null {
   if (!storageKey) return null

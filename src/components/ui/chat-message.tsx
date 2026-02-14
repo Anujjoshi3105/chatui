@@ -387,6 +387,10 @@ function ToolCall({
         }
 
         switch (invocation.state) {
+          case "result":
+            return (
+              <ToolResult key={index} toolName={invocation.toolName} result={invocation.result} />
+            )
           case "partial-call":
           case "call":
             return (
@@ -402,14 +406,8 @@ function ToolCall({
                   <code className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-mono">
                     {invocation.toolName}
                   </code>
-                  ...
                 </span>
-                <Loader2 className="h-4 w-4 animate-spin" />
               </div>
-            )
-          case "result":
-            return (
-              <ToolResult key={index} toolName={invocation.toolName} result={invocation.result} />
             )
           default:
             return null

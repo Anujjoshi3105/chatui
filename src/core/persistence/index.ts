@@ -2,6 +2,7 @@ export {
   loadMessages,
   saveMessages,
   clearMessages,
+  getThreadMessagesKey,
   loadCurrentThreadId,
   saveCurrentThreadId,
 } from "./storage-adapter"

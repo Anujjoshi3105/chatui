@@ -41,6 +41,7 @@ export interface ChatbotProps {
   placeholder?: string
   threadId?: string
   userId?: string
+  apiKey?: string
   stream?: boolean
   className?: string
   header?: ChatbotHeaderProps
@@ -58,6 +59,7 @@ function ChatbotLayout({
   setSelectedAgent,
   setSelectedModel,
   selectedAgent,
+  effectiveAgent,
   selectedModel,
   showHeader,
   headerTitle,
@@ -97,6 +99,7 @@ function ChatbotLayout({
   setSelectedAgent: (a: string) => void
   setSelectedModel: (m: string) => void
   selectedAgent: string
+  effectiveAgent: string
   selectedModel: string
   showHeader: boolean
   headerTitle?: string
@@ -148,7 +151,7 @@ function ChatbotLayout({
   )
 
   const handleRefresh = useCallback(() => {
-    clearChat({ keepStarter: !!starterMessage })
+    clearChat({ keepStarter: !!starterMessage, createNewThread: true })
   }, [clearChat, starterMessage])
 
   const effectiveOnRefresh = onRefresh ?? handleRefresh
@@ -161,11 +164,11 @@ function ChatbotLayout({
   const handleSelectThread = useCallback(
     (threadIdToLoad: string) => {
       setHistorySheetOpen(false)
-      loadThread(threadIdToLoad)
+      loadThread(threadIdToLoad, userId)
       setCurrentThreadId(threadIdToLoad)
       setThreadId(threadIdToLoad)
     },
-    [loadThread, setHistorySheetOpen, setCurrentThreadId, setThreadId]
+    [loadThread, setHistorySheetOpen, setCurrentThreadId, setThreadId, userId]
   )
 
   return (
@@ -211,7 +214,7 @@ function ChatbotLayout({
         getThreads={getThreads}
       />
       <div className="flex-1 overflow-hidden flex flex-col">
-        {!selectedAgent ? (
+        {!effectiveAgent ? (
           <AgentSelector
             agents={metadata?.agents ?? []}
             loading={metadataLoading}
@@ -238,6 +241,7 @@ export function Chatbot({
   placeholder = "Hi, how can I help you?",
   threadId,
   userId,
+  apiKey,
   stream = true,
   className,
   header = {},
@@ -330,16 +334,20 @@ export function Chatbot({
     return metadata?.agents?.find((a) => a.key === selectedAgent)?.prompts ?? []
   }, [starterSuggestions, metadata?.agents, selectedAgent])
 
+  const effectiveAgent =
+    selectedAgent || (currentThreadId && metadata?.default_agent) || ""
+
   const runtimeConfig = useMemo<ChatRuntimeConfig>(
     () => ({
       url,
-      agent: selectedAgent || undefined,
+      agent: effectiveAgent || undefined,
       model: selectedModel || undefined,
       threadId: currentThreadId ?? threadId,
       userId,
       stream,
       starterMessage,
       starterSuggestions,
+      apiKey,
       onStreamEnd: (lastContent) => {
         if (autoSpeak && lastContent && speak) speak(lastContent)
       },
@@ -355,6 +363,7 @@ export function Chatbot({
       starterMessage,
       starterSuggestions,
       autoSpeak,
+      apiKey,
       speak,
     ]
   )
@@ -362,6 +371,11 @@ export function Chatbot({
   useEffect(() => {
     if (threadId != null) setCurrentThreadId(threadId)
   }, [threadId])
+
+  useEffect(() => {
+    if (currentThreadId && !selectedAgent && metadata?.default_agent)
+      setSelectedAgent(metadata.default_agent)
+  }, [currentThreadId, selectedAgent, metadata?.default_agent])
 
   const toggleMaximize = useCallback(() => {
     const newState = !isMaximized
@@ -393,6 +407,7 @@ export function Chatbot({
           setSelectedAgent={setSelectedAgent}
           setSelectedModel={setSelectedModel}
           selectedAgent={selectedAgent}
+          effectiveAgent={effectiveAgent}
           selectedModel={selectedModel}
           showHeader={showHeader}
           headerTitle={headerTitle}

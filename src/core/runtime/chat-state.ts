@@ -53,6 +53,7 @@ export type ChatRuntimeConfig = {
   starterSuggestions?: string[]
   /** Called when stream ends with the final assistant message content (e.g. for TTS). */
   onStreamEnd?: (lastContent: string) => void
+  apiKey?: string
 }
 
 // Reducer action types
@@ -95,7 +96,7 @@ function applyStreamMessage(
   const chatMessage = content as ApiChatMessage
 
   if (chatMessage.type === "tool") {
-    const toolName =
+    const nameFromMessage =
       chatMessage.name ??
       (chatMessage.response_metadata as { name?: string })?.name ??
       (chatMessage.custom_data as { name?: string })?.name ??
@@ -103,14 +104,26 @@ function applyStreamMessage(
     const rawResult = chatMessage.content
     const cleanResult =
       typeof rawResult === "string" ? rawResult.replace(/\\n/g, "\n") : rawResult
-    const toolInvocation: ToolInvocationResult = {
-      state: "result",
-      toolName,
-      toolCallId: chatMessage.tool_call_id,
-      result: cleanResult,
-    }
     const next = updateMessageById(messages, messageId, (m) => {
       const existing = m.toolInvocations ?? []
+      const matchingCallIndex = chatMessage.tool_call_id
+        ? existing.findIndex(
+            (inv) =>
+              inv.state === "call" &&
+              (inv as ToolInvocationCall).toolCallId === chatMessage.tool_call_id
+          )
+        : -1
+      const matchingCall = matchingCallIndex >= 0 ? existing[matchingCallIndex] as ToolInvocationCall : undefined
+      const toolName =
+        (nameFromMessage && nameFromMessage !== "Tool")
+          ? nameFromMessage
+          : (matchingCall?.toolName ?? nameFromMessage)
+      const toolInvocation: ToolInvocationResult = {
+        state: "result",
+        toolName,
+        toolCallId: chatMessage.tool_call_id,
+        result: cleanResult,
+      }
       const filtered = existing.filter(
         (inv) => !(inv.state === "call" && (inv as ToolInvocationCall).toolCallId === chatMessage.tool_call_id)
       )
@@ -123,16 +136,31 @@ function applyStreamMessage(
   }
 
   if (chatMessage.tool_calls && chatMessage.tool_calls.length > 0) {
-    const toolInvocations: ToolInvocationCall[] = chatMessage.tool_calls.map((call) => ({
+    const newCalls: ToolInvocationCall[] = chatMessage.tool_calls.map((call) => ({
       state: "call",
       toolName: call.name,
       toolCallId: call.id,
       args: call.args,
     }))
-    const next = updateMessageById(messages, messageId, (m) => ({
-      ...m,
-      toolInvocations,
-    }))
+    const next = updateMessageById(messages, messageId, (m) => {
+      const existing = m.toolInvocations ?? []
+      const existingCalls = existing.filter(
+        (inv): inv is ToolInvocationCall => inv.state === "call"
+      )
+      const existingResults = existing.filter((inv) => inv.state === "result")
+      const existingCallIds = new Set(
+        existingCalls.map((inv) => inv.toolCallId).filter(Boolean)
+      )
+      const mergedCalls = [...existingCalls]
+      for (const call of newCalls) {
+        if (call.toolCallId && !existingCallIds.has(call.toolCallId)) {
+          mergedCalls.push(call)
+          existingCallIds.add(call.toolCallId)
+        }
+      }
+      const toolInvocations = [...mergedCalls, ...existingResults]
+      return { ...m, toolInvocations }
+    })
     return { messages: next }
   }
 
@@ -247,11 +275,11 @@ export function getInitialChatState(
 ): ChatRuntimeState {
   const starterMessage: Message | undefined = config.starterMessage
     ? {
-        id: `greeting-${Date.now()}`,
-        role: "assistant",
-        content: config.starterMessage,
-        createdAt: new Date(),
-      }
+      id: `greeting-${Date.now()}`,
+      role: "assistant",
+      content: config.starterMessage,
+      createdAt: new Date(),
+    }
     : undefined
   return {
     messages: starterMessage ? [starterMessage] : [],

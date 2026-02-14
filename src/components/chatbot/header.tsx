@@ -54,7 +54,7 @@ export function Header({
   className,
   title = "Portfolio Assistant",
   titleUrl,
-  subtitle = "Online",
+  subtitle,
   voiceConfig,
   onVoiceConfigChange,
   availableVoices,
@@ -93,11 +93,9 @@ export function Header({
         <h3 className="text-sm font-semibold text-foreground/90 tracking-tight leading-none group-hover:text-primary transition-colors">
           {title}
         </h3>
-        {subtitle && (
-          <p className="text-[11px] text-muted-foreground font-medium leading-none">
-            {subtitle}
-          </p>
-        )}
+        <p className="text-[11px] text-muted-foreground font-medium leading-none capitalize">
+          {subtitle || selectedAgent.replace(/-/g, " ")}
+        </p>
       </div>
     </div>
   )

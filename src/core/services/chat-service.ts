@@ -6,6 +6,8 @@ import type {
   ThreadSummary,
   GetThreadsOptions,
   ThreadListResponse,
+  ChatHistoryResponse,
+  GetHistoryOptions,
 } from "./types"
 
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
@@ -56,6 +58,7 @@ export interface ChatServiceConfig {
   baseUrl: string
   defaultAgent: string
   defaultModel: string
+  apiKey?: string
 }
 
 export class ChatService {
@@ -64,6 +67,14 @@ export class ChatService {
 
   constructor(config: ChatServiceConfig) {
     this.config = config
+  }
+
+  private getHeaders(): HeadersInit {
+    const headers: Record<string, string> = { "Content-Type": "application/json" }
+    if (this.config.apiKey) {
+      headers["Authorization"] = `Bearer ${this.config.apiKey}`
+    }
+    return headers
   }
 
   getMetadataFromCache(): ServiceMetadata | null {
@@ -86,7 +97,9 @@ export class ChatService {
     }
 
     const fetchPromise = (async () => {
-      const response = await fetch(`${this.config.baseUrl}/info`)
+      const response = await fetch(`${this.config.baseUrl}/info`, {
+        headers: this.getHeaders(),
+      })
       if (!response.ok) {
         throw new Error(`Failed to fetch metadata: ${response.statusText}`)
       }
@@ -133,7 +146,7 @@ export class ChatService {
     try {
       const response = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: this.getHeaders(),
         body: JSON.stringify(requestBody),
         signal: this.abortController.signal,
       })
@@ -214,7 +227,7 @@ export class ChatService {
   async sendFeedback(runId: string, key: string, score: number): Promise<unknown> {
     const response = await fetch(`${this.config.baseUrl}/feedback`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: this.getHeaders(),
       body: JSON.stringify({ run_id: runId, key, score }),
     })
     if (!response.ok) {
@@ -223,19 +236,65 @@ export class ChatService {
     return response.json()
   }
 
-  async getHistory(threadId: string, userId?: string): Promise<ApiChatMessage[]> {
+  async getHistory(
+    threadId: string,
+    userId?: string,
+    options?: GetHistoryOptions
+  ): Promise<ChatHistoryResponse> {
     const uid = userId?.trim()
-    if (!uid) return []
-    const response = await fetch(`${this.config.baseUrl}/history`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ thread_id: threadId, user_id: uid }),
-    })
-    if (!response.ok) {
-      throw new Error(`Failed to get history: ${response.statusText}`)
+    if (!uid) {
+      return { messages: [], next_cursor: null, prev_cursor: null }
     }
-    const data = (await response.json()) as { messages?: ApiChatMessage[] }
-    return data.messages ?? []
+    const limit = options?.limit ?? 50
+    const view = options?.view ?? "full"
+    const cursor = options?.cursor
+
+    const parseResponse = (data: unknown): ChatHistoryResponse => {
+      const d = data as { messages?: unknown[]; next_cursor?: string | null; prev_cursor?: string | null }
+      return {
+        messages: Array.isArray(d.messages) ? d.messages : [],
+        next_cursor: d.next_cursor ?? null,
+        prev_cursor: d.prev_cursor ?? null,
+      }
+    }
+
+    const headers = this.getHeaders()
+
+    try {
+      const params = new URLSearchParams({
+        user_id: uid,
+        thread_id: threadId,
+        limit: String(limit),
+        view,
+      })
+      if (cursor != null && cursor !== "") params.set("cursor", cursor)
+      const response = await fetch(
+        `${this.config.baseUrl}/history?${params.toString()}`,
+        { method: "GET", headers }
+      )
+      if (response.ok) {
+        return parseResponse(await response.json())
+      }
+      if (response.status === 404 || response.status === 405) {
+        const body: Record<string, unknown> = {
+          user_id: uid,
+          thread_id: threadId,
+          limit,
+          view,
+        }
+        if (cursor != null && cursor !== "") body.cursor = cursor
+        const postRes = await fetch(`${this.config.baseUrl}/history`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(body),
+        })
+        if (postRes.ok) return parseResponse(await postRes.json())
+      }
+      throw new Error(`Failed to get history: ${response.statusText}`)
+    } catch (e) {
+      if (e instanceof Error) throw e
+      throw new Error("Failed to get history")
+    }
   }
 
   async getThreads(
@@ -252,7 +311,7 @@ export class ChatService {
         body.search = options.search
       const response = await fetch(`${this.config.baseUrl}/history/threads`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: this.getHeaders(),
         body: JSON.stringify(body),
       })
       if (!response.ok) {

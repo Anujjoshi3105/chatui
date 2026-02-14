@@ -228,12 +228,12 @@ export default function App() {
         position="bottom-right"
         placeholder="Ask me about anything..."
         tooltip="Chat with AI Assistant"
-        userId="019c4bfa-71fc-7937-ad35-8b161da9fdde"
-        stream={true}
+        userId="019c4bsa-71fc-7937-ad35-8b161da9fdde"
+        apiKey={import.meta.env.VITE_BEARER_TOKEN}
+        stream={false}
         header={{
           show: true,
           title: "Research Assistant",
-          subtitle: "Ask me anything",
           avatar: "https://github.com/shadcn.png",
           allowMaximize: true
         }}

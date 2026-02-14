@@ -55,3 +55,16 @@ export interface ThreadListResponse {
   threads: ThreadSummary[]
   total?: number
 }
+
+/** Paginated chat history response (GET/POST /history). */
+export interface ChatHistoryResponse {
+  messages: ApiChatMessage[]
+  next_cursor?: string | null
+  prev_cursor?: string | null
+}
+
+export interface GetHistoryOptions {
+  limit?: number
+  cursor?: string | null
+  view?: "full" | "preview"
+}

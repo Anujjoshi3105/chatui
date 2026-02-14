@@ -2,6 +2,15 @@ import { useReducer, useCallback, useRef, useEffect, useMemo } from "react"
 import { ChatService } from "@/core/services/chat-service"
 import type { ApiChatMessage } from "@/core/services/types"
 import {
+  loadMessages,
+  saveMessages,
+  clearMessages,
+  getThreadMessagesKey,
+  loadCurrentThreadId,
+  saveCurrentThreadId,
+} from "@/core/persistence"
+import type { PersistedMessage } from "@/core/persistence"
+import {
   chatRuntimeReducer,
   getInitialChatState,
   type Message,
@@ -9,6 +18,32 @@ import {
   type ChatRuntimeState,
   type ChatRuntimeConfig,
 } from "./chat-state"
+
+function generateThreadId(): string {
+  return typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `thread-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
+}
+
+function getStorageBaseKey(config: ChatRuntimeConfig): string {
+  const url = (config.url ?? "").replace(/\/$/, "")
+  const userId = config.userId?.trim() ?? "anon"
+  const agent = config.agent?.trim() ?? "default"
+  return `${url}:${userId}:${agent}`
+}
+
+function persistedToMessages(parsed: PersistedMessage[] | null): Message[] | null {
+  if (!parsed || !Array.isArray(parsed) || parsed.length === 0) return null
+  return parsed.map((p) => ({
+    id: p.id,
+    role: p.role === "user" || p.role === "assistant" ? p.role : "user",
+    content: p.content,
+    createdAt: p.createdAt ? new Date(p.createdAt) : undefined,
+    custom_data: p.custom_data,
+    toolInvocations: p.toolInvocations as ToolInvocation[] | undefined,
+    parts: p.parts,
+  }))
+}
 
 /**
  * Converts API history into UI messages. Merges consecutive AI + tool messages
@@ -79,14 +114,17 @@ function apiMessagesToUiMessages(apiMessages: ApiChatMessage[]): Message[] {
           // Replace matching "call" with "result" if we have toolCallId
           const existingCallIndex = toolCallId
             ? toolInvocations.findIndex(
-                (inv) =>
-                  inv.state === "call" &&
-                  (inv as { toolCallId?: string }).toolCallId === toolCallId
-              )
+              (inv) =>
+                inv.state === "call" &&
+                (inv as { toolCallId?: string }).toolCallId === toolCallId
+            )
             : -1
+          const existingCall = existingCallIndex >= 0 ? toolInvocations[existingCallIndex] as { toolName?: string } : undefined
+          const resolvedToolName =
+            (toolName && toolName !== "Tool") ? toolName : (existingCall?.toolName ?? toolName)
           const resultInv = {
             state: "result" as const,
-            toolName,
+            toolName: resolvedToolName,
             toolCallId,
             result,
           }
@@ -127,11 +165,11 @@ export interface ChatRuntimeActions {
   sendMessage: (text: string) => Promise<void>
   stopGeneration: () => void
   setMessages: (messages: Message[] | ((prev: Message[]) => Message[])) => void
-  clearChat: (options?: { keepStarter?: boolean }) => void
+  clearChat: (options?: { keepStarter?: boolean; createNewThread?: boolean }) => void
   setAgent: (agent: string) => void
   setModel: (model: string) => void
   setThreadId: (threadId: string | undefined) => void
-  loadThread: (threadId: string) => Promise<void>
+  loadThread: (threadId: string, userId?: string) => Promise<void>
   rateResponse: (
     messageId: string,
     rating: "thumbs-up" | "thumbs-down"
@@ -140,7 +178,10 @@ export interface ChatRuntimeActions {
   getThreads: (
     options?: import("@/core/services/types").GetThreadsOptions
   ) => Promise<import("@/core/services/types").ThreadListResponse>
-  getHistory: (threadId: string) => Promise<ApiChatMessage[]>
+  getHistory: (
+    threadId: string,
+    options?: import("@/core/services/types").GetHistoryOptions
+  ) => Promise<import("@/core/services/types").ChatHistoryResponse>
 }
 
 export type UseChatRuntimeReturn = ChatRuntimeState & ChatRuntimeActions
@@ -162,6 +203,7 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
         baseUrl: configRef.current.url,
         defaultAgent: configRef.current.agent ?? meta?.default_agent ?? "",
         defaultModel: configRef.current.model ?? meta?.default_model ?? "",
+        apiKey: configRef.current.apiKey,
       })
     }
     return chatServiceRef.current
@@ -177,6 +219,7 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
       baseUrl: config.url,
       defaultAgent: config.agent ?? "",
       defaultModel: config.model ?? "",
+      apiKey: config.apiKey,
     })
     const cached = svc.getMetadataFromCache()
     if (cached) {
@@ -210,14 +253,103 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
     }
   }, [config.url])
 
-  // Sync threadId from config
-  useEffect(() => {
-    if (config.threadId !== undefined) {
-      dispatch({ type: "SET_THREAD_ID", payload: config.threadId })
-    }
-  }, [config.threadId])
+  const storageBaseKey = useMemo(
+    () => getStorageBaseKey(config),
+    [config.url, config.userId, config.agent]
+  )
+  const initialThreadDoneRef = useRef<string | null>(null)
 
-  // When agent changes, clear chat and thread so the new agent gets a fresh conversation
+  // Thread init: when threadId is provided, load history; when not, restore from storage or create new thread
+  useEffect(() => {
+    const key = `${storageBaseKey}:${config.threadId ?? "none"}`
+    if (initialThreadDoneRef.current === key) return
+    initialThreadDoneRef.current = key
+
+    const baseKey = storageBaseKey
+    const threadIdFromConfig = config.threadId
+
+    if (threadIdFromConfig !== undefined && threadIdFromConfig !== null && threadIdFromConfig !== "") {
+      dispatch({ type: "SET_THREAD_ID", payload: threadIdFromConfig })
+      const loadForThread = async (tid: string) => {
+        const uid = configRef.current.userId?.trim()
+        if (uid) {
+          try {
+            const svc = getService()
+            const { messages } = await svc.getHistory(tid, uid)
+            if (messages.length > 0) {
+              dispatch({ type: "SET_MESSAGES", payload: apiMessagesToUiMessages(messages) })
+            }
+          } catch {
+            const msgKey = getThreadMessagesKey(baseKey, tid)
+            const local = loadMessages(msgKey)
+            const ui = persistedToMessages(local as PersistedMessage[] | null)
+            if (ui && ui.length > 0) dispatch({ type: "SET_MESSAGES", payload: ui })
+          }
+        } else {
+          const msgKey = getThreadMessagesKey(baseKey, tid)
+          const local = loadMessages(msgKey)
+          const ui = persistedToMessages(local as PersistedMessage[] | null)
+          if (ui && ui.length > 0) dispatch({ type: "SET_MESSAGES", payload: ui })
+        }
+      }
+      loadForThread(threadIdFromConfig)
+      return
+    }
+
+    const savedThreadId = loadCurrentThreadId(baseKey)
+    if (savedThreadId) {
+      dispatch({ type: "SET_THREAD_ID", payload: savedThreadId })
+      const loadForThread = async (tid: string) => {
+        const uid = configRef.current.userId?.trim()
+        if (uid) {
+          try {
+            const svc = getService()
+            const { messages } = await svc.getHistory(tid, uid)
+            if (messages.length > 0) {
+              dispatch({ type: "SET_MESSAGES", payload: apiMessagesToUiMessages(messages) })
+            }
+          } catch {
+            const msgKey = getThreadMessagesKey(baseKey, tid)
+            const local = loadMessages(msgKey)
+            const ui = persistedToMessages(local as PersistedMessage[] | null)
+            if (ui && ui.length > 0) dispatch({ type: "SET_MESSAGES", payload: ui })
+          }
+        } else {
+          const msgKey = getThreadMessagesKey(baseKey, tid)
+          const local = loadMessages(msgKey)
+          const ui = persistedToMessages(local as PersistedMessage[] | null)
+          if (ui && ui.length > 0) dispatch({ type: "SET_MESSAGES", payload: ui })
+        }
+      }
+      loadForThread(savedThreadId)
+    } else {
+      const newId = generateThreadId()
+      saveCurrentThreadId(baseKey, newId)
+      dispatch({ type: "SET_THREAD_ID", payload: newId })
+    }
+  }, [storageBaseKey, config.threadId, getService])
+
+  // Persist current thread id when it changes
+  useEffect(() => {
+    if (!storageBaseKey) return
+    const tid = state.currentThreadId
+    saveCurrentThreadId(storageBaseKey, tid ?? null)
+  }, [storageBaseKey, state.currentThreadId])
+
+  // Persist messages for the current thread (do not merge threads)
+  useEffect(() => {
+    if (!storageBaseKey || !state.currentThreadId) return
+    if (state.messages.length === 0) {
+      clearMessages(getThreadMessagesKey(storageBaseKey, state.currentThreadId))
+      return
+    }
+    saveMessages(
+      getThreadMessagesKey(storageBaseKey, state.currentThreadId),
+      state.messages
+    )
+  }, [storageBaseKey, state.currentThreadId, state.messages])
+
+  // When agent changes: create new thread and clear messages (do not merge)
   const prevAgentRef = useRef<string | undefined>(undefined)
   useEffect(() => {
     const nextAgent = config.agent ?? ""
@@ -225,7 +357,9 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
     const isSwitch = prevAgent !== undefined && prevAgent !== nextAgent
     prevAgentRef.current = nextAgent
     if (isSwitch) {
-      dispatch({ type: "SET_THREAD_ID", payload: undefined })
+      const newId = generateThreadId()
+      saveCurrentThreadId(storageBaseKey, newId)
+      dispatch({ type: "SET_THREAD_ID", payload: newId })
       if (config.starterMessage) {
         dispatch({
           type: "CLEAR_CHAT",
@@ -242,7 +376,7 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
         dispatch({ type: "CLEAR_CHAT" })
       }
     }
-  }, [config.agent, config.starterMessage])
+  }, [config.agent, config.starterMessage, storageBaseKey])
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -251,6 +385,13 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
       const agent = configRef.current.agent ?? meta?.default_agent
       const model = configRef.current.model ?? meta?.default_model
       if (!agent) return
+
+      let threadIdToUse = state.currentThreadId
+      if (!threadIdToUse) {
+        threadIdToUse = generateThreadId()
+        dispatch({ type: "SET_THREAD_ID", payload: threadIdToUse })
+        saveCurrentThreadId(getStorageBaseKey(configRef.current), threadIdToUse)
+      }
 
       const userMessage: Message = {
         id: `user-${Date.now()}`,
@@ -277,7 +418,7 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
         for await (const event of svc.stream(text, {
           agent,
           model,
-          threadId: state.currentThreadId,
+          threadId: threadIdToUse,
           userId: configRef.current.userId,
           streamTokens: configRef.current.stream !== false,
         })) {
@@ -363,7 +504,13 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
   )
 
   const clearChat = useCallback(
-    (options?: { keepStarter?: boolean }) => {
+    (options?: { keepStarter?: boolean; createNewThread?: boolean }) => {
+      const baseKey = getStorageBaseKey(configRef.current)
+      if (options?.createNewThread) {
+        const newId = generateThreadId()
+        saveCurrentThreadId(baseKey, newId)
+        dispatch({ type: "SET_THREAD_ID", payload: newId })
+      }
       const keepStarter = options?.keepStarter
       if (keepStarter && configRef.current.starterMessage) {
         dispatch({
@@ -399,13 +546,22 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
   }, [])
 
   const loadThread = useCallback(
-    async (threadId: string) => {
-      const uid = configRef.current.userId?.trim()
+    async (threadId: string, explicitUserId?: string) => {
+      const uid = (explicitUserId ?? configRef.current.userId)?.trim()
       if (!uid) return
       const svc = getService()
-      const apiMessages = await svc.getHistory(threadId, uid)
-      dispatch({ type: "SET_MESSAGES", payload: apiMessagesToUiMessages(apiMessages) })
-      dispatch({ type: "SET_THREAD_ID", payload: threadId })
+      try {
+        const { messages } = await svc.getHistory(threadId, uid)
+        dispatch({ type: "SET_MESSAGES", payload: apiMessagesToUiMessages(messages) })
+        dispatch({ type: "SET_THREAD_ID", payload: threadId })
+        dispatch({ type: "SET_ERROR", payload: null })
+      } catch (err) {
+        console.error("Failed to load thread history:", err)
+        dispatch({
+          type: "SET_ERROR",
+          payload: err instanceof Error ? err.message : "Failed to load conversation",
+        })
+      }
     },
     [getService]
   )
@@ -437,9 +593,12 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
   )
 
   const getHistory = useCallback(
-    async (threadId: string) => {
+    async (
+      threadId: string,
+      options?: import("@/core/services/types").GetHistoryOptions
+    ) => {
       const svc = getService()
-      return svc.getHistory(threadId, configRef.current.userId)
+      return svc.getHistory(threadId, configRef.current.userId, options)
     },
     [getService]
   )

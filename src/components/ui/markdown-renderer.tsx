@@ -7,6 +7,7 @@ import { CopyButton } from "@/components/ui/copy-button"
 
 interface MarkdownRendererProps {
   children: string
+  className?: string
 }
 
 function extractText(node: React.ReactNode): string {
@@ -124,9 +125,9 @@ const components: Components = {
   },
 }
 
-export default function MarkdownRenderer({ children }: MarkdownRendererProps) {
+export default function MarkdownRenderer({ children, className }: MarkdownRendererProps) {
   return (
-    <div className="prose-sm max-w-none">
+    <div className={cn("prose-sm max-w-none", className)}>
       <Markdown
         remarkPlugins={[remarkGfm]}
         components={components}

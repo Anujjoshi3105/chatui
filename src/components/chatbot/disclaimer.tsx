@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button"
-import { ShieldCheck, Cookie } from "lucide-react"
+import { ShieldCheck } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
 interface DisclaimerProps {
@@ -36,11 +36,8 @@ export function Disclaimer({ onAccept, open }: DisclaimerProps) {
                                 This AI assistant is designed to help you explore my portfolio.
                             </p>
 
-                            <div className="bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground text-left border border-border/50 flex gap-2">
-                                <Cookie className="h-4 w-4 shrink-0 mt-0.5" />
-                                <span>
-                                    We use local storage to save your preferences (e.g. voice settings) for a better experience.
-                                </span>
+                            <div className="text-center w-full bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground text-left border border-border/50">
+                                We use local storage to save your preferences for a better experience.
                             </div>
                         </div>
 

@@ -83,7 +83,7 @@ const AgentCard = memo(function AgentCard({
             <Icon className="size-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <span className={cn("block font-semibold text-foreground transition-colors group-hover:text-primary capitalize")}>{agent.key}</span>
+            <span className={cn("block font-semibold text-foreground transition-colors group-hover:text-primary capitalize")}>{agent.key.replace(/-/g, " ")}</span>
             {agent.description ? (
               <span className="mt-0.5 line-clamp-2 block text-[13px] leading-snug text-muted-foreground">
                 {agent.description}

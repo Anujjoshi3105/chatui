@@ -320,16 +320,25 @@ export function useChatbotApi({
       }
       const uid = (requestUserId ?? userId)!.trim()
       try {
-        const response = await fetch(`${url}/history`, {
-          method: "POST",
+        const params = new URLSearchParams({
+          user_id: uid,
+          thread_id: threadId,
+          limit: "50",
+          view: "full",
+        })
+        const response = await fetch(`${url}/history?${params.toString()}`, {
+          method: "GET",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ thread_id: threadId, user_id: uid }),
         })
         if (!response.ok) {
           throw new Error(`Failed to get history: ${response.statusText}`)
         }
-        const data = await response.json()
-        return data.messages as ChatMessage[]
+        const data = (await response.json()) as {
+          messages?: ChatMessage[]
+          next_cursor?: string | null
+          prev_cursor?: string | null
+        }
+        return (data.messages ?? []) as ChatMessage[]
       } catch (err) {
         console.error("Error getting history:", err)
         throw err

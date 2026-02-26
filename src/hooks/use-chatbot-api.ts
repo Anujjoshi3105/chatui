@@ -384,6 +384,32 @@ export function useChatbotApi({
     [url, userId]
   )
 
+  const deleteThread = useCallback(
+    async (threadId: string, requestUserId?: string) => {
+      const uid = (requestUserId ?? userId)?.trim()
+      if (!uid) {
+        throw new Error("User ID is required to delete a thread")
+      }
+      try {
+        const params = new URLSearchParams({
+          user_id: uid,
+          thread_id: threadId,
+        })
+        const response = await fetch(`${url}/history?${params.toString()}`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+        })
+        if (!response.ok) {
+          throw new Error(`Failed to delete thread: ${response.statusText}`)
+        }
+      } catch (err) {
+        console.error("Error deleting thread:", err)
+        throw err
+      }
+    },
+    [url, userId]
+  )
+
   return useMemo(() => ({
     metadata,
     loading,
@@ -393,6 +419,7 @@ export function useChatbotApi({
     sendFeedback,
     getHistory,
     getThreads,
+    deleteThread,
     refetchMetadata: () => fetchMetadata(true),
-  }), [metadata, loading, error, streamMessage, stopStream, sendFeedback, getHistory, getThreads, fetchMetadata])
+  }), [metadata, loading, error, streamMessage, stopStream, sendFeedback, getHistory, getThreads, deleteThread, fetchMetadata])
 }

@@ -12,5 +12,6 @@ export interface ChatHistorySheetProps {
     currentThreadId: string | undefined;
     onSelectThread: (threadId: string) => void;
     getThreads: (options?: GetThreadsOptions) => Promise<ThreadListResponse>;
+    deleteThread?: (threadId: string) => Promise<void>;
 }
-export declare function ChatHistorySheet({ open, onOpenChange, userId, threadList, setThreadList, totalThreads, setTotalThreads, threadsLoading, setThreadsLoading, currentThreadId, onSelectThread, getThreads, }: ChatHistorySheetProps): import("react/jsx-runtime").JSX.Element;
+export declare function ChatHistorySheet({ open, onOpenChange, userId, threadList, setThreadList, totalThreads, setTotalThreads, threadsLoading, setThreadsLoading, currentThreadId, onSelectThread, getThreads, deleteThread, }: ChatHistorySheetProps): import("react/jsx-runtime").JSX.Element;

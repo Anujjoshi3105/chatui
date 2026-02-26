@@ -95,6 +95,7 @@ function ChatbotLayout({
   onVoiceChange,
   autoSpeak,
   onAutoSpeakChange,
+  deleteThread,
 }: {
   setSelectedAgent: (a: string) => void
   setSelectedModel: (m: string) => void
@@ -136,9 +137,12 @@ function ChatbotLayout({
   onVoiceChange?: (v: SpeechSynthesisVoice | null) => void
   autoSpeak?: boolean
   onAutoSpeakChange?: (enabled: boolean) => void
+  deleteThread?: (threadId: string) => Promise<void>
 }) {
-  const { metadata, metadataLoading, clearChat, loadThread, getThreads, setThreadId } =
+  const { metadata, metadataLoading, clearChat, loadThread, getThreads, setThreadId, deleteThread: contextDeleteThread } =
     useChatContext()
+
+  const effectiveDeleteThread = deleteThread ?? contextDeleteThread
 
   const handleAgentChange = useCallback(
     (newAgent: string) => {
@@ -212,6 +216,7 @@ function ChatbotLayout({
         currentThreadId={_currentThreadId}
         onSelectThread={handleSelectThread}
         getThreads={getThreads}
+        deleteThread={effectiveDeleteThread}
       />
       <div className="flex-1 overflow-hidden flex flex-col">
         {!effectiveAgent ? (

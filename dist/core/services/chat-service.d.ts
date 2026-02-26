@@ -19,6 +19,7 @@ export declare class ChatService {
     }): AsyncGenerator<StreamEvent, void, unknown>;
     abortStream(): void;
     sendFeedback(runId: string, key: string, score: number): Promise<unknown>;
+    deleteThread(threadId: string, userId?: string): Promise<void>;
     getHistory(threadId: string, userId?: string, options?: GetHistoryOptions): Promise<ChatHistoryResponse>;
     getThreads(userId?: string, options?: GetThreadsOptions): Promise<ThreadListResponse>;
 }

@@ -6,7 +6,15 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet"
-import { Loader2, Search } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Loader2, Search, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type {
@@ -58,6 +66,7 @@ export interface ChatHistorySheetProps {
   currentThreadId: string | undefined
   onSelectThread: (threadId: string) => void
   getThreads: (options?: GetThreadsOptions) => Promise<ThreadListResponse>
+  deleteThread?: (threadId: string) => Promise<void>
 }
 
 export function ChatHistorySheet({
@@ -73,10 +82,13 @@ export function ChatHistorySheet({
   currentThreadId,
   onSelectThread,
   getThreads,
+  deleteThread,
 }: ChatHistorySheetProps) {
   const [searchInput, setSearchInput] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [loadingMore, setLoadingMore] = useState(false)
+  const [threadToDelete, setThreadToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const loadMoreSentinelRef = useRef<HTMLLIElement>(null)
   const loadingMoreRef = useRef(false)
   const threadListLengthRef = useRef(threadList.length)
@@ -104,6 +116,9 @@ export function ChatHistorySheet({
       if (!nextOpen) {
         setThreadList([])
         setTotalThreads(0)
+        setSearchInput("")
+        setSearchQuery("")
+        setThreadToDelete(null)
       }
     },
     [onOpenChange, setThreadList, setTotalThreads]
@@ -184,9 +199,26 @@ export function ChatHistorySheet({
     setThreadList,
   ])
 
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!threadToDelete || !deleteThread) return
+    setIsDeleting(true)
+    try {
+      await deleteThread(threadToDelete)
+      setThreadList((prev) => {
+        return prev.filter((t: any) => t.thread_id !== threadToDelete)
+      })
+      setTotalThreads(Math.max(0, totalThreads - 1))
+      setThreadToDelete(null)
+    } catch (e) {
+      console.error("Failed to delete thread", e)
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [threadToDelete, deleteThread, setThreadList, totalThreads, setTotalThreads])
+
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent side="right" className="flex flex-col">
+      <SheetContent side="right" className="flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
         <SheetHeader>
           <SheetTitle>Chat history</SheetTitle>
           <SheetDescription>
@@ -230,11 +262,11 @@ export function ChatHistorySheet({
                     : "Conversation")
 
                 return (
-                  <li key={t.thread_id}>
+                  <li key={t.thread_id} className="group relative flex items-center pr-2 group">
                     <Button
                       variant="ghost"
                       className={cn(
-                        "w-full justify-start font-normal h-auto py-2 flex flex-col items-start",
+                        "flex-1 justify-start font-normal h-auto py-2 flex flex-col items-start pr-8",
                         t.thread_id === currentThreadId && "bg-muted"
                       )}
                       onClick={() => onSelectThread(t.thread_id)}
@@ -248,6 +280,20 @@ export function ChatHistorySheet({
                         {t.thread_id}
                       </span>
                     </Button>
+                    {deleteThread && (
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute right-2 group-hover:opacity-100 opacity-0 transition-opacity focus:opacity-100"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setThreadToDelete(t.thread_id)
+                        }}
+                        aria-label="Delete conversation"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </li>
                 )
               })}
@@ -262,6 +308,35 @@ export function ChatHistorySheet({
           )}
         </div>
       </SheetContent>
+
+      <Dialog open={!!threadToDelete} onOpenChange={(open) => !open && !isDeleting && setThreadToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete conversation</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this conversation? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 flex sm:justify-end">
+            <Button
+              variant="outline"
+              disabled={isDeleting}
+              onClick={() => setThreadToDelete(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={isDeleting}
+              onClick={handleDeleteConfirm}
+              className="mt-2 sm:mt-0"
+            >
+              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Sheet>
   )
 }

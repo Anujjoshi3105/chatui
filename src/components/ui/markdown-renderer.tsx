@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm"
 
 import { cn } from "@/lib/utils"
 import { CopyButton } from "@/components/ui/copy-button"
+import { LinkPreview } from "@/components/ui/link-preview"
 
 interface MarkdownRendererProps {
   children: string
@@ -73,7 +74,20 @@ const components: Components = {
 
   p: withClass("p", "whitespace-pre-wrap mb-4 last:mb-0"),
   strong: withClass("strong", "font-semibold"),
-  a: withClass("a", "text-primary underline underline-offset-2 hover:opacity-80 transition-opacity"),
+  a({ node, className, children, href, ...props }: any) {
+    if (!href) {
+      return <a className={cn("text-primary underline underline-offset-2 hover:opacity-80 transition-opacity", className)} {...props}>{children}</a>
+    }
+
+    return (
+      <LinkPreview
+        url={href}
+        className={cn("text-primary underline underline-offset-2 hover:opacity-80 transition-opacity", className)}
+      >
+        {children}
+      </LinkPreview>
+    )
+  },
   hr: withClass("hr", "my-6 border-foreground/20"),
 
   blockquote: withClass(

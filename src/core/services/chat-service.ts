@@ -236,6 +236,27 @@ export class ChatService {
     return response.json()
   }
 
+  async deleteThread(threadId: string, userId?: string): Promise<void> {
+    const uid = userId?.trim()
+    if (!uid) {
+      throw new Error("User ID is required to delete a thread")
+    }
+    
+    const params = new URLSearchParams({
+      user_id: uid,
+      thread_id: threadId,
+    })
+    
+    const response = await fetch(
+      `${this.config.baseUrl}/history?${params.toString()}`,
+      { method: "DELETE", headers: this.getHeaders() }
+    )
+    
+    if (!response.ok) {
+      throw new Error(`Failed to delete thread: ${response.statusText}`)
+    }
+  }
+
   async getHistory(
     threadId: string,
     userId?: string,

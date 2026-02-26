@@ -182,6 +182,7 @@ export interface ChatRuntimeActions {
     threadId: string,
     options?: import("@/core/services/types").GetHistoryOptions
   ) => Promise<import("@/core/services/types").ChatHistoryResponse>
+  deleteThread: (threadId: string, userId?: string) => Promise<void>
 }
 
 export type UseChatRuntimeReturn = ChatRuntimeState & ChatRuntimeActions
@@ -603,6 +604,18 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
     [getService]
   )
 
+  const deleteThread = useCallback(
+    async (threadId: string, explicitUserId?: string) => {
+      const uid = (explicitUserId ?? configRef.current.userId)?.trim()
+      if (!uid) {
+        throw new Error("User ID is required to delete a thread")
+      }
+      const svc = getService()
+      await svc.deleteThread(threadId, uid)
+    },
+    [getService]
+  )
+
   const actions: ChatRuntimeActions = useMemo(
     () => ({
       setInput,
@@ -618,6 +631,7 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
       refetchMetadata,
       getThreads,
       getHistory,
+      deleteThread,
     }),
     [
       setInput,
@@ -633,6 +647,7 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
       refetchMetadata,
       getThreads,
       getHistory,
+      deleteThread,
     ]
   )
 

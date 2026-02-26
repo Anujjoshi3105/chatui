@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react"
+import React, { useState, useRef, useCallback } from "react"
 import { MessageCircle } from "lucide-react"
 import { Chatbot, type ChatbotProps } from "./chatbot"
 import { cn } from "@/lib/utils"
@@ -51,37 +51,6 @@ export function PopupChatbot({
 
   const isFullScreen = isMobile || isMaximized
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (isFullScreen || !isOpen) return
-
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        const target = event.target as HTMLElement
-        const isPortal =
-          target.closest?.("[data-radix-portal]") ||
-          target.closest?.('[role="menu"]') ||
-          target.closest?.('[role="listbox"]') ||
-          target.closest?.('[role="dialog"]') ||
-          target.closest?.("[data-radix-dialog-overlay]") ||
-          target.closest?.(".radix-themes")
-
-        if (isPortal) return
-
-        setIsOpen(false)
-      }
-    }
-
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside)
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [isOpen, isFullScreen])
 
   const w = typeof width === "number" ? `${width}px` : width
   const h = typeof height === "number" ? `${height}px` : height

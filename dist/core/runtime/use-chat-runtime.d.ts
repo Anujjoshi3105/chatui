@@ -16,6 +16,7 @@ export interface ChatRuntimeActions {
     refetchMetadata: () => Promise<void>;
     getThreads: (options?: import('../services/types').GetThreadsOptions) => Promise<import('../services/types').ThreadListResponse>;
     getHistory: (threadId: string, options?: import('../services/types').GetHistoryOptions) => Promise<import('../services/types').ChatHistoryResponse>;
+    deleteThread: (threadId: string, userId?: string) => Promise<void>;
 }
 export type UseChatRuntimeReturn = ChatRuntimeState & ChatRuntimeActions;
 export declare function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn;

@@ -65,5 +65,6 @@ export declare function useChatbotApi({ url, agent: optionsAgent, model: options
         }[];
         total: number;
     }>;
+    deleteThread: (threadId: string, requestUserId?: string) => Promise<void>;
     refetchMetadata: () => Promise<void>;
 };

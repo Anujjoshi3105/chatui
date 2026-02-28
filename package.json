@@ -1,6 +1,6 @@
 {
   "name": "chatui",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A premium, highly customizable React chatbot library with streaming support and modern UI.",
   "author": "Anuj Joshi",
   "keywords": [

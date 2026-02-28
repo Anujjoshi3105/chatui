@@ -2,7 +2,7 @@ import { useRef, useState } from "react"
 import { Code2 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import MarkdownRenderer from "@/components/ui/markdown-renderer"
+import { LazyMarkdownRenderer } from "@/components/ui/lazy-markdown-renderer"
 import {
   Popover,
   PopoverContent,
@@ -80,9 +80,9 @@ export function ToolResult({ toolName, result }: ToolResultProps) {
         </div>
         <div className="flex-1 overflow-auto rounded-b-md bg-muted/30 p-4">
           {typeof result === "string" ? (
-            <MarkdownRenderer>
+            <LazyMarkdownRenderer>
               {result.replace(/\\n/g, "\n")}
-            </MarkdownRenderer>
+            </LazyMarkdownRenderer>
           ) : (
             <pre className="whitespace-pre-wrap text-xs md:text-sm font-mono leading-relaxed">
               {JSON.stringify(result, null, 2)}

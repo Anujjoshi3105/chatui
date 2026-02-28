@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 import { CopyButton } from "@/components/ui/copy-button"
 import { LinkPreview } from "@/components/ui/link-preview"
 
-interface MarkdownRendererProps {
+export interface MarkdownRendererProps {
   children: string
   className?: string
 }

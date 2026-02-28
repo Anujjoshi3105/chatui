@@ -17,8 +17,11 @@ import {
 import { Loader2, Search, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { useChatbotStore } from "@/store/chatbot-store"
-import { useChatContext } from "@/components/chat"
+import type {
+  ThreadSummary,
+  GetThreadsOptions,
+  ThreadListResponse,
+} from "@/core/services/types"
 
 const PAGE_SIZE = 20
 const SEARCH_DEBOUNCE_MS = 300
@@ -48,10 +51,39 @@ function formatThreadDate(iso: string | null | undefined): string {
   }
 }
 
-export function ChatHistorySheet() {
-  const store = useChatbotStore(s => s)
-  const { getThreads, deleteThread: contextDeleteThread, loadThread, setThreadId } = useChatContext()
+export interface ChatHistorySheetProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  userId: string | undefined
+  threadList: ThreadSummary[]
+  setThreadList: (
+    list: ThreadSummary[] | ((prev: ThreadSummary[]) => ThreadSummary[])
+  ) => void
+  totalThreads: number
+  setTotalThreads: (n: number) => void
+  threadsLoading: boolean
+  setThreadsLoading: (v: boolean) => void
+  currentThreadId: string | undefined
+  onSelectThread: (threadId: string) => void
+  getThreads: (options?: GetThreadsOptions) => Promise<ThreadListResponse>
+  deleteThread?: (threadId: string) => Promise<void>
+}
 
+export function ChatHistorySheet({
+  open,
+  onOpenChange,
+  userId,
+  threadList,
+  setThreadList,
+  totalThreads,
+  setTotalThreads,
+  threadsLoading,
+  setThreadsLoading,
+  currentThreadId,
+  onSelectThread,
+  getThreads,
+  deleteThread,
+}: ChatHistorySheetProps) {
   const [searchInput, setSearchInput] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [loadingMore, setLoadingMore] = useState(false)
@@ -59,15 +91,15 @@ export function ChatHistorySheet() {
   const [isDeleting, setIsDeleting] = useState(false)
   const loadMoreSentinelRef = useRef<HTMLLIElement>(null)
   const loadingMoreRef = useRef(false)
-  const threadListLengthRef = useRef(store.threadList.length)
-  threadListLengthRef.current = store.threadList.length
+  const threadListLengthRef = useRef(threadList.length)
+  threadListLengthRef.current = threadList.length
 
   useEffect(() => {
-    if (!store.historySheetOpen) {
+    if (!open) {
       setSearchInput("")
       setSearchQuery("")
     }
-  }, [store.historySheetOpen])
+  }, [open])
 
   useEffect(() => {
     if (!searchInput.trim()) {
@@ -80,61 +112,54 @@ export function ChatHistorySheet() {
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
-      store.setHistorySheetOpen(nextOpen)
+      onOpenChange(nextOpen)
       if (!nextOpen) {
-        store.setThreadList([])
-        store.setTotalThreads(0)
+        setThreadList([])
+        setTotalThreads(0)
         setSearchInput("")
         setSearchQuery("")
         setThreadToDelete(null)
       }
     },
-    [store]
-  )
-
-  const handleSelectThread = useCallback(
-    (threadIdToLoad: string) => {
-      store.setHistorySheetOpen(false)
-      loadThread(threadIdToLoad, store.userId)
-      store.setCurrentThreadId(threadIdToLoad)
-      setThreadId(threadIdToLoad)
-    },
-    [store, loadThread, setThreadId]
+    [onOpenChange, setThreadList, setTotalThreads]
   )
 
   useEffect(() => {
-    if (!store.historySheetOpen || !store.userId?.trim()) return
+    if (!open || !userId?.trim()) return
     let cancelled = false
-    store.setThreadsLoading(true)
-    store.setThreadList([])
-    store.setTotalThreads(0)
+    setThreadsLoading(true)
+    setThreadList([])
+    setTotalThreads(0)
     getThreads({ limit: PAGE_SIZE, offset: 0, search: searchQuery })
       .then(({ threads, total }) => {
         if (!cancelled) {
-          store.setThreadList(threads)
-          store.setTotalThreads(total ?? 0)
+          setThreadList(threads)
+          setTotalThreads(total ?? 0)
         }
       })
       .finally(() => {
-        if (!cancelled) store.setThreadsLoading(false)
+        if (!cancelled) setThreadsLoading(false)
       })
     return () => {
       cancelled = true
     }
   }, [
-    store.historySheetOpen,
-    store.userId,
+    open,
+    userId,
     searchQuery,
     getThreads,
+    setThreadList,
+    setTotalThreads,
+    setThreadsLoading,
   ])
 
   useEffect(() => {
     if (
-      !store.historySheetOpen ||
-      !store.userId?.trim() ||
-      store.threadsLoading ||
-      store.threadList.length >= store.totalThreads ||
-      store.totalThreads <= 0
+      !open ||
+      !userId?.trim() ||
+      threadsLoading ||
+      threadList.length >= totalThreads ||
+      totalThreads <= 0
     )
       return
     const el = loadMoreSentinelRef.current
@@ -143,7 +168,7 @@ export function ChatHistorySheet() {
       (entries) => {
         if (!entries[0]?.isIntersecting || loadingMoreRef.current) return
         const offset = threadListLengthRef.current
-        if (offset >= store.totalThreads) return
+        if (offset >= totalThreads) return
         loadingMoreRef.current = true
         setLoadingMore(true)
         getThreads({
@@ -152,7 +177,7 @@ export function ChatHistorySheet() {
           search: searchQuery || undefined,
         })
           .then(({ threads }) => {
-            store.setThreadList((prev) => [...prev, ...threads])
+            setThreadList((prev) => [...prev, ...threads])
           })
           .finally(() => {
             loadingMoreRef.current = false
@@ -164,45 +189,45 @@ export function ChatHistorySheet() {
     observer.observe(el)
     return () => observer.disconnect()
   }, [
-    store.historySheetOpen,
-    store.userId,
-    store.threadsLoading,
-    store.threadList.length,
-    store.totalThreads,
+    open,
+    userId,
+    threadsLoading,
+    threadList.length,
+    totalThreads,
     searchQuery,
     getThreads,
-    store,
+    setThreadList,
   ])
 
   const handleDeleteConfirm = useCallback(async () => {
-    if (!threadToDelete || !contextDeleteThread) return
+    if (!threadToDelete || !deleteThread) return
     setIsDeleting(true)
     try {
-      await contextDeleteThread(threadToDelete)
-      store.setThreadList((prev) => {
+      await deleteThread(threadToDelete)
+      setThreadList((prev) => {
         return prev.filter((t: any) => t.thread_id !== threadToDelete)
       })
-      store.setTotalThreads(Math.max(0, store.totalThreads - 1))
+      setTotalThreads(Math.max(0, totalThreads - 1))
       setThreadToDelete(null)
     } catch (e) {
       console.error("Failed to delete thread", e)
     } finally {
       setIsDeleting(false)
     }
-  }, [threadToDelete, contextDeleteThread, store])
+  }, [threadToDelete, deleteThread, setThreadList, totalThreads, setTotalThreads])
 
   return (
-    <Sheet open={store.historySheetOpen} onOpenChange={handleOpenChange}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent side="right" className="flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
         <SheetHeader>
           <SheetTitle>Chat history</SheetTitle>
           <SheetDescription>
-            {store.userId?.trim()
+            {userId?.trim()
               ? "Select a conversation to load."
               : "Sign in to see your conversations."}
           </SheetDescription>
         </SheetHeader>
-        {store.userId?.trim() ? (
+        {userId?.trim() ? (
           <div className="relative flex items-center border rounded-md px-3 py-2 mt-2 bg-muted/50">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
             <input
@@ -216,12 +241,12 @@ export function ChatHistorySheet() {
           </div>
         ) : null}
         <div className="flex-1 overflow-y-auto py-4 min-h-0">
-          {!store.userId?.trim() ? null : store.threadsLoading ? (
+          {!userId?.trim() ? null : threadsLoading ? (
             <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />
               <span>Loading conversations…</span>
             </div>
-          ) : store.threadList.length === 0 ? (
+          ) : threadList.length === 0 ? (
             <p className="text-center text-sm text-muted-foreground py-8">
               {searchQuery
                 ? "No conversations match your search."
@@ -229,7 +254,7 @@ export function ChatHistorySheet() {
             </p>
           ) : (
             <ul className="space-y-1">
-              {store.threadList.map((t) => {
+              {threadList.map((t) => {
                 const preview =
                   t.preview?.trim().slice(0, 60) ||
                   (t.updated_at
@@ -242,9 +267,9 @@ export function ChatHistorySheet() {
                       variant="ghost"
                       className={cn(
                         "flex-1 justify-start font-normal h-auto py-2 flex flex-col items-start pr-8",
-                        t.thread_id === store.currentThreadId && "bg-muted"
+                        t.thread_id === currentThreadId && "bg-muted"
                       )}
-                      onClick={() => handleSelectThread(t.thread_id)}
+                      onClick={() => onSelectThread(t.thread_id)}
                     >
                       <span className="truncate w-full text-left text-sm">
                         {preview
@@ -255,22 +280,24 @@ export function ChatHistorySheet() {
                         {t.thread_id}
                       </span>
                     </Button>
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      className="absolute right-2 group-hover:opacity-100 opacity-0 transition-opacity focus:opacity-100"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setThreadToDelete(t.thread_id)
-                      }}
-                      aria-label="Delete conversation"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {deleteThread && (
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute right-2 group-hover:opacity-100 opacity-0 transition-opacity focus:opacity-100"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setThreadToDelete(t.thread_id)
+                        }}
+                        aria-label="Delete conversation"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </li>
                 )
               })}
-              {store.threadList.length < store.totalThreads ? (
+              {threadList.length < totalThreads ? (
                 <li ref={loadMoreSentinelRef} className="py-2 flex justify-center">
                   {loadingMore ? (
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />

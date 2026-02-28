@@ -10,7 +10,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { FilePreview } from "@/components/ui/file-preview"
-import MarkdownRenderer from "@/components/ui/markdown-renderer"
+import { LazyMarkdownRenderer } from "@/components/ui/lazy-markdown-renderer"
 import { TypingIndicator } from "@/components/ui/typing-indicator"
 import { ToolResult } from "@/components/ui/tool-result"
 
@@ -19,8 +19,8 @@ const chatBubbleVariants = cva(
   {
     variants: {
       isUser: {
-        true: "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground border border-primary/20",
-        false: "bg-gradient-to-br from-card to-muted/50 text-card-foreground border border-border/50",
+        true: "chat-bubble-user",
+        false: "chat-bubble-bot",
       },
       animation: {
         none: "",
@@ -137,6 +137,62 @@ export interface ChatMessageProps extends Message {
   isGenerating?: boolean
 }
 
+export function ChatMessageBubble({
+  isUser,
+  animation,
+  actions,
+  isGenerating,
+  children,
+}: {
+  isUser: boolean
+  animation?: Animation
+  actions?: React.ReactNode
+  isGenerating?: boolean
+  children?: React.ReactNode
+}) {
+  return (
+    <div className={cn(chatBubbleVariants({ isUser, animation }))}>
+      {isGenerating && !children ? (
+        <TypingIndicator />
+      ) : (
+        <LazyMarkdownRenderer>{typeof children === "string" ? children : ""}</LazyMarkdownRenderer>
+      )}
+      {actions ? (
+        <div className="absolute -bottom-6 right-2 flex space-x-1 rounded-lg border bg-background/95 backdrop-blur-sm p-1 text-foreground opacity-0 transition-all duration-200 group-hover/message:opacity-100 shadow-sm">
+          {actions}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+export function ChatMessageTimestamp({
+  createdAt,
+  animation = "scale"
+}: {
+  createdAt?: Date
+  animation?: Animation
+}) {
+  if (!createdAt) return null
+
+  const formattedTime = createdAt.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+
+  return (
+    <time
+      dateTime={createdAt.toISOString()}
+      className={cn(
+        "mt-1 block px-1 text-xs opacity-60",
+        animation !== "none" && "duration-500 animate-in fade-in-0"
+      )}
+    >
+      {formattedTime}
+    </time>
+  )
+}
+
 export const ChatMessage: React.FC<ChatMessageProps> = ({
   role,
   content,
@@ -149,153 +205,60 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   parts,
   isGenerating = false,
 }) => {
+  const isUser = role === "user"
+
   const files = useMemo(() => {
     return experimental_attachments?.map((attachment) => {
       const dataArray = dataUrlToUint8Array(attachment.url)
-      const file = new File([dataArray], attachment.name ?? "Unknown", {
+      return new File([dataArray], attachment.name ?? "Unknown", {
         type: attachment.contentType,
       })
-      return file
     })
   }, [experimental_attachments])
 
-  const isUser = role === "user"
-
-  const formattedTime = createdAt?.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-
-  if (isUser) {
-    return (
-      <div
-        className={cn("flex flex-col ml-12 mr-4", isUser ? "items-end" : "items-start")}
-      >
-        {files ? (
-          <div className="mb-2 flex flex-wrap gap-2">
-            {files.map((file, index) => {
-              return <FilePreview file={file} key={index} />
-            })}
-          </div>
-        ) : null}
-
-        <div className={cn(chatBubbleVariants({ isUser, animation }))}>
-          <MarkdownRenderer>{content}</MarkdownRenderer>
-          {actions ? (
-            <div className="absolute -bottom-6 right-2 flex space-x-1 rounded-lg border bg-background/95 backdrop-blur-sm p-1 text-foreground opacity-0 transition-all duration-200 group-hover/message:opacity-100 shadow-sm">
-              {actions}
-            </div>
-          ) : null}
-        </div>
-
-        {showTimeStamp && createdAt ? (
-          <time
-            dateTime={createdAt.toISOString()}
-            className={cn(
-              "mt-2 block px-1 text-xs opacity-60",
-              animation !== "none" && "duration-500 animate-in fade-in-0"
-            )}
-          >
-            {formattedTime}
-          </time>
-        ) : null}
-      </div>
-    )
-  }
-
-  if (parts && parts.length > 0) {
-    return parts.map((part, index) => {
-      if (part.type === "text") {
-        return (
-          <div
-            className={cn(
-              "flex flex-col",
-              isUser ? "items-end" : "items-start"
-            )}
-            key={`text-${index}`}
-          >
-            <div className={cn(chatBubbleVariants({ isUser, animation }))}>
-              <MarkdownRenderer>{part.text}</MarkdownRenderer>
-              {actions ? (
-                <div className="absolute -bottom-4 right-2 flex space-x-1 rounded-lg border bg-background p-1 text-foreground opacity-0 transition-opacity group-hover/message:opacity-100">
-                  {actions}
-                </div>
-              ) : null}
-            </div>
-
-            {showTimeStamp && createdAt ? (
-              <time
-                dateTime={createdAt.toISOString()}
-                className={cn(
-                  "mt-1 block px-1 text-xs opacity-50",
-                  animation !== "none" && "duration-500 animate-in fade-in-0"
-                )}
-              >
-                {formattedTime}
-              </time>
-            ) : null}
-          </div>
-        )
-      } else if (part.type === "reasoning") {
-        return <ReasoningBlock key={`reasoning-${index}`} part={part} />
-      } else if (part.type === "tool-invocation") {
-        return (
-          <ToolCall
-            key={`tool-${index}`}
-            toolInvocations={[part.toolInvocation]}
-          />
-        )
-      }
-      return null
-    })
-  }
-
   return (
-    <div className={cn("flex flex-col gap-3", isUser ? "items-end" : "items-start")}>
+    <div className={cn("flex flex-col gap-3", isUser ? "items-end ml-12 mr-4" : "items-start mr-12 ml-4")}>
+
+      {files && files.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-2">
+          {files.map((file, index) => (
+            <FilePreview file={file} key={index} />
+          ))}
+        </div>
+      )}
+
       {toolInvocations && toolInvocations.length > 0 && (
         <ToolCall toolInvocations={toolInvocations} />
       )}
 
-      {(content || isGenerating) ? (
-        <div className={cn("flex flex-col mr-12 ml-4", isUser ? "items-end" : "items-start")}>
-          <div className={cn(chatBubbleVariants({ isUser, animation }))}>
-            {isGenerating && !content ? (
-              <TypingIndicator />
-            ) : (
-              <MarkdownRenderer>{content}</MarkdownRenderer>
-            )}
-            {actions ? (
-              <div className="absolute -bottom-6 right-2 flex space-x-1 rounded-lg border bg-background/95 backdrop-blur-sm p-1 text-foreground opacity-0 transition-all duration-200 group-hover/message:opacity-100 shadow-sm">
-                {actions}
+      {parts && parts.length > 0 ? (
+        parts.map((part, index) => {
+          if (part.type === "text") {
+            return (
+              <div key={`text-${index}`} className={cn("flex flex-col", isUser ? "items-end" : "items-start")}>
+                <ChatMessageBubble isUser={isUser} animation={animation} actions={actions}>
+                  {part.text}
+                </ChatMessageBubble>
+                {showTimeStamp && <ChatMessageTimestamp createdAt={createdAt} animation={animation} />}
               </div>
-            ) : null}
-          </div>
-
-          {showTimeStamp && createdAt ? (
-            <time
-              dateTime={createdAt.toISOString()}
-              className={cn(
-                "mt-2 block px-1 text-xs opacity-60",
-                animation !== "none" && "duration-500 animate-in fade-in-0"
-              )}
-            >
-              {formattedTime}
-            </time>
-          ) : null}
-        </div>
+            )
+          } else if (part.type === "reasoning") {
+            return <ReasoningBlock key={`reasoning-${index}`} part={part} />
+          } else if (part.type === "tool-invocation") {
+            return <ToolCall key={`tool-${index}`} toolInvocations={[part.toolInvocation]} />
+          }
+          return null
+        })
       ) : (
-        showTimeStamp && createdAt && (
-          <div className={cn("flex flex-col mr-12 ml-4", isUser ? "items-end" : "items-start")}>
-            <time
-              dateTime={createdAt.toISOString()}
-              className={cn(
-                "mt-2 block px-1 text-xs opacity-60",
-                animation !== "none" && "duration-500 animate-in fade-in-0"
-              )}
-            >
-              {formattedTime}
-            </time>
+        (content || isGenerating) ? (
+          <div className={cn("flex flex-col", isUser ? "items-end" : "items-start")}>
+            <ChatMessageBubble isUser={isUser} animation={animation} actions={actions} isGenerating={isGenerating}>
+              {content}
+            </ChatMessageBubble>
+            {showTimeStamp && <ChatMessageTimestamp createdAt={createdAt} animation={animation} />}
           </div>
+        ) : (
+          showTimeStamp && <ChatMessageTimestamp createdAt={createdAt} animation={animation} />
         )
       )}
     </div>
@@ -320,7 +283,7 @@ function ReasoningBlock({ part }: { part: ReasoningPart }) {
       <Collapsible
         open={isOpen}
         onOpenChange={setIsOpen}
-        className="group w-full overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-muted/30 to-muted/10 shadow-sm"
+        className="group chat-reasoning-block"
       >
         <div className="flex items-center p-3">
           <CollapsibleTrigger asChild>

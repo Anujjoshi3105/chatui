@@ -12,35 +12,60 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
-import { useChatbotStore } from "@/store/chatbot-store"
 
 interface HeaderProps {
   metadata: ServiceMetadata | null
+  selectedAgent: string
+  selectedModel: string
+  onAgentChange: (agent: string) => void
+  onModelChange: (model: string) => void
   onClose?: () => void
   onRefresh?: () => void
   onHome?: () => void
   onHistory?: () => void
   className?: string
 
+  title?: string
+  titleUrl?: string
+  subtitle?: string
+  // Voice props
+  voiceConfig?: VoiceConfig
   onVoiceConfigChange?: (config: Partial<VoiceConfig>) => void
   availableVoices?: SpeechSynthesisVoice[]
   selectedVoice?: SpeechSynthesisVoice | null
   onVoiceChange?: (voice: SpeechSynthesisVoice | null) => void
+  autoSpeak?: boolean
+  onAutoSpeakChange?: (enabled: boolean) => void
+  isMaximized?: boolean
+  onMaximize?: () => void
+  avatar?: string
 }
 
 export function Header({
   metadata,
+  selectedAgent,
+  selectedModel,
+  onAgentChange,
+  onModelChange,
   onClose,
   onRefresh,
   onHome,
   onHistory,
   className,
+  title = "Portfolio Assistant",
+  titleUrl,
+  subtitle,
+  voiceConfig,
   onVoiceConfigChange,
   availableVoices,
   selectedVoice,
   onVoiceChange,
+  autoSpeak,
+  onAutoSpeakChange,
+  isMaximized,
+  onMaximize,
+  avatar,
 }: HeaderProps) {
-  const store = useChatbotStore(s => s)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   const handleRefresh = () => {
@@ -55,13 +80,11 @@ export function Header({
     }, 1000)
   }
 
-  const title = store.headerTitle || "Portfolio Assistant"
-
   const TitleContent = () => (
     <div className="flex items-center gap-3 group cursor-pointer">
       <div className="relative">
         <Avatar className="size-9 border border-border/40 shadow-sm transition-transform group-hover:scale-105">
-          <AvatarImage src={store.avatar} />
+          <AvatarImage src={avatar} />
           <AvatarFallback>{title}</AvatarFallback>
         </Avatar>
         <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-emerald-500 ring-2 ring-background shadow-sm animate-pulse" />
@@ -71,7 +94,7 @@ export function Header({
           {title}
         </h3>
         <p className="text-[11px] text-muted-foreground font-medium leading-none capitalize">
-          {store.headerSubtitle || store.selectedAgent.replace(/-/g, " ")}
+          {subtitle || selectedAgent.replace(/-/g, " ")}
         </p>
       </div>
     </div>
@@ -86,9 +109,9 @@ export function Header({
         )}
       >
         {/* Left */}
-        {store.headerTitleUrl ? (
+        {titleUrl ? (
           <a
-            href={store.headerTitleUrl}
+            href={titleUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="focus-visible:outline-none rounded-md"
@@ -135,42 +158,42 @@ export function Header({
             </Tooltip>
           )}
 
-          {store.allowMaximize && (
+          {onMaximize && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => store.toggleMaximize()}
+                  onClick={onMaximize}
                   className="rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {store.isMaximized ? (
+                  {isMaximized ? (
                     <Minimize2 className="h-4 w-4" />
                   ) : (
                     <Maximize2 className="h-4 w-4" />
                   )}
                   <span className="sr-only">
-                    {store.isMaximized ? "Minimize" : "Maximize"}
+                    {isMaximized ? "Minimize" : "Maximize"}
                   </span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>{store.isMaximized ? "Minimize" : "Maximize"}</TooltipContent>
+              <TooltipContent>{isMaximized ? "Minimize" : "Maximize"}</TooltipContent>
             </Tooltip>
           )}
 
           <Setting
             metadata={metadata}
-            selectedAgent={store.selectedAgent}
-            selectedModel={store.selectedModel}
-            onAgentChange={store.setSelectedAgent}
-            onModelChange={store.setSelectedModel}
-            voiceConfig={store.voiceConfig}
+            selectedAgent={selectedAgent}
+            selectedModel={selectedModel}
+            onAgentChange={onAgentChange}
+            onModelChange={onModelChange}
+            voiceConfig={voiceConfig}
             onVoiceConfigChange={onVoiceConfigChange}
             availableVoices={availableVoices}
             selectedVoice={selectedVoice}
             onVoiceChange={onVoiceChange}
-            autoSpeak={store.autoSpeak}
-            onAutoSpeakChange={store.setAutoSpeak}
+            autoSpeak={autoSpeak}
+            onAutoSpeakChange={onAutoSpeakChange}
           />
 
           {onRefresh && (

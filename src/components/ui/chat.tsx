@@ -5,12 +5,12 @@ import {
   useCallback,
   useRef,
   useState,
-  useMemo,
   type ReactElement,
 } from "react"
 import { ArrowDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAutoScroll } from "@/hooks/use-auto-scroll"
+import { useMessageDisplay } from "@/hooks/use-message-display"
 import { Button } from "@/components/ui/button"
 import { type Message } from "@/components/ui/chat-message"
 import { CopyButton } from "@/components/ui/copy-button"
@@ -79,25 +79,10 @@ export function Chat({
   stopListening,
   isSpeechSupported,
 }: ChatProps) {
-  const lastMessage = messages.at(-1)
-  const isEmpty = messages.length === 0
-  const isTyping = lastMessage?.role === "user"
-
-  // Add typing message if generating and no assistant message
-  const displayMessages = useMemo(() => {
-    if (isGenerating && (isEmpty || lastMessage?.role === "user")) {
-      return [
-        ...messages,
-        {
-          id: "typing",
-          role: "assistant" as const,
-          content: "",
-          createdAt: new Date(),
-        },
-      ]
-    }
-    return messages
-  }, [messages, isGenerating, isEmpty, lastMessage])
+  const { displayMessages, isTyping, isEmpty } = useMessageDisplay({
+    messages,
+    isGenerating,
+  })
 
   const messagesRef = useRef(messages)
   messagesRef.current = messages
@@ -233,7 +218,7 @@ export function Chat({
 
       <ChatForm
         className={cn(
-          "mt-auto border-t border-border/50 bg-gradient-to-t from-background to-muted/10 px-6 relative",
+          "chat-input-container",
           messages.length > 0 ? "py-4" : "py-2"
         )}
         isPending={isGenerating || isTyping}

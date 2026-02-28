@@ -164,4 +164,20 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     @apply bg-muted-foreground/50;
   }
+
+  .chat-bubble-user {
+    @apply bg-gradient-to-br from-primary to-primary/80 text-primary-foreground border border-primary/20;
+  }
+
+  .chat-bubble-bot {
+    @apply bg-gradient-to-br from-card to-muted/50 text-card-foreground border border-border/50;
+  }
+
+  .chat-input-container {
+    @apply mt-auto border-t border-border/50 bg-gradient-to-t from-background to-muted/10 px-6 relative;
+  }
+
+  .chat-reasoning-block {
+    @apply w-full overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-muted/30 to-muted/10 shadow-sm;
+  }
 }

@@ -1,6 +1,7 @@
 "use client"
 
-import { useMemo, useCallback } from "react"
+import { useCallback } from "react"
+import { useMessageDisplay } from "@/hooks/use-message-display"
 import { useChatContext } from "./context"
 import { MessageList } from "@/components/ui/message-list"
 import {
@@ -20,24 +21,10 @@ export function ChatMessages({ className }: { className?: string }) {
     voiceConfig,
   } = useChatContext()
 
-  const lastMessage = messages.at(-1)
-  const isEmpty = messages.length === 0
-  const isTyping = lastMessage?.role === "user"
-
-  const displayMessages = useMemo(() => {
-    if (isGenerating && (isEmpty || lastMessage?.role === "user")) {
-      return [
-        ...messages,
-        {
-          id: "typing",
-          role: "assistant" as const,
-          content: "",
-          createdAt: new Date(),
-        },
-      ]
-    }
-    return messages
-  }, [messages, isGenerating, isEmpty, lastMessage])
+  const { displayMessages, isTyping } = useMessageDisplay({
+    messages: (messages as UIMessage[]) || [],
+    isGenerating,
+  })
 
   const messageOptions = useCallback(
     (message: UIMessage) => ({

@@ -109,7 +109,7 @@ export function ChatInput({
   return (
     <ChatForm
       className={cn(
-        "mt-auto border-t border-border/50 bg-gradient-to-t from-background to-muted/10 px-6 relative",
+        "chat-input-container",
         messages.length > 0 ? "py-4" : "py-2",
         className
       )}

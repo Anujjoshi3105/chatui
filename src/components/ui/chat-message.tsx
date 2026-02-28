@@ -15,7 +15,7 @@ import { TypingIndicator } from "@/components/ui/typing-indicator"
 import { ToolResult } from "@/components/ui/tool-result"
 
 const chatBubbleVariants = cva(
-  "group/message relative break-words rounded-lg p-4 text-sm shadow-sm transition-all duration-200 hover:shadow-md",
+  "group/message relative rounded-lg p-4 text-sm shadow-sm transition-all duration-200 hover:shadow-md",
   {
     variants: {
       isUser: {
@@ -217,7 +217,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   }, [experimental_attachments])
 
   return (
-    <div className={cn("flex flex-col gap-3", isUser ? "items-end ml-12 mr-4" : "items-start mr-12 ml-4")}>
+    <div className={cn("flex flex-col gap-3 min-w-0", isUser ? "items-end ml-auto max-w-[85%] pr-4" : "items-start mr-auto max-w-[85%] pl-4")}>
 
       {files && files.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-2">
@@ -279,7 +279,7 @@ function ReasoningBlock({ part }: { part: ReasoningPart }) {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
-    <div className="mb-3 flex flex-col items-start mr-12 ml-4">
+    <div className="mb-3 flex flex-col items-start max-w-[85%] ml-4 mr-auto min-w-0">
       <Collapsible
         open={isOpen}
         onOpenChange={setIsOpen}
@@ -324,7 +324,7 @@ function ToolCall({
   if (!toolInvocations?.length) return null
 
   return (
-    <div className="flex flex-col items-start gap-3 mr-12 ml-4">
+    <div className="flex flex-col items-start gap-3 max-w-[85%] ml-4 mr-auto min-w-0">
       {toolInvocations.map((invocation, index) => {
         const isCancelled =
           invocation.state === "result" &&

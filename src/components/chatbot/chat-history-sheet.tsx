@@ -14,7 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Loader2, Search, Trash2 } from "lucide-react"
+import { Loader2, Search, Trash2, Clock } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type {
@@ -32,15 +33,19 @@ function formatThreadDate(iso: string | null | undefined): string {
     const d = new Date(iso)
     if (Number.isNaN(d.getTime())) return ""
     const now = new Date()
-    const sameDay =
-      d.getDate() === now.getDate() &&
-      d.getMonth() === now.getMonth() &&
-      d.getFullYear() === now.getFullYear()
-    if (sameDay) {
+    const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24))
+
+    if (diffDays === 0 && d.getDate() === now.getDate()) {
       return d.toLocaleTimeString(undefined, {
         hour: "numeric",
         minute: "2-digit",
       })
+    }
+    if (diffDays === 1 || (diffDays === 0 && d.getDate() !== now.getDate())) {
+      return "Yesterday"
+    }
+    if (diffDays < 7) {
+      return d.toLocaleDateString(undefined, { weekday: "short" })
     }
     return d.toLocaleDateString(undefined, {
       month: "short",
@@ -49,6 +54,43 @@ function formatThreadDate(iso: string | null | undefined): string {
   } catch {
     return ""
   }
+}
+
+function groupThreadsByDate(threads: ThreadSummary[]) {
+  const groups: { title: string; items: ThreadSummary[] }[] = [
+    { title: "Today", items: [] },
+    { title: "Yesterday", items: [] },
+    { title: "Previous 7 Days", items: [] },
+    { title: "Older", items: [] },
+  ]
+
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const lastWeek = new Date(now)
+  lastWeek.setDate(lastWeek.getDate() - 7)
+
+  threads.forEach((t) => {
+    if (!t.updated_at) {
+      groups[3].items.push(t)
+      return
+    }
+    const d = new Date(t.updated_at)
+    d.setHours(0, 0, 0, 0)
+
+    if (d.getTime() === now.getTime()) {
+      groups[0].items.push(t)
+    } else if (d.getTime() === yesterday.getTime()) {
+      groups[1].items.push(t)
+    } else if (d.getTime() >= lastWeek.getTime()) {
+      groups[2].items.push(t)
+    } else {
+      groups[3].items.push(t)
+    }
+  })
+
+  return groups.filter((g) => g.items.length > 0)
 }
 
 export interface ChatHistorySheetProps {
@@ -65,6 +107,7 @@ export interface ChatHistorySheetProps {
   setThreadsLoading: (v: boolean) => void
   currentThreadId: string | undefined
   onSelectThread: (threadId: string) => void
+  onNewChat?: () => void
   getThreads: (options?: GetThreadsOptions) => Promise<ThreadListResponse>
   deleteThread?: (threadId: string) => Promise<void>
 }
@@ -89,7 +132,7 @@ export function ChatHistorySheet({
   const [loadingMore, setLoadingMore] = useState(false)
   const [threadToDelete, setThreadToDelete] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
-  const loadMoreSentinelRef = useRef<HTMLLIElement>(null)
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null)
   const loadingMoreRef = useRef(false)
   const threadListLengthRef = useRef(threadList.length)
   threadListLengthRef.current = threadList.length
@@ -152,6 +195,7 @@ export function ChatHistorySheet({
     setTotalThreads,
     setThreadsLoading,
   ])
+
 
   useEffect(() => {
     if (
@@ -228,19 +272,19 @@ export function ChatHistorySheet({
           </SheetDescription>
         </SheetHeader>
         {userId?.trim() ? (
-          <div className="relative flex items-center border rounded-md px-3 py-2 mt-2 bg-muted/50">
-            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <div className="flex items-center bg-muted/50 rounded-lg px-2 py-1.5 focus-within:bg-background focus-within:ring-1 focus-within:ring-ring transition-all">
+            <Search className="h-4 w-4 shrink-0 text-muted-foreground ml-1" />
             <input
               type="search"
-              placeholder="Search conversations…"
+              placeholder="Search..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="flex-1 bg-transparent border-0 outline-none text-sm ml-2 placeholder:text-muted-foreground"
+              className="flex-1 bg-transparent border-0 outline-none text-sm ml-2 placeholder:text-muted-foreground py-0.5"
               aria-label="Search conversations"
             />
           </div>
         ) : null}
-        <div className="flex-1 overflow-y-auto py-4 min-h-0">
+        <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40">
           {!userId?.trim() ? null : threadsLoading ? (
             <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -253,58 +297,91 @@ export function ChatHistorySheet({
                 : "No conversations yet."}
             </p>
           ) : (
-            <ul className="space-y-1">
-              {threadList.map((t) => {
-                const preview =
-                  t.preview?.trim().slice(0, 60) ||
-                  (t.updated_at
-                    ? `Conversation · ${formatThreadDate(t.updated_at)}`
-                    : "Conversation")
-
-                return (
-                  <li key={t.thread_id} className="group relative flex items-center pr-2 group">
-                    <Button
-                      variant="ghost"
-                      className={cn(
-                        "flex-1 justify-start font-normal h-auto py-2 flex flex-col items-start pr-8",
-                        t.thread_id === currentThreadId && "bg-muted"
-                      )}
-                      onClick={() => onSelectThread(t.thread_id)}
-                    >
-                      <span className="truncate w-full text-left text-sm">
-                        {preview
+            <div className="py-2">
+              <AnimatePresence mode="popLayout" initial={false}>
+                {groupThreadsByDate(threadList).map((group, groupIdx) => (
+                  <motion.div
+                    key={group.title}
+                    className="mb-6 last:mb-0"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: groupIdx * 0.05 }}
+                  >
+                    <h3 className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      {group.title}
+                    </h3>
+                    <ul className="space-y-1">
+                      {group.items.map((t) => {
+                        const cleanPreview = (t.preview || "")
                           .replace(/```[\s\S]*?```|`([^`]*)`|!\[.*?\]\(.*?\)|\[(.*?)\]\(.*?\)|(\*\*|__|\*|_|~~)(.*?)\3|^#{1,6}\s*|^>\s*|^\s*[-*+]\s+|^\s*\d+\.\s+|<[^>]+>/gm, "$1$2$4")
-                          .slice(0, 60)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {t.thread_id}
-                      </span>
-                    </Button>
-                    {deleteThread && (
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="absolute right-2 group-hover:opacity-100 opacity-0 transition-opacity focus:opacity-100"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setThreadToDelete(t.thread_id)
-                        }}
-                        aria-label="Delete conversation"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </li>
-                )
-              })}
+                          .trim()
+
+                        const title = cleanPreview || "New Conversation"
+                        const dateStr = formatThreadDate(t.updated_at)
+
+                        return (
+                          <motion.li
+                            key={t.thread_id}
+                            className="group flex relative list-none"
+                            layout
+                            initial={{ opacity: 0, scale: 0.98 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.98 }}
+                          >
+                            <Button
+                              variant="ghost"
+                              className={cn(
+                                "w-full justify-start font-normal h-auto p-3 relative transition-all duration-200 cursor-pointer",
+                                t.thread_id === currentThreadId ? "bg-muted/80 shadow-sm" : "hover:bg-muted"
+                              )}
+                              onClick={() => onSelectThread(t.thread_id)}
+                            >
+                              <div className="flex items-start gap-3 w-full overflow-hidden">
+                                <div className="flex flex-col items-start overflow-hidden w-full text-left">
+                                  <span className={cn(
+                                    "truncate w-full text-sm",
+                                    t.thread_id === currentThreadId ? "font-semibold" : "font-medium"
+                                  )}>
+                                    {title}
+                                  </span>
+                                  {dateStr && (
+                                    <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-muted-foreground">
+                                      <Clock className="h-3 w-3" />
+                                      <span>{dateStr}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </Button>
+                            {deleteThread && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all focus:opacity-100 z-10"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setThreadToDelete(t.thread_id)
+                                }}
+                                aria-label="Delete conversation"
+                              >
+                                <Trash2 />
+                              </Button>
+                            )}
+                          </motion.li>
+                        )
+                      })}
+                    </ul>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
               {threadList.length < totalThreads ? (
-                <li ref={loadMoreSentinelRef} className="py-2 flex justify-center">
+                <div ref={loadMoreSentinelRef} className="py-4 flex justify-center">
                   {loadingMore ? (
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   ) : null}
-                </li>
+                </div>
               ) : null}
-            </ul>
+            </div>
           )}
         </div>
       </SheetContent>

@@ -40,8 +40,8 @@ function persistedToMessages(parsed: PersistedMessage[] | null): Message[] | nul
     content: p.content,
     createdAt: p.createdAt ? new Date(p.createdAt) : undefined,
     custom_data: p.custom_data,
-    toolInvocations: p.toolInvocations as ToolInvocation[] | undefined,
     parts: p.parts,
+    runId: p.runId,
   }))
 }
 
@@ -63,6 +63,7 @@ function apiMessagesToUiMessages(apiMessages: ApiChatMessage[]): Message[] {
         role: "user",
         content: m.content ?? "",
         createdAt: new Date(),
+        runId: m.run_id,
         custom_data: m.custom_data,
       })
       i += 1
@@ -142,7 +143,11 @@ function apiMessagesToUiMessages(apiMessages: ApiChatMessage[]): Message[] {
         role: "assistant",
         content,
         createdAt: new Date(),
+        runId: firstRunId,
         custom_data: lastCustomData,
+        // Since backend doesn't currently return feedback with history from the LangGraph checkpointer out-of-the-box,
+        // we might not get it from `apiMessages`. But if it ever does come through (e.g. injected into `custom_data`),
+        // we can attempt to parse it here. For now, history feedback will rely on `storage-adapter.ts` for local persistence.
         toolInvocations:
           toolInvocations.length > 0 ? toolInvocations : undefined,
       })
@@ -164,6 +169,7 @@ export interface ChatRuntimeActions {
   setInput: (value: string) => void
   sendMessage: (text: string) => Promise<void>
   stopGeneration: () => void
+  invoke: (text: string) => Promise<void>
   setMessages: (messages: Message[] | ((prev: Message[]) => Message[])) => void
   clearChat: (options?: { keepStarter?: boolean; createNewThread?: boolean }) => void
   setAgent: (agent: string) => void
@@ -172,7 +178,8 @@ export interface ChatRuntimeActions {
   loadThread: (threadId: string, userId?: string) => Promise<void>
   rateResponse: (
     messageId: string,
-    rating: "thumbs-up" | "thumbs-down"
+    rating: number,
+    comment?: string
   ) => Promise<void>
   refetchMetadata: () => Promise<void>
   getThreads: (
@@ -253,6 +260,27 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
       cancelled = true
     }
   }, [config.url])
+
+  // Periodic health check
+  useEffect(() => {
+    let cancelled = false
+    let timer: any
+
+    const check = async () => {
+      const svc = getService()
+      const status = await svc.healthCheck()
+      if (!cancelled) {
+        dispatch({ type: "SET_BACKEND_STATUS", payload: status })
+      }
+      timer = setTimeout(check, 120000) // check every 2 minutes
+    }
+
+    check()
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [getService])
 
   const storageBaseKey = useMemo(
     () => getStorageBaseKey(config),
@@ -484,6 +512,66 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
     [state.isGenerating, state.metadata, state.currentThreadId, getService]
   )
 
+  const invoke = useCallback(
+    async (text: string) => {
+      if (state.isGenerating) return
+      const meta = state.metadata
+      const agent = configRef.current.agent ?? meta?.default_agent
+      const model = configRef.current.model ?? meta?.default_model
+      if (!agent) return
+
+      let threadIdToUse = state.currentThreadId
+      if (!threadIdToUse) {
+        threadIdToUse = generateThreadId()
+        dispatch({ type: "SET_THREAD_ID", payload: threadIdToUse })
+        saveCurrentThreadId(getStorageBaseKey(configRef.current), threadIdToUse)
+      }
+
+      const userMessage: Message = {
+        id: `user-${Date.now()}`,
+        role: "user",
+        content: text,
+        createdAt: new Date(),
+      }
+      const aiMessageId = `ai-${Date.now()}`
+      const assistantMessage: Message = {
+        id: aiMessageId,
+        role: "assistant",
+        content: "",
+        createdAt: new Date(),
+      }
+      dispatch({
+        type: "START_SEND",
+        payload: { userMessage, assistantMessage },
+      })
+
+      const svc = getService()
+      try {
+        const response = await svc.invoke(text, {
+          agent,
+          model,
+          threadId: threadIdToUse,
+          userId: configRef.current.userId,
+        })
+        dispatch({
+          type: "STREAM_TOKEN",
+          payload: { messageId: aiMessageId, content: response.content },
+        })
+      } catch (err) {
+        dispatch({
+          type: "STREAM_ERROR",
+          payload: {
+            messageId: aiMessageId,
+            error: err instanceof Error ? err.message : "Unknown error",
+          },
+        })
+      } finally {
+        dispatch({ type: "STREAM_END" })
+      }
+    },
+    [state.isGenerating, state.metadata, state.currentThreadId, getService]
+  )
+
   const stopGeneration = useCallback(() => {
     getService().abortStream()
     dispatch({ type: "STREAM_END" })
@@ -568,12 +656,27 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
   )
 
   const rateResponse = useCallback(
-    async (messageId: string, rating: "thumbs-up" | "thumbs-down") => {
+    async (messageId: string, rating: number, comment?: string) => {
       const message = state.messages.find((m) => m.id === messageId)
-      const runId = message?.custom_data?.run_id as string | undefined
-      if (!runId) return
+      if (!message) return
+
+      // Optimistic update
+      dispatch({ type: "SET_MESSAGE_RATING", payload: { messageId, rating, comment } })
+
+      const runId = (message.runId ?? message.custom_data?.run_id ?? messageId) as string
+      if (!runId || runId.startsWith("ai-") || runId.startsWith("user-") || runId.startsWith("assistant-")) {
+        console.warn("Cannot send feedback: no valid runId found for message", messageId, runId)
+        return
+      }
+
       const svc = getService()
-      await svc.sendFeedback(runId, "human-feedback", rating === "thumbs-up" ? 1 : 0)
+      try {
+        await svc.sendFeedback(runId, "human-feedback-stars", rating, comment ? { comment } : undefined)
+      } catch (err) {
+        console.error("Failed to send feedback:", err)
+        // Rollback optimistic update on failure? Or just log?
+        // Let's at least keep the UI state for now, but log the error.
+      }
     },
     [state.messages, getService]
   )
@@ -620,6 +723,7 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
     () => ({
       setInput,
       sendMessage,
+      invoke,
       stopGeneration,
       setMessages,
       clearChat,
@@ -636,6 +740,7 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
     [
       setInput,
       sendMessage,
+      invoke,
       stopGeneration,
       setMessages,
       clearChat,

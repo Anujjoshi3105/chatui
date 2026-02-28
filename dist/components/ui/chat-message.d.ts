@@ -59,6 +59,9 @@ export interface Message {
     toolInvocations?: ToolInvocation[];
     parts?: MessagePart[];
     custom_data?: Record<string, any>;
+    rating?: number;
+    comment?: string;
+    runId?: string;
 }
 export interface ChatMessageProps extends Message {
     showTimeStamp?: boolean;

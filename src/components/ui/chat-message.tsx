@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-import { motion } from "framer-motion"
+import { m as motion } from "framer-motion"
 import { Ban, ChevronRight, Terminal } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -9,7 +9,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { FilePreview } from "@/components/ui/file-preview"
+import { lazy, Suspense } from "react"
+const FilePreview = lazy(() => import("@/components/ui/file-preview").then(m => ({ default: m.FilePreview })))
 import { LazyMarkdownRenderer } from "@/components/ui/lazy-markdown-renderer"
 import { TypingIndicator } from "@/components/ui/typing-indicator"
 import { ToolResult } from "@/components/ui/tool-result"
@@ -128,6 +129,9 @@ export interface Message {
   toolInvocations?: ToolInvocation[]
   parts?: MessagePart[]
   custom_data?: Record<string, any>
+  rating?: number
+  comment?: string
+  runId?: string
 }
 
 export interface ChatMessageProps extends Message {
@@ -222,7 +226,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       {files && files.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-2">
           {files.map((file, index) => (
-            <FilePreview file={file} key={index} />
+            <Suspense key={index} fallback={<div className="h-16 w-16 animate-pulse bg-muted rounded-xl" />}>
+              <FilePreview file={file} />
+            </Suspense>
           ))}
         </div>
       )}

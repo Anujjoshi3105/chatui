@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState } from "react"
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, m as motion } from "framer-motion"
 import { ChevronRight, Info, Loader2, Mic, Paperclip, Square } from "lucide-react"
 import { omit } from "remeda"
 import { cn } from "@/lib/utils"
 import { useAudioRecording } from "@/hooks/use-audio-recording"
 import { useAutosizeTextArea } from "@/hooks/use-autosize-textarea"
 import { AudioVisualizer } from "@/components/ui/audio-visualizer"
+import { lazy, Suspense } from "react"
 import { Button } from "@/components/ui/button"
-import { FilePreview } from "@/components/ui/file-preview"
+const FilePreview = lazy(() => import("@/components/ui/file-preview").then(m => ({ default: m.FilePreview })))
 import { InterruptPrompt } from "@/components/ui/interrupt-prompt"
 import { PromptSuggestions } from "@/components/ui/prompt-suggestions"
 import {
@@ -260,8 +261,8 @@ export function MessageInput({
                 <AnimatePresence mode="popLayout">
                   {props.files?.map((file) => {
                     return (
+                    <Suspense key={file.name + String(file.lastModified)} fallback={<div className="h-16 w-16 animate-pulse bg-muted rounded-xl" />}>
                       <FilePreview
-                        key={file.name + String(file.lastModified)}
                         file={file}
                         onRemove={() => {
                           props.setFiles((files) => {
@@ -275,6 +276,7 @@ export function MessageInput({
                           })
                         }}
                       />
+                    </Suspense>
                     )
                   })}
                 </AnimatePresence>

@@ -1,4 +1,4 @@
-import { ThreadSummary } from '../core/services/types';
+import { ThreadSummary, ServiceMetadata } from '../core/services/types';
 interface ChatbotState {
     isMaximized: boolean;
     setIsMaximized: (val: boolean) => void;
@@ -16,6 +16,22 @@ interface ChatbotState {
     setTotalThreads: (val: number) => void;
     threadsLoading: boolean;
     setThreadsLoading: (val: boolean) => void;
+    autoSpeak: boolean;
+    setAutoSpeak: (val: boolean) => void;
+    showDisclaimer: boolean;
+    setShowDisclaimer: (val: boolean) => void;
+    metadata: ServiceMetadata | null;
+    setMetadata: (val: ServiceMetadata | null) => void;
+    searchInput: string;
+    setSearchInput: (val: string) => void;
+    searchQuery: string;
+    setSearchQuery: (val: string) => void;
+    loadingMore: boolean;
+    setLoadingMore: (val: boolean) => void;
+    threadToDelete: string | null;
+    setThreadToDelete: (val: string | null) => void;
+    isDeleting: boolean;
+    setIsDeleting: (val: boolean) => void;
 }
 export declare const useChatbotStore: import('zustand').UseBoundStore<import('zustand').StoreApi<ChatbotState>>;
 export {};

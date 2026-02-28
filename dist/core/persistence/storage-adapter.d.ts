@@ -6,6 +6,7 @@ export interface PersistedMessage {
     custom_data?: Record<string, unknown>;
     toolInvocations?: unknown[];
     parts?: unknown[];
+    runId?: string;
 }
 export declare function loadMessages(storageKey: string): PersistedMessage[] | null;
 /** Accepts messages with Date or string createdAt; JSON.stringify serializes Dates. */

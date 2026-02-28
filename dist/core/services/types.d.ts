@@ -1,3 +1,7 @@
+export interface HealthStatus {
+    status: "ok" | "error" | "loading";
+    details?: Record<string, unknown>;
+}
 export interface AgentInfo {
     key: string;
     description: string;

@@ -20,6 +20,9 @@ export interface Message {
     custom_data?: Record<string, unknown>;
     toolInvocations?: ToolInvocation[];
     parts?: unknown[];
+    rating?: number;
+    comment?: string;
+    runId?: string;
 }
 export interface ChatRuntimeState {
     messages: Message[];
@@ -30,6 +33,7 @@ export interface ChatRuntimeState {
     currentAssistantMessageId: string | null;
     metadata: import('../services/types').ServiceMetadata | null;
     metadataLoading: boolean;
+    backendStatus: import('../services/types').HealthStatus;
     error: string | null;
 }
 export type ChatRuntimeConfig = {
@@ -102,6 +106,16 @@ export type ChatRuntimeAction = {
 } | {
     type: "SET_FOLLOW_UP";
     payload: string[];
+} | {
+    type: "SET_BACKEND_STATUS";
+    payload: import('../services/types').HealthStatus;
+} | {
+    type: "SET_MESSAGE_RATING";
+    payload: {
+        messageId: string;
+        rating: number | undefined;
+        comment?: string;
+    };
 };
 export declare function chatRuntimeReducer(state: ChatRuntimeState, action: ChatRuntimeAction): ChatRuntimeState;
 export declare function getInitialChatState(config: ChatRuntimeConfig, metadata: ChatRuntimeState["metadata"]): ChatRuntimeState;

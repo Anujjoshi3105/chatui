@@ -1,4 +1,7 @@
-import { E as composeEventHandlers, I as __commonJSMin, L as __export, N as useComposedRefs$1, O as cn, R as __toCommonJS, S as Primitive, T as createContextScope, b as DismissableLayer, d as Portal, f as Anchor, g as createPopperScope, h as Root2$1, l as useControllableState, m as Content, n as init_is_prop_valid_framer_motion, p as Arrow, r as is_prop_valid_framer_motion_exports, t as CopyButton, u as Presence, z as __toESM } from "./copy-button-DFMpATUJ.js";
+import { a as __toCommonJS, i as __export, n as is_prop_valid_framer_motion_exports, o as __toESM, r as __commonJSMin, t as init_is_prop_valid_framer_motion } from "./is-prop-valid_framer-motion-Bb0cVohX.js";
+import "./createLucideIcon-C1Qbi7jU.js";
+import { A as useComposedRefs$1, C as composeEventHandlers, S as createContextScope, T as cn, _ as DismissableLayer, c as Portal, d as Content, f as Root2$1, l as Anchor, o as useControllableState, p as createPopperScope, s as Presence, u as Arrow, y as Primitive } from "./tooltip-CFKmWfJL.js";
+import { t as CopyButton } from "./copy-button-B7jIZ74N.js";
 import * as React$1 from "react";
 import React, { Children, Component, Fragment, createContext, createElement, forwardRef, isValidElement, useCallback, useContext, useEffect, useId, useInsertionEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Fragment as Fragment$1, jsx, jsxs } from "react/jsx-runtime";
@@ -12437,7 +12440,7 @@ function rehypeRaw(e) {
 	};
 }
 var originalBodyUserSelect, HOVERCARD_NAME = "HoverCard", [createHoverCardContext, createHoverCardScope] = createContextScope(HOVERCARD_NAME, [createPopperScope]), usePopperScope = createPopperScope(), [HoverCardProvider, useHoverCardContext] = createHoverCardContext(HOVERCARD_NAME), HoverCard = (e) => {
-	let { __scopeHoverCard: t, children: n, open: r, defaultOpen: i, onOpenChange: a, openDelay: o = 700, closeDelay: c = 300 } = e, l = usePopperScope(t), u = React$1.useRef(0), d = React$1.useRef(0), f = React$1.useRef(!1), g = React$1.useRef(!1), [_, v] = useControllableState({
+	let { __scopeHoverCard: t, children: n, open: r, defaultOpen: i, onOpenChange: a, openDelay: o = 700, closeDelay: c = 300 } = e, l = usePopperScope(t), u = React$1.useRef(0), d = React$1.useRef(0), f = React$1.useRef(!1), p = React$1.useRef(!1), [g, v] = useControllableState({
 		prop: r,
 		defaultProp: i ?? !1,
 		onChange: a,
@@ -12445,19 +12448,19 @@ var originalBodyUserSelect, HOVERCARD_NAME = "HoverCard", [createHoverCardContex
 	}), y = React$1.useCallback(() => {
 		clearTimeout(d.current), u.current = window.setTimeout(() => v(!0), o);
 	}, [o, v]), b = React$1.useCallback(() => {
-		clearTimeout(u.current), !f.current && !g.current && (d.current = window.setTimeout(() => v(!1), c));
+		clearTimeout(u.current), !f.current && !p.current && (d.current = window.setTimeout(() => v(!1), c));
 	}, [c, v]), x = React$1.useCallback(() => v(!1), [v]);
 	return React$1.useEffect(() => () => {
 		clearTimeout(u.current), clearTimeout(d.current);
 	}, []), /* @__PURE__ */ jsx(HoverCardProvider, {
 		scope: t,
-		open: _,
+		open: g,
 		onOpenChange: v,
 		onOpen: y,
 		onClose: b,
 		onDismiss: x,
 		hasSelectionRef: f,
-		isPointerDownOnContentRef: g,
+		isPointerDownOnContentRef: p,
 		children: /* @__PURE__ */ jsx(Root2$1, {
 			...l,
 			children: n
@@ -12465,20 +12468,20 @@ var originalBodyUserSelect, HOVERCARD_NAME = "HoverCard", [createHoverCardContex
 	});
 };
 HoverCard.displayName = HOVERCARD_NAME;
-var TRIGGER_NAME = "HoverCardTrigger", HoverCardTrigger = React$1.forwardRef((t, n) => {
-	let { __scopeHoverCard: r, ...i } = t, a = useHoverCardContext(TRIGGER_NAME, r);
+var TRIGGER_NAME = "HoverCardTrigger", HoverCardTrigger = React$1.forwardRef((e, t) => {
+	let { __scopeHoverCard: n, ...r } = e, i = useHoverCardContext(TRIGGER_NAME, n);
 	return /* @__PURE__ */ jsx(Anchor, {
 		asChild: !0,
-		...usePopperScope(r),
+		...usePopperScope(n),
 		children: /* @__PURE__ */ jsx(Primitive.a, {
-			"data-state": a.open ? "open" : "closed",
-			...i,
-			ref: n,
-			onPointerEnter: composeEventHandlers(t.onPointerEnter, excludeTouch(a.onOpen)),
-			onPointerLeave: composeEventHandlers(t.onPointerLeave, excludeTouch(a.onClose)),
-			onFocus: composeEventHandlers(t.onFocus, a.onOpen),
-			onBlur: composeEventHandlers(t.onBlur, a.onClose),
-			onTouchStart: composeEventHandlers(t.onTouchStart, (e) => e.preventDefault())
+			"data-state": i.open ? "open" : "closed",
+			...r,
+			ref: t,
+			onPointerEnter: composeEventHandlers(e.onPointerEnter, excludeTouch(i.onOpen)),
+			onPointerLeave: composeEventHandlers(e.onPointerLeave, excludeTouch(i.onClose)),
+			onFocus: composeEventHandlers(e.onFocus, i.onOpen),
+			onBlur: composeEventHandlers(e.onBlur, i.onClose),
+			onTouchStart: composeEventHandlers(e.onTouchStart, (e) => e.preventDefault())
 		})
 	});
 });
@@ -12499,22 +12502,22 @@ var PORTAL_NAME = "HoverCardPortal", [PortalProvider, usePortalContext] = create
 	});
 };
 HoverCardPortal.displayName = PORTAL_NAME;
-var CONTENT_NAME = "HoverCardContent", HoverCardContent = React$1.forwardRef((t, n) => {
-	let r = usePortalContext(CONTENT_NAME, t.__scopeHoverCard), { forceMount: i = r.forceMount, ...a } = t, o = useHoverCardContext(CONTENT_NAME, t.__scopeHoverCard);
+var CONTENT_NAME = "HoverCardContent", HoverCardContent = React$1.forwardRef((e, t) => {
+	let n = usePortalContext(CONTENT_NAME, e.__scopeHoverCard), { forceMount: r = n.forceMount, ...i } = e, a = useHoverCardContext(CONTENT_NAME, e.__scopeHoverCard);
 	return /* @__PURE__ */ jsx(Presence, {
-		present: i || o.open,
+		present: r || a.open,
 		children: /* @__PURE__ */ jsx(HoverCardContentImpl, {
-			"data-state": o.open ? "open" : "closed",
-			...a,
-			onPointerEnter: composeEventHandlers(t.onPointerEnter, excludeTouch(o.onOpen)),
-			onPointerLeave: composeEventHandlers(t.onPointerLeave, excludeTouch(o.onClose)),
-			ref: n
+			"data-state": a.open ? "open" : "closed",
+			...i,
+			onPointerEnter: composeEventHandlers(e.onPointerEnter, excludeTouch(a.onOpen)),
+			onPointerLeave: composeEventHandlers(e.onPointerLeave, excludeTouch(a.onClose)),
+			ref: t
 		})
 	});
 });
 HoverCardContent.displayName = CONTENT_NAME;
-var HoverCardContentImpl = React$1.forwardRef((t, n) => {
-	let { __scopeHoverCard: i, onEscapeKeyDown: a, onPointerDownOutside: o, onFocusOutside: c, onInteractOutside: u, ...d } = t, f = useHoverCardContext(CONTENT_NAME, i), p = usePopperScope(i), m = React$1.useRef(null), _ = useComposedRefs$1(n, m), [v, y] = React$1.useState(!1);
+var HoverCardContentImpl = React$1.forwardRef((e, t) => {
+	let { __scopeHoverCard: n, onEscapeKeyDown: r, onPointerDownOutside: i, onFocusOutside: a, onInteractOutside: l, ...u } = e, f = useHoverCardContext(CONTENT_NAME, n), m = usePopperScope(n), g = React$1.useRef(null), _ = useComposedRefs$1(t, g), [v, y] = React$1.useState(!1);
 	return React$1.useEffect(() => {
 		if (v) {
 			let e = document.body;
@@ -12523,7 +12526,7 @@ var HoverCardContentImpl = React$1.forwardRef((t, n) => {
 			};
 		}
 	}, [v]), React$1.useEffect(() => {
-		if (m.current) {
+		if (g.current) {
 			let e = () => {
 				y(!1), f.isPointerDownOnContentRef.current = !1, setTimeout(() => {
 					document.getSelection()?.toString() !== "" && (f.hasSelectionRef.current = !0);
@@ -12534,26 +12537,26 @@ var HoverCardContentImpl = React$1.forwardRef((t, n) => {
 			};
 		}
 	}, [f.isPointerDownOnContentRef, f.hasSelectionRef]), React$1.useEffect(() => {
-		m.current && getTabbableNodes(m.current).forEach((e) => e.setAttribute("tabindex", "-1"));
+		g.current && getTabbableNodes(g.current).forEach((e) => e.setAttribute("tabindex", "-1"));
 	}), /* @__PURE__ */ jsx(DismissableLayer, {
 		asChild: !0,
 		disableOutsidePointerEvents: !1,
-		onInteractOutside: u,
-		onEscapeKeyDown: a,
-		onPointerDownOutside: o,
-		onFocusOutside: composeEventHandlers(c, (e) => {
+		onInteractOutside: l,
+		onEscapeKeyDown: r,
+		onPointerDownOutside: i,
+		onFocusOutside: composeEventHandlers(a, (e) => {
 			e.preventDefault();
 		}),
 		onDismiss: f.onDismiss,
 		children: /* @__PURE__ */ jsx(Content, {
-			...p,
-			...d,
-			onPointerDown: composeEventHandlers(d.onPointerDown, (e) => {
+			...m,
+			...u,
+			onPointerDown: composeEventHandlers(u.onPointerDown, (e) => {
 				e.currentTarget.contains(e.target) && y(!0), f.hasSelectionRef.current = !1, f.isPointerDownOnContentRef.current = !0;
 			}),
 			ref: _,
 			style: {
-				...d.style,
+				...u.style,
 				userSelect: v ? "text" : void 0,
 				WebkitUserSelect: v ? "text" : void 0,
 				"--radix-hover-card-content-transform-origin": "var(--radix-popper-transform-origin)",
@@ -17329,9 +17332,9 @@ function useSpring(e, t = {}) {
 		...t
 	});
 }
-const LinkPreview = ({ children: e, url: t, className: n, width: r = 200, height: a = 125, isStatic: o = !1, imageSrc: c = "" }) => {
-	let l;
-	l = o ? c : `https://api.microlink.io/?${encode({
+const LinkPreview = ({ children: e, url: t, className: n, width: r = 200, height: i = 125, isStatic: a = !1, imageSrc: o = "" }) => {
+	let c;
+	c = a ? o : `https://api.microlink.io/?${encode({
 		url: t,
 		screenshot: !0,
 		meta: !1,
@@ -17340,9 +17343,9 @@ const LinkPreview = ({ children: e, url: t, className: n, width: r = 200, height
 		"viewport.isMobile": !0,
 		"viewport.deviceScaleFactor": 1,
 		"viewport.width": r * 3,
-		"viewport.height": a * 3
+		"viewport.height": i * 3
 	})}`;
-	let [u, d] = React.useState(!1), [f, p] = React.useState(!1);
+	let [l, d] = React.useState(!1), [f, p] = React.useState(!1);
 	React.useEffect(() => {
 		p(!0);
 	}, []);
@@ -17353,9 +17356,9 @@ const LinkPreview = ({ children: e, url: t, className: n, width: r = 200, height
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [f ? /* @__PURE__ */ jsx("div", {
 		className: "hidden",
 		children: /* @__PURE__ */ jsx("img", {
-			src: l,
+			src: c,
 			width: r,
-			height: a,
+			height: i,
 			alt: "hidden image"
 		})
 	}) : null, /* @__PURE__ */ jsxs(Root2, {
@@ -17377,7 +17380,7 @@ const LinkPreview = ({ children: e, url: t, className: n, width: r = 200, height
 			side: "top",
 			align: "center",
 			sideOffset: 10,
-			children: /* @__PURE__ */ jsx(AnimatePresence, { children: u && /* @__PURE__ */ jsx(motion.div, {
+			children: /* @__PURE__ */ jsx(AnimatePresence, { children: l && /* @__PURE__ */ jsx(motion.div, {
 				initial: {
 					opacity: 0,
 					y: 20,
@@ -17407,9 +17410,9 @@ const LinkPreview = ({ children: e, url: t, className: n, width: r = 200, height
 					className: "block p-1 bg-white border-2 border-transparent shadow rounded-xl hover:border-neutral-200 dark:hover:border-neutral-800",
 					style: { fontSize: 0 },
 					children: /* @__PURE__ */ jsx("img", {
-						src: o ? c : l,
+						src: a ? o : c,
 						width: r,
-						height: a,
+						height: i,
 						className: "rounded-lg",
 						alt: "preview image"
 					})
@@ -17445,8 +17448,8 @@ function CodeBlock({ children: e, className: t, ...n }) {
 	});
 }
 function withClass(e, t) {
-	let n = ({ node: n, className: r, ...a }) => React.createElement(e, {
-		...a,
+	let n = ({ node: n, className: r, ...i }) => React.createElement(e, {
+		...i,
 		className: cn(t, r)
 	});
 	return n.displayName = e, n;
@@ -17459,14 +17462,14 @@ var components = {
 	h5: withClass("h5", "text-sm font-medium mb-1"),
 	p: withClass("p", "whitespace-pre-wrap mb-4 last:mb-0"),
 	strong: withClass("strong", "font-semibold"),
-	a({ node: e, className: t, children: n, href: r, ...a }) {
+	a({ node: e, className: t, children: n, href: r, ...i }) {
 		return r ? /* @__PURE__ */ jsx(LinkPreview, {
 			url: r,
 			className: cn("text-primary underline underline-offset-2 hover:opacity-80 transition-opacity", t),
 			children: n
 		}) : /* @__PURE__ */ jsx("a", {
 			className: cn("text-primary underline underline-offset-2 hover:opacity-80 transition-opacity", t),
-			...a,
+			...i,
 			children: n
 		});
 	},

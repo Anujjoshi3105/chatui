@@ -1,6 +1,5 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
 import { Volume2, Square } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -10,7 +9,8 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import { getVoiceSupport, SpeechSynthesisManager, stripMarkdownForSpeech, type VoiceConfig } from "@/lib/voice.sdk"
+import type { VoiceConfig } from "@/lib/voice.sdk"
+import { useSpeech } from "@/hooks/use-speech"
 
 interface SpeakButtonProps {
     content: string
@@ -27,46 +27,7 @@ export function SpeakButton({
     size = "icon",
     variant = "ghost",
 }: SpeakButtonProps) {
-    const [isSupported, setIsSupported] = useState(false)
-    const [isSpeaking, setIsSpeaking] = useState(false)
-    const [manager, setManager] = useState<SpeechSynthesisManager | null>(null)
-
-    useEffect(() => {
-        const support = getVoiceSupport()
-        setIsSupported(support.speechSynthesis)
-
-        if (support.speechSynthesis) {
-            const synthesisManager = new SpeechSynthesisManager(voiceConfig)
-
-            synthesisManager.onStart = () => setIsSpeaking(true)
-            synthesisManager.onEnd = () => setIsSpeaking(false)
-            synthesisManager.onError = () => setIsSpeaking(false)
-
-            setManager(synthesisManager)
-
-            return () => {
-                synthesisManager.destroy()
-            }
-        }
-    }, [])
-
-    // Update config when it changes
-    useEffect(() => {
-        if (manager && voiceConfig) {
-            manager.updateConfig(voiceConfig)
-        }
-    }, [manager, voiceConfig])
-
-    const handleClick = useCallback(() => {
-        if (!manager || !content) return
-
-        if (isSpeaking) {
-            manager.stop()
-        } else {
-            const cleanText = stripMarkdownForSpeech(content)
-            manager.speak(cleanText)
-        }
-    }, [manager, content, isSpeaking])
+    const { isSupported, isSpeaking, toggle } = useSpeech(voiceConfig)
 
     if (!isSupported) {
         return null
@@ -85,7 +46,7 @@ export function SpeakButton({
                             isSpeaking && "text-primary bg-primary/10",
                             className
                         )}
-                        onClick={handleClick}
+                        onClick={() => toggle(content)}
                         aria-label={isSpeaking ? "Stop speaking" : "Listen to message"}
                     >
                         {isSpeaking ? (
@@ -115,45 +76,7 @@ export function SpeakButtonInline({
     voiceConfig,
     className,
 }: SpeakButtonInlineProps) {
-    const [isSupported, setIsSupported] = useState(false)
-    const [isSpeaking, setIsSpeaking] = useState(false)
-    const [manager, setManager] = useState<SpeechSynthesisManager | null>(null)
-
-    useEffect(() => {
-        const support = getVoiceSupport()
-        setIsSupported(support.speechSynthesis)
-
-        if (support.speechSynthesis) {
-            const synthesisManager = new SpeechSynthesisManager(voiceConfig)
-
-            synthesisManager.onStart = () => setIsSpeaking(true)
-            synthesisManager.onEnd = () => setIsSpeaking(false)
-            synthesisManager.onError = () => setIsSpeaking(false)
-
-            setManager(synthesisManager)
-
-            return () => {
-                synthesisManager.destroy()
-            }
-        }
-    }, [])
-
-    useEffect(() => {
-        if (manager && voiceConfig) {
-            manager.updateConfig(voiceConfig)
-        }
-    }, [manager, voiceConfig])
-
-    const handleClick = useCallback(() => {
-        if (!manager || !content) return
-
-        if (isSpeaking) {
-            manager.stop()
-        } else {
-            const cleanText = stripMarkdownForSpeech(content)
-            manager.speak(cleanText)
-        }
-    }, [manager, content, isSpeaking])
+    const { isSupported, isSpeaking, toggle } = useSpeech(voiceConfig)
 
     if (!isSupported) {
         return null
@@ -162,7 +85,7 @@ export function SpeakButtonInline({
     return (
         <button
             type="button"
-            onClick={handleClick}
+            onClick={() => toggle(content)}
             className={cn(
                 "inline-flex items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground hover:bg-muted",
                 isSpeaking && "text-primary",
@@ -178,3 +101,4 @@ export function SpeakButtonInline({
         </button>
     )
 }
+

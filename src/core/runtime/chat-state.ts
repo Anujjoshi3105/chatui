@@ -28,6 +28,9 @@ export interface Message {
   custom_data?: Record<string, unknown>
   toolInvocations?: ToolInvocation[]
   parts?: unknown[]
+  rating?: number
+  comment?: string
+  runId?: string
 }
 
 export interface ChatRuntimeState {
@@ -39,6 +42,7 @@ export interface ChatRuntimeState {
   currentAssistantMessageId: string | null
   metadata: import("@/core/services/types").ServiceMetadata | null
   metadataLoading: boolean
+  backendStatus: import("@/core/services/types").HealthStatus
   error: string | null
 }
 
@@ -72,6 +76,8 @@ export type ChatRuntimeAction =
   | { type: "STREAM_END" }
   | { type: "CLEAR_CHAT"; payload?: { keepStarter?: Message } }
   | { type: "SET_FOLLOW_UP"; payload: string[] }
+  | { type: "SET_BACKEND_STATUS"; payload: import("@/core/services/types").HealthStatus }
+  | { type: "SET_MESSAGE_RATING"; payload: { messageId: string; rating: number | undefined; comment?: string } }
 
 function updateMessageById(
   messages: Message[],
@@ -108,10 +114,10 @@ function applyStreamMessage(
       const existing = m.toolInvocations ?? []
       const matchingCallIndex = chatMessage.tool_call_id
         ? existing.findIndex(
-            (inv) =>
-              inv.state === "call" &&
-              (inv as ToolInvocationCall).toolCallId === chatMessage.tool_call_id
-          )
+          (inv) =>
+            inv.state === "call" &&
+            (inv as ToolInvocationCall).toolCallId === chatMessage.tool_call_id
+        )
         : -1
       const matchingCall = matchingCallIndex >= 0 ? existing[matchingCallIndex] as ToolInvocationCall : undefined
       const toolName =
@@ -176,10 +182,11 @@ function applyStreamMessage(
   const next = updateMessageById(messages, messageId, (m) => ({
     ...m,
     content: text,
+    runId: chatMessage.run_id ?? m.runId,
     custom_data: {
       ...(m.custom_data ?? {}),
       ...(chatMessage.custom_data ?? {}),
-      run_id: chatMessage.run_id,
+      run_id: chatMessage.run_id ?? m.custom_data?.run_id,
     },
   }))
   return { messages: next }
@@ -264,6 +271,19 @@ export function chatRuntimeReducer(
     }
     case "SET_FOLLOW_UP":
       return { ...state, followUpPrompts: action.payload }
+    case "SET_BACKEND_STATUS":
+      return { ...state, backendStatus: action.payload }
+    case "SET_MESSAGE_RATING": {
+      const { messageId, rating, comment } = action.payload
+      return {
+        ...state,
+        messages: updateMessageById(state.messages, messageId, (m) => ({
+          ...m,
+          rating,
+          comment,
+        })),
+      }
+    }
     default:
       return state
   }
@@ -290,6 +310,7 @@ export function getInitialChatState(
     currentAssistantMessageId: null,
     metadata,
     metadataLoading: !metadata,
+    backendStatus: { status: "loading" },
     error: null,
   }
 }

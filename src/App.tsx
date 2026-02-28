@@ -224,7 +224,7 @@ export default function App() {
       </footer>
 
       <PopupChatbot
-        url="http://localhost:8080"
+        url="https://anujjoshi-portfolio-chatbot-backend.hf.space"
         position="bottom-right"
         placeholder="Ask me about anything..."
         tooltip="Chat with AI Assistant"

@@ -65,6 +65,14 @@ var Activity = createLucideIcon("activity", [["path", {
 	cy: "12",
 	r: "10",
 	key: "1mglay"
+}]]), Clock = createLucideIcon("clock", [["path", {
+	d: "M12 6v6l4 2",
+	key: "mmk7yg"
+}], ["circle", {
+	cx: "12",
+	cy: "12",
+	r: "10",
+	key: "1mglay"
 }]]), CodeXml = createLucideIcon("code-xml", [
 	["path", {
 		d: "m18 16 4-4-4-4",
@@ -3196,10 +3204,10 @@ var CONTENT_MARGIN = 10, [SelectContentProvider, useSelectContentContext] = crea
 	}), K = React$1.useCallback((i, a, o) => {
 		let s = !R.current && !o;
 		(T.value !== void 0 && T.value === a || s) && (M(i), s && (R.current = !0));
-	}, [T.value]), q = React$1.useCallback(() => E?.focus(), [E]), qC = React$1.useCallback((i, a, o) => {
+	}, [T.value]), q = React$1.useCallback(() => E?.focus(), [E]), lw = React$1.useCallback((i, a, o) => {
 		let s = !R.current && !o;
 		(T.value !== void 0 && T.value === a || s) && P(i);
-	}, [T.value]), J = c === "popper" ? SelectPopperPosition : SelectItemAlignedPosition, JC = J === SelectPopperPosition ? {
+	}, [T.value]), J = c === "popper" ? SelectPopperPosition : SelectItemAlignedPosition, Y = J === SelectPopperPosition ? {
 		side: p,
 		sideOffset: m,
 		align: h,
@@ -3219,7 +3227,7 @@ var CONTENT_MARGIN = 10, [SelectContentProvider, useSelectContentContext] = crea
 		itemRefCallback: K,
 		selectedItem: j,
 		onItemLeave: q,
-		itemTextRefCallback: qC,
+		itemTextRefCallback: lw,
 		focusSelectedItem: V,
 		selectedItemText: N,
 		position: c,
@@ -3251,7 +3259,7 @@ var CONTENT_MARGIN = 10, [SelectContentProvider, useSelectContentContext] = crea
 						dir: T.dir,
 						onContextMenu: (i) => i.preventDefault(),
 						...w,
-						...JC,
+						...Y,
 						onPlaced: () => L(!0),
 						ref: A,
 						style: {
@@ -4437,7 +4445,7 @@ function Header({ metadata: i, selectedAgent: a, selectedModel: s, onAgentChange
 				className: "focus-visible:outline-none rounded-md",
 				children: /* @__PURE__ */ jsx(I, {})
 			}) : /* @__PURE__ */ jsx(I, {}), /* @__PURE__ */ jsxs("div", {
-				className: "flex items-center gap-0.5",
+				className: "flex items-center gap-1",
 				children: [
 					p && /* @__PURE__ */ jsxs(Tooltip, { children: [/* @__PURE__ */ jsx(TooltipTrigger, {
 						asChild: !0,
@@ -4445,39 +4453,16 @@ function Header({ metadata: i, selectedAgent: a, selectedModel: s, onAgentChange
 							variant: "ghost",
 							size: "icon",
 							onClick: p,
-							className: "rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors",
+							className: "rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-200",
 							children: [/* @__PURE__ */ jsx(House, { className: "h-4 w-4" }), /* @__PURE__ */ jsx("span", {
 								className: "sr-only",
 								children: "Home"
 							})]
 						})
-					}), /* @__PURE__ */ jsx(TooltipContent, { children: "Home" })] }),
-					m && /* @__PURE__ */ jsxs(Tooltip, { children: [/* @__PURE__ */ jsx(TooltipTrigger, {
-						asChild: !0,
-						children: /* @__PURE__ */ jsxs(Button, {
-							variant: "ghost",
-							size: "icon",
-							onClick: m,
-							className: "rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors",
-							children: [/* @__PURE__ */ jsx(History, { className: "h-4 w-4" }), /* @__PURE__ */ jsx("span", {
-								className: "sr-only",
-								children: "Chat history"
-							})]
-						})
-					}), /* @__PURE__ */ jsx(TooltipContent, { children: "Chat history" })] }),
-					k && /* @__PURE__ */ jsxs(Tooltip, { children: [/* @__PURE__ */ jsx(TooltipTrigger, {
-						asChild: !0,
-						children: /* @__PURE__ */ jsxs(Button, {
-							variant: "ghost",
-							size: "icon",
-							onClick: k,
-							className: "rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors",
-							children: [jsx(O ? Minimize2 : Maximize2, { className: "h-4 w-4" }), /* @__PURE__ */ jsx("span", {
-								className: "sr-only",
-								children: O ? "Minimize" : "Maximize"
-							})]
-						})
-					}), /* @__PURE__ */ jsx(TooltipContent, { children: O ? "Minimize" : "Maximize" })] }),
+					}), /* @__PURE__ */ jsx(TooltipContent, {
+						sideOffset: 8,
+						children: "Home View"
+					})] }),
 					/* @__PURE__ */ jsx(Setting, {
 						metadata: i,
 						selectedAgent: a,
@@ -4492,6 +4477,22 @@ function Header({ metadata: i, selectedAgent: a, selectedModel: s, onAgentChange
 						autoSpeak: E,
 						onAutoSpeakChange: D
 					}),
+					m && /* @__PURE__ */ jsxs(Tooltip, { children: [/* @__PURE__ */ jsx(TooltipTrigger, {
+						asChild: !0,
+						children: /* @__PURE__ */ jsxs(Button, {
+							variant: "ghost",
+							size: "icon",
+							onClick: m,
+							className: "rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-200",
+							children: [/* @__PURE__ */ jsx(History, { className: "h-4 w-4" }), /* @__PURE__ */ jsx("span", {
+								className: "sr-only",
+								children: "Chat history"
+							})]
+						})
+					}), /* @__PURE__ */ jsx(TooltipContent, {
+						sideOffset: 8,
+						children: "Chat History"
+					})] }),
 					f && /* @__PURE__ */ jsxs(Tooltip, { children: [/* @__PURE__ */ jsx(TooltipTrigger, {
 						asChild: !0,
 						children: /* @__PURE__ */ jsxs(Button, {
@@ -4499,26 +4500,48 @@ function Header({ metadata: i, selectedAgent: a, selectedModel: s, onAgentChange
 							size: "icon",
 							onClick: F,
 							disabled: M,
-							className: "rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors",
+							className: "rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-200",
 							children: [/* @__PURE__ */ jsx(RefreshCw, { className: cn("h-4 w-4", M && "animate-spin text-primary") }), /* @__PURE__ */ jsx("span", {
 								className: "sr-only",
-								children: "Refresh Chat"
+								children: "Restart Chat"
 							})]
 						})
-					}), /* @__PURE__ */ jsx(TooltipContent, { children: "Restart" })] }),
+					}), /* @__PURE__ */ jsx(TooltipContent, {
+						sideOffset: 8,
+						children: "Restart Chat"
+					})] }),
+					k && /* @__PURE__ */ jsxs(Tooltip, { children: [/* @__PURE__ */ jsx(TooltipTrigger, {
+						asChild: !0,
+						children: /* @__PURE__ */ jsxs(Button, {
+							variant: "ghost",
+							size: "icon",
+							onClick: k,
+							className: "rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-200",
+							children: [jsx(O ? Minimize2 : Maximize2, { className: "h-4 w-4" }), /* @__PURE__ */ jsx("span", {
+								className: "sr-only",
+								children: O ? "Minimize" : "Maximize"
+							})]
+						})
+					}), /* @__PURE__ */ jsx(TooltipContent, {
+						sideOffset: 8,
+						children: O ? "Minimize View" : "Maximize View"
+					})] }),
 					u && /* @__PURE__ */ jsxs(Tooltip, { children: [/* @__PURE__ */ jsx(TooltipTrigger, {
 						asChild: !0,
 						children: /* @__PURE__ */ jsxs(Button, {
 							variant: "ghost",
 							size: "icon",
 							onClick: u,
-							className: "rounded-full h-8 w-8 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors ml-1",
+							className: "rounded-full h-8 w-8 hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex items-center justify-center transition-all duration-200",
 							children: [/* @__PURE__ */ jsx(X, { className: "h-4 w-4" }), /* @__PURE__ */ jsx("span", {
 								className: "sr-only",
 								children: "Close"
 							})]
 						})
-					}), /* @__PURE__ */ jsx(TooltipContent, { children: "Close Chat" })] })
+					}), /* @__PURE__ */ jsx(TooltipContent, {
+						sideOffset: 8,
+						children: "Close Assistant"
+					})] })
 				]
 			})]
 		})
@@ -10132,7 +10155,7 @@ var GenericFilePreview = React.forwardRef(({ file: i, onRemove: a }, o) => /* @_
 	}) : null]
 }));
 GenericFilePreview.displayName = "GenericFilePreview";
-var MarkdownRenderer = React.lazy(() => import("./markdown-renderer-Da5wImGE.js"));
+var MarkdownRenderer = React.lazy(() => import("./markdown-renderer-DNmZwRqZ.js"));
 function LazyMarkdownRenderer({ children: i, className: a }) {
 	return /* @__PURE__ */ jsx(Suspense, {
 		fallback: /* @__PURE__ */ jsx("div", { className: "animate-pulse h-4 bg-muted/50 rounded w-1/2" }),
@@ -10206,7 +10229,7 @@ function ToolResult({ toolName: i, result: a }) {
 		})]
 	});
 }
-var chatBubbleVariants = cva("group/message relative break-words rounded-lg p-4 text-sm shadow-sm transition-all duration-200 hover:shadow-md", {
+var chatBubbleVariants = cva("group/message relative rounded-lg p-4 text-sm shadow-sm transition-all duration-200 hover:shadow-md", {
 	variants: {
 		isUser: {
 			true: "chat-bubble-user",
@@ -10272,7 +10295,7 @@ const ChatMessage = ({ role: i, content: a, createdAt: o, showTimeStamp: s = !1,
 		return new File([a], i.name ?? "Unknown", { type: i.contentType });
 	}), [u]);
 	return /* @__PURE__ */ jsxs("div", {
-		className: cn("flex flex-col gap-3", h ? "items-end ml-12 mr-4" : "items-start mr-12 ml-4"),
+		className: cn("flex flex-col gap-3 min-w-0", h ? "items-end ml-auto max-w-[85%] pr-4" : "items-start mr-auto max-w-[85%] pl-4"),
 		children: [
 			g && g.length > 0 && /* @__PURE__ */ jsx("div", {
 				className: "mb-2 flex flex-wrap gap-2",
@@ -10317,7 +10340,7 @@ function dataUrlToUint8Array(i) {
 function ReasoningBlock({ part: i }) {
 	let [a, o] = useState(!1);
 	return /* @__PURE__ */ jsx("div", {
-		className: "mb-3 flex flex-col items-start mr-12 ml-4",
+		className: "mb-3 flex flex-col items-start max-w-[85%] ml-4 mr-auto min-w-0",
 		children: /* @__PURE__ */ jsxs(Collapsible, {
 			open: a,
 			onOpenChange: o,
@@ -10376,7 +10399,7 @@ function ReasoningBlock({ part: i }) {
 }
 function ToolCall({ toolInvocations: i }) {
 	return i?.length ? /* @__PURE__ */ jsx("div", {
-		className: "flex flex-col items-start gap-3 mr-12 ml-4",
+		className: "flex flex-col items-start gap-3 max-w-[85%] ml-4 mr-auto min-w-0",
 		children: i.map((i, a) => {
 			if (i.state === "result" && i.result?.__cancelled === !0) return /* @__PURE__ */ jsxs("div", {
 				className: "flex items-center gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive shadow-sm",
@@ -12258,17 +12281,49 @@ function formatThreadDate(i) {
 	try {
 		let a = new Date(i);
 		if (Number.isNaN(a.getTime())) return "";
-		let o = /* @__PURE__ */ new Date();
-		return a.getDate() === o.getDate() && a.getMonth() === o.getMonth() && a.getFullYear() === o.getFullYear() ? a.toLocaleTimeString(void 0, {
+		let o = /* @__PURE__ */ new Date(), s = Math.floor((o.getTime() - a.getTime()) / (1e3 * 60 * 60 * 24));
+		return s === 0 && a.getDate() === o.getDate() ? a.toLocaleTimeString(void 0, {
 			hour: "numeric",
 			minute: "2-digit"
-		}) : a.toLocaleDateString(void 0, {
+		}) : s === 1 || s === 0 && a.getDate() !== o.getDate() ? "Yesterday" : s < 7 ? a.toLocaleDateString(void 0, { weekday: "short" }) : a.toLocaleDateString(void 0, {
 			month: "short",
 			day: "numeric"
 		});
 	} catch {
 		return "";
 	}
+}
+function groupThreadsByDate(i) {
+	let a = [
+		{
+			title: "Today",
+			items: []
+		},
+		{
+			title: "Yesterday",
+			items: []
+		},
+		{
+			title: "Previous 7 Days",
+			items: []
+		},
+		{
+			title: "Older",
+			items: []
+		}
+	], o = /* @__PURE__ */ new Date();
+	o.setHours(0, 0, 0, 0);
+	let s = new Date(o);
+	s.setDate(s.getDate() - 1);
+	let c = new Date(o);
+	return c.setDate(c.getDate() - 7), i.forEach((i) => {
+		if (!i.updated_at) {
+			a[3].items.push(i);
+			return;
+		}
+		let l = new Date(i.updated_at);
+		l.setHours(0, 0, 0, 0), l.getTime() === o.getTime() ? a[0].items.push(i) : l.getTime() === s.getTime() ? a[1].items.push(i) : l.getTime() >= c.getTime() ? a[2].items.push(i) : a[3].items.push(i);
+	}), a.filter((i) => i.items.length > 0);
 }
 function ChatHistorySheet({ open: i, onOpenChange: a, userId: s, threadList: c, setThreadList: l, totalThreads: u, setTotalThreads: f, threadsLoading: p, setThreadsLoading: m, currentThreadId: h, onSelectThread: g, getThreads: _, deleteThread: v }) {
 	let [y, b] = useState(""), [x, S] = useState(""), [C, w] = useState(!1), [T, E] = useState(null), [D, O] = useState(!1), k = useRef(null), A = useRef(!1), j = useRef(c.length);
@@ -12371,55 +12426,96 @@ function ChatHistorySheet({ open: i, onOpenChange: a, userId: s, threadList: c, 
 			children: [
 				/* @__PURE__ */ jsxs(SheetHeader, { children: [/* @__PURE__ */ jsx(SheetTitle, { children: "Chat history" }), /* @__PURE__ */ jsx(SheetDescription, { children: s?.trim() ? "Select a conversation to load." : "Sign in to see your conversations." })] }),
 				s?.trim() ? /* @__PURE__ */ jsxs("div", {
-					className: "relative flex items-center border rounded-md px-3 py-2 mt-2 bg-muted/50",
-					children: [/* @__PURE__ */ jsx(Search, { className: "h-4 w-4 shrink-0 text-muted-foreground" }), /* @__PURE__ */ jsx("input", {
+					className: "flex items-center bg-muted/50 rounded-lg px-2 py-1.5 focus-within:bg-background focus-within:ring-1 focus-within:ring-ring transition-all",
+					children: [/* @__PURE__ */ jsx(Search, { className: "h-4 w-4 shrink-0 text-muted-foreground ml-1" }), /* @__PURE__ */ jsx("input", {
 						type: "search",
-						placeholder: "Search conversations…",
+						placeholder: "Search...",
 						value: y,
 						onChange: (i) => b(i.target.value),
-						className: "flex-1 bg-transparent border-0 outline-none text-sm ml-2 placeholder:text-muted-foreground",
+						className: "flex-1 bg-transparent border-0 outline-none text-sm ml-2 placeholder:text-muted-foreground py-0.5",
 						"aria-label": "Search conversations"
 					})]
 				}) : null,
 				/* @__PURE__ */ jsx("div", {
-					className: "flex-1 overflow-y-auto py-4 min-h-0",
+					className: "flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40",
 					children: s?.trim() ? p ? /* @__PURE__ */ jsxs("div", {
 						className: "flex items-center justify-center gap-2 py-8 text-muted-foreground",
 						children: [/* @__PURE__ */ jsx(LoaderCircle, { className: "h-5 w-5 animate-spin" }), /* @__PURE__ */ jsx("span", { children: "Loading conversations…" })]
 					}) : c.length === 0 ? /* @__PURE__ */ jsx("p", {
 						className: "text-center text-sm text-muted-foreground py-8",
 						children: x ? "No conversations match your search." : "No conversations yet."
-					}) : /* @__PURE__ */ jsxs("ul", {
-						className: "space-y-1",
-						children: [c.map((i) => {
-							let a = i.preview?.trim().slice(0, 60) || (i.updated_at ? `Conversation · ${formatThreadDate(i.updated_at)}` : "Conversation");
-							return /* @__PURE__ */ jsxs("li", {
-								className: "group relative flex items-center pr-2 group",
-								children: [/* @__PURE__ */ jsxs(Button, {
-									variant: "ghost",
-									className: cn("flex-1 justify-start font-normal h-auto py-2 flex flex-col items-start pr-8", i.thread_id === h && "bg-muted"),
-									onClick: () => g(i.thread_id),
-									children: [/* @__PURE__ */ jsx("span", {
-										className: "truncate w-full text-left text-sm",
-										children: a.replace(/```[\s\S]*?```|`([^`]*)`|!\[.*?\]\(.*?\)|\[(.*?)\]\(.*?\)|(\*\*|__|\*|_|~~)(.*?)\3|^#{1,6}\s*|^>\s*|^\s*[-*+]\s+|^\s*\d+\.\s+|<[^>]+>/gm, "$1$2$4").slice(0, 60)
-									}), /* @__PURE__ */ jsx("span", {
-										className: "text-xs text-muted-foreground",
-										children: i.thread_id
-									})]
-								}), v && /* @__PURE__ */ jsx(Button, {
-									variant: "destructive",
-									size: "icon",
-									className: "absolute right-2 group-hover:opacity-100 opacity-0 transition-opacity focus:opacity-100",
-									onClick: (a) => {
-										a.stopPropagation(), E(i.thread_id);
-									},
-									"aria-label": "Delete conversation",
-									children: /* @__PURE__ */ jsx(Trash2, { className: "h-4 w-4" })
+					}) : /* @__PURE__ */ jsxs("div", {
+						className: "py-2",
+						children: [/* @__PURE__ */ jsx(AnimatePresence, {
+							mode: "popLayout",
+							initial: !1,
+							children: groupThreadsByDate(c).map((i, a) => /* @__PURE__ */ jsxs(motion.div, {
+								className: "mb-6 last:mb-0",
+								initial: {
+									opacity: 0,
+									y: 10
+								},
+								animate: {
+									opacity: 1,
+									y: 0
+								},
+								transition: { delay: a * .05 },
+								children: [/* @__PURE__ */ jsx("h3", {
+									className: "px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider",
+									children: i.title
+								}), /* @__PURE__ */ jsx("ul", {
+									className: "space-y-1",
+									children: i.items.map((i) => {
+										let a = (i.preview || "").replace(/```[\s\S]*?```|`([^`]*)`|!\[.*?\]\(.*?\)|\[(.*?)\]\(.*?\)|(\*\*|__|\*|_|~~)(.*?)\3|^#{1,6}\s*|^>\s*|^\s*[-*+]\s+|^\s*\d+\.\s+|<[^>]+>/gm, "$1$2$4").trim() || "New Conversation", s = formatThreadDate(i.updated_at);
+										return /* @__PURE__ */ jsxs(motion.li, {
+											className: "group flex relative list-none",
+											layout: !0,
+											initial: {
+												opacity: 0,
+												scale: .98
+											},
+											animate: {
+												opacity: 1,
+												scale: 1
+											},
+											exit: {
+												opacity: 0,
+												scale: .98
+											},
+											children: [/* @__PURE__ */ jsx(Button, {
+												variant: "ghost",
+												className: cn("w-full justify-start font-normal h-auto p-3 relative transition-all duration-200 cursor-pointer", i.thread_id === h ? "bg-muted/80 shadow-sm" : "hover:bg-muted"),
+												onClick: () => g(i.thread_id),
+												children: /* @__PURE__ */ jsx("div", {
+													className: "flex items-start gap-3 w-full overflow-hidden",
+													children: /* @__PURE__ */ jsxs("div", {
+														className: "flex flex-col items-start overflow-hidden w-full text-left",
+														children: [/* @__PURE__ */ jsx("span", {
+															className: cn("truncate w-full text-sm", i.thread_id === h ? "font-semibold" : "font-medium"),
+															children: a
+														}), s && /* @__PURE__ */ jsxs("div", {
+															className: "flex items-center gap-1.5 mt-0.5 text-[11px] text-muted-foreground",
+															children: [/* @__PURE__ */ jsx(Clock, { className: "h-3 w-3" }), /* @__PURE__ */ jsx("span", { children: s })]
+														})]
+													})
+												})
+											}), v && /* @__PURE__ */ jsx(Button, {
+												variant: "ghost",
+												size: "icon",
+												className: "absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all focus:opacity-100 z-10",
+												onClick: (a) => {
+													a.stopPropagation(), E(i.thread_id);
+												},
+												"aria-label": "Delete conversation",
+												children: /* @__PURE__ */ jsx(Trash2, {})
+											})]
+										}, i.thread_id);
+									})
 								})]
-							}, i.thread_id);
-						}), c.length < u ? /* @__PURE__ */ jsx("li", {
+							}, i.title))
+						}), c.length < u ? /* @__PURE__ */ jsx("div", {
 							ref: k,
-							className: "py-2 flex justify-center",
+							className: "py-4 flex justify-center",
 							children: C ? /* @__PURE__ */ jsx(LoaderCircle, { className: "h-4 w-4 animate-spin text-muted-foreground" }) : null
 						}) : null]
 					}) : null
@@ -12446,6 +12542,47 @@ function ChatHistorySheet({ open: i, onOpenChange: a, userId: s, threadList: c, 
 		})]
 	});
 }
+var createStoreImpl = (i) => {
+	let a, o = /* @__PURE__ */ new Set(), s = (i, s) => {
+		let c = typeof i == "function" ? i(a) : i;
+		if (!Object.is(c, a)) {
+			let i = a;
+			a = s ?? (typeof c != "object" || !c) ? c : Object.assign({}, a, c), o.forEach((o) => o(a, i));
+		}
+	}, c = () => a, l = {
+		setState: s,
+		getState: c,
+		getInitialState: () => u,
+		subscribe: (i) => (o.add(i), () => o.delete(i))
+	}, u = a = i(s, c, l);
+	return l;
+}, createStore = ((i) => i ? createStoreImpl(i) : createStoreImpl), identity = (i) => i;
+function useStore(i, a = identity) {
+	let o = React.useSyncExternalStore(i.subscribe, React.useCallback(() => a(i.getState()), [i, a]), React.useCallback(() => a(i.getInitialState()), [i, a]));
+	return React.useDebugValue(o), o;
+}
+var createImpl = (i) => {
+	let a = createStore(i), o = (i) => useStore(a, i);
+	return Object.assign(o, a), o;
+};
+const useChatbotStore = ((i) => i ? createImpl(i) : createImpl)((i) => ({
+	isMaximized: !1,
+	setIsMaximized: (a) => i({ isMaximized: a }),
+	historySheetOpen: !1,
+	setHistorySheetOpen: (a) => i({ historySheetOpen: a }),
+	selectedAgent: "",
+	setSelectedAgent: (a) => i({ selectedAgent: a }),
+	selectedModel: "",
+	setSelectedModel: (a) => i({ selectedModel: a }),
+	currentThreadId: void 0,
+	setCurrentThreadId: (a) => i({ currentThreadId: a }),
+	threadList: [],
+	setThreadList: (a) => i((i) => ({ threadList: typeof a == "function" ? a(i.threadList) : a })),
+	totalThreads: 0,
+	setTotalThreads: (a) => i({ totalThreads: a }),
+	threadsLoading: !1,
+	setThreadsLoading: (a) => i({ threadsLoading: a })
+}));
 var DISCLAIMER = "\nThis content is generated by an artificial intelligence. While we strive for accuracy, the AI may occasionally produce incorrect or biased information. \n\n**Important Notes:**\n- Please verify critical information.\n- The AI does not have real-time access to personal data unless shared in this session.\n- Responses are based on training data and specific portfolio context.\n\nBy using this chatbot, you agree to our terms of service regarding AI-generated content.\n", DisclaimerModal = memo(({ disclaimer: i, onClose: a }) => /* @__PURE__ */ jsxs("div", {
 	className: "fixed inset-0 z-[60] flex items-center justify-center p-4",
 	children: [/* @__PURE__ */ jsx(motion.div, {
@@ -12680,123 +12817,139 @@ function Disclaimer({ onAccept: i, open: a }) {
 	}) });
 }
 var MemoizedChatMessages = memo(Chat.Messages), MemoizedChatInput = memo(Chat.Input), MemoizedChatSuggestions = memo(Chat.Suggestions);
-function ChatbotLayout({ setSelectedAgent: i, setSelectedModel: a, selectedAgent: o, effectiveAgent: s, selectedModel: c, showHeader: l, headerTitle: u, headerTitleUrl: d, headerSubtitle: f, avatar: p, allowMaximize: m, onClose: h, onRefresh: g, onHome: _, showFooter: v, footerContent: y, footerSubtitle: b, placeholder: x, starterMessage: S, userId: C, currentThreadId: w, setCurrentThreadId: T, historySheetOpen: E, setHistorySheetOpen: D, threadList: O, setThreadList: k, totalThreads: A, setTotalThreads: j, threadsLoading: M, setThreadsLoading: N, isMaximized: P, toggleMaximize: F, voiceConfig: I, onVoiceConfigChange: L, availableVoices: R, selectedVoice: z, onVoiceChange: B, autoSpeak: V, onAutoSpeakChange: H, deleteThread: U }) {
-	let { metadata: W, metadataLoading: G, clearChat: K, loadThread: q, getThreads: qC, setThreadId: J, deleteThread: JC } = useChatContext(), YC = U ?? JC, XC = useCallback((a) => {
-		K({ keepStarter: !!S }), T(void 0), J(void 0), i(a);
+function ChatbotLayout({ effectiveAgent: i, showHeader: a, headerTitle: o, headerTitleUrl: s, headerSubtitle: c, avatar: l, allowMaximize: u, onClose: d, onRefresh: f, onHome: p, showFooter: m, footerContent: h, footerSubtitle: g, placeholder: _, starterMessage: v, userId: y, voiceConfig: b, onVoiceConfigChange: x, availableVoices: S, selectedVoice: C, onVoiceChange: w, autoSpeak: T, onAutoSpeakChange: E, deleteThread: D, onMaximizeToggle: O, isMaximized: k }) {
+	let { selectedAgent: A, setSelectedAgent: j, selectedModel: M, setSelectedModel: N, currentThreadId: P, setCurrentThreadId: F, historySheetOpen: I, setHistorySheetOpen: L, threadList: R, setThreadList: z, totalThreads: B, setTotalThreads: V, threadsLoading: H, setThreadsLoading: U, isMaximized: W, setIsMaximized: G } = useChatbotStore(), K = k ?? W, { metadata: q, metadataLoading: lw, clearChat: J, loadThread: Y, getThreads: uw, setThreadId: Z, deleteThread: Q } = useChatContext(), dw = D ?? Q, fw = useCallback((i) => {
+		J({ keepStarter: !!v }), F(void 0), Z(void 0), j(i);
 	}, [
-		K,
-		S,
-		i,
-		T,
-		J
-	]), ZC = useCallback(() => {
-		K({
-			keepStarter: !!S,
-			createNewThread: !0
-		}), i(""), T(void 0), J(void 0);
-	}, [
-		K,
-		S,
-		i,
-		T,
-		J
-	]), Y = g ?? ZC, QC = useCallback(() => D(!0), [D]), $C = useCallback((i) => {
-		D(!1), q(i, C), T(i), J(i);
-	}, [
-		q,
-		D,
-		T,
 		J,
-		C
+		v,
+		j,
+		F,
+		Z
+	]), pw = useCallback(() => {
+		J({
+			keepStarter: !!v,
+			createNewThread: !0
+		}), j(""), F(void 0), Z(void 0);
+	}, [
+		J,
+		v,
+		j,
+		F,
+		Z
+	]), mw = f ?? pw, hw = useCallback(() => L(!0), [L]), gw = useCallback((i) => {
+		L(!1), Y(i, y), F(i), Z(i);
+	}, [
+		Y,
+		L,
+		F,
+		Z,
+		y
+	]), _w = useCallback(() => {
+		let i = !K;
+		G(i), O?.(i);
+	}, [
+		K,
+		G,
+		O
 	]);
 	return /* @__PURE__ */ jsxs(Fragment$1, { children: [
-		l && /* @__PURE__ */ jsx(Header, {
-			metadata: W,
-			selectedAgent: o,
-			selectedModel: c,
-			onAgentChange: XC,
-			onModelChange: a,
-			onClose: h,
-			onRefresh: Y,
-			onHome: _,
-			onHistory: C?.trim() ? QC : void 0,
-			voiceConfig: I,
-			onVoiceConfigChange: L,
-			availableVoices: R,
-			selectedVoice: z,
-			onVoiceChange: B,
-			autoSpeak: V,
-			onAutoSpeakChange: H,
-			isMaximized: P,
-			onMaximize: m ? F : void 0,
-			title: u,
-			titleUrl: d,
-			subtitle: f,
-			avatar: p
+		a && /* @__PURE__ */ jsx(Header, {
+			metadata: q,
+			selectedAgent: A,
+			selectedModel: M,
+			onAgentChange: fw,
+			onModelChange: N,
+			onClose: d,
+			onRefresh: mw,
+			onHome: p,
+			onHistory: y?.trim() ? hw : void 0,
+			voiceConfig: b,
+			onVoiceConfigChange: x,
+			availableVoices: S,
+			selectedVoice: C,
+			onVoiceChange: w,
+			autoSpeak: T,
+			onAutoSpeakChange: E,
+			isMaximized: K,
+			onMaximize: u ? _w : void 0,
+			title: o,
+			titleUrl: s,
+			subtitle: c,
+			avatar: l
 		}),
 		/* @__PURE__ */ jsx(ChatHistorySheet, {
-			open: E,
-			onOpenChange: D,
-			userId: C,
-			threadList: O,
-			setThreadList: k,
-			totalThreads: A,
-			setTotalThreads: j,
-			threadsLoading: M,
-			setThreadsLoading: N,
-			currentThreadId: w,
-			onSelectThread: $C,
-			getThreads: qC,
-			deleteThread: YC
+			open: I,
+			onOpenChange: L,
+			userId: y,
+			threadList: R,
+			setThreadList: z,
+			totalThreads: B,
+			setTotalThreads: V,
+			threadsLoading: H,
+			setThreadsLoading: U,
+			currentThreadId: P,
+			onSelectThread: gw,
+			onNewChat: mw,
+			getThreads: uw,
+			deleteThread: dw
 		}),
 		/* @__PURE__ */ jsx("div", {
 			className: "flex-1 overflow-hidden flex flex-col",
-			children: s ? /* @__PURE__ */ jsxs(Fragment$1, { children: [
+			children: i ? /* @__PURE__ */ jsxs(Fragment$1, { children: [
 				/* @__PURE__ */ jsx(MemoizedChatMessages, { className: "flex-1 min-h-0" }),
 				/* @__PURE__ */ jsx(MemoizedChatSuggestions, {}),
-				/* @__PURE__ */ jsx(MemoizedChatInput, { placeholder: x })
+				/* @__PURE__ */ jsx(MemoizedChatInput, { placeholder: _ })
 			] }) : /* @__PURE__ */ jsx(AgentSelector, {
-				agents: W?.agents ?? [],
-				loading: G,
-				onSelect: i
+				agents: q?.agents ?? [],
+				loading: lw,
+				onSelect: j
 			})
 		}),
-		v && /* @__PURE__ */ jsx(Footer, {
-			disclaimer: y,
-			subtitle: b
+		m && /* @__PURE__ */ jsx(Footer, {
+			disclaimer: h,
+			subtitle: g
 		})
 	] });
 }
 function Chatbot({ url: i, agent: a, model: o, placeholder: s = "Hi, how can I help you?", threadId: c, userId: l, apiKey: u, stream: f = !0, className: p, header: m = {}, footer: h = {}, starter: g = {}, isMaximized: _ }) {
-	let { show: v = !0, title: y, titleUrl: b, subtitle: x, avatar: S, allowMaximize: C = !1, onMaximizeToggle: w, onClose: T, onRefresh: E, onHome: D } = m, { show: O = !0, text: k, subtitle: A } = h, { message: j, suggestions: M } = g, [N, P] = useState(a ?? ""), [F, I] = useState(o ?? ""), [L, R] = useState(!1), z = _ ?? L, [B, V] = useState(c), [H, U] = useState(!1), [W, G] = useState(!1), [K, q] = useState([]), [qC, J] = useState(0), { isListening: JC, startListening: YC, stopListening: ZC, speak: Y, availableVoices: QC, selectedVoice: ew, setSelectedVoice: tw, voiceConfig: Z, updateConfig: nw, isRecognitionSupported: rw } = useVoice(), [Q, iw] = useState(!1), [aw, ow] = useState(!1);
+	let { show: v = !0, title: y, titleUrl: b, subtitle: x, avatar: S, allowMaximize: C = !1, onMaximizeToggle: w, onClose: T, onRefresh: E, onHome: D } = m, { show: O = !0, text: k, subtitle: A } = h, { message: j, suggestions: M } = g, N = useChatbotStore((i) => i.isMaximized), P = useChatbotStore((i) => i.setIsMaximized), F = _ ?? N, I = useChatbotStore((i) => i.selectedAgent), L = useChatbotStore((i) => i.setSelectedAgent), R = useChatbotStore((i) => i.selectedModel), z = useChatbotStore((i) => i.setSelectedModel), B = useChatbotStore((i) => i.currentThreadId), V = useChatbotStore((i) => i.setCurrentThreadId);
+	useEffect(() => {
+		a !== void 0 && L(a);
+	}, [a, L]), useEffect(() => {
+		o !== void 0 && z(o);
+	}, [o, z]), useEffect(() => {
+		_ !== void 0 && P(_);
+	}, [_, P]);
+	let { isListening: H, startListening: U, stopListening: W, speak: G, availableVoices: K, selectedVoice: q, setSelectedVoice: lw, voiceConfig: J, updateConfig: Y, isRecognitionSupported: uw } = useVoice(), [Q, dw] = useState(!1), [fw, mw] = useState(!1);
 	useEffect(() => {
 		let i = localStorage.getItem("voice-config");
 		if (i) try {
-			nw(JSON.parse(i));
+			Y(JSON.parse(i));
 		} catch (i) {
 			console.error("Failed to load voice config", i);
 		}
 		let a = localStorage.getItem("auto-speak");
-		a && iw(a === "true"), localStorage.getItem("chatbot-consent") || ow(!0);
-	}, [nw]);
-	let sw = useCallback(() => {
-		localStorage.setItem("chatbot-consent", "true"), ow(!1);
+		a && dw(a === "true"), localStorage.getItem("chatbot-consent") || mw(!0);
+	}, [Y]);
+	let hw = useCallback(() => {
+		localStorage.setItem("chatbot-consent", "true"), mw(!1);
 	}, []);
 	useEffect(() => {
-		localStorage.setItem("voice-config", JSON.stringify(Z));
-	}, [Z]), useEffect(() => {
+		localStorage.setItem("voice-config", JSON.stringify(J));
+	}, [J]), useEffect(() => {
 		localStorage.setItem("auto-speak", String(Q));
 	}, [Q]);
-	let [$, cw] = useState(null), lw = useCallback((i) => {
-		cw(i), I((a) => a || i.default_model);
-	}, []), uw = useMemo(() => M === void 0 ? $?.agents?.find((i) => i.key === N)?.prompts ?? [] : M, [
+	let [$, _w] = useState(null), yw = useCallback((i) => {
+		_w(i), R || z(i.default_model);
+	}, [R, z]), bw = useMemo(() => M === void 0 ? $?.agents?.find((i) => i.key === I)?.prompts ?? [] : M, [
 		M,
 		$?.agents,
-		N
-	]), dw = N || B && $?.default_agent || "", fw = useMemo(() => ({
+		I
+	]), xw = I || B && $?.default_agent || "", Sw = useMemo(() => ({
 		url: i,
-		agent: dw || void 0,
-		model: F || void 0,
+		agent: xw || void 0,
+		model: R || void 0,
 		threadId: B ?? c,
 		userId: l,
 		stream: f,
@@ -12804,12 +12957,12 @@ function Chatbot({ url: i, agent: a, model: o, placeholder: s = "Hi, how can I h
 		starterSuggestions: M,
 		apiKey: u,
 		onStreamEnd: (i) => {
-			Q && i && Y && Y(i);
+			Q && i && G && G(i);
 		}
 	}), [
 		i,
-		N,
-		F,
+		I,
+		R,
 		B,
 		c,
 		l,
@@ -12818,41 +12971,32 @@ function Chatbot({ url: i, agent: a, model: o, placeholder: s = "Hi, how can I h
 		M,
 		Q,
 		u,
-		Y
+		G
 	]);
-	useEffect(() => {
+	return useEffect(() => {
 		c != null && V(c);
 	}, [c]), useEffect(() => {
-		B && !N && $?.default_agent && P($.default_agent);
+		B && !I && $?.default_agent && L($.default_agent);
 	}, [
 		B,
-		N,
+		I,
 		$?.default_agent
-	]);
-	let pw = useCallback(() => {
-		let i = !z;
-		R(i), w?.(i);
-	}, [z, w]);
-	return /* @__PURE__ */ jsxs("div", {
-		className: cn("chatbot-theme flex flex-col h-full transition-all duration-300 ease-in-out relative", p, z && "fixed inset-0 z-50 m-0 h-full max-h-none w-full max-w-none rounded-none border-0"),
+	]), /* @__PURE__ */ jsxs("div", {
+		className: cn("chatbot-theme flex flex-col h-full transition-all duration-300 ease-in-out relative", p, F && "fixed inset-0 z-50 m-0 h-full max-h-none w-full max-w-none rounded-none border-0"),
 		children: [/* @__PURE__ */ jsx(Disclaimer, {
-			open: aw,
-			onAccept: sw
+			open: fw,
+			onAccept: hw
 		}), /* @__PURE__ */ jsx(Chat.Root, {
-			config: fw,
-			initialSuggestions: uw,
-			voiceConfig: Z,
-			isListening: JC,
-			startListening: YC,
-			stopListening: ZC,
-			isSpeechSupported: rw,
-			onMetadata: lw,
+			config: Sw,
+			initialSuggestions: bw,
+			voiceConfig: J,
+			isListening: H,
+			startListening: U,
+			stopListening: W,
+			isSpeechSupported: uw,
+			onMetadata: yw,
 			children: /* @__PURE__ */ jsx(ChatbotLayout, {
-				setSelectedAgent: P,
-				setSelectedModel: I,
-				selectedAgent: N,
-				effectiveAgent: dw,
-				selectedModel: F,
+				effectiveAgent: xw,
 				showHeader: v,
 				headerTitle: y,
 				headerTitleUrl: b,
@@ -12868,26 +13012,15 @@ function Chatbot({ url: i, agent: a, model: o, placeholder: s = "Hi, how can I h
 				placeholder: s,
 				starterMessage: j,
 				userId: l,
-				threadId: c,
-				currentThreadId: B,
-				setCurrentThreadId: V,
-				historySheetOpen: H,
-				setHistorySheetOpen: U,
-				threadList: K,
-				setThreadList: q,
-				totalThreads: qC,
-				setTotalThreads: J,
-				threadsLoading: W,
-				setThreadsLoading: G,
-				isMaximized: z,
-				toggleMaximize: pw,
-				voiceConfig: Z,
-				onVoiceConfigChange: nw,
-				availableVoices: QC,
-				selectedVoice: ew,
-				onVoiceChange: tw,
+				voiceConfig: J,
+				onVoiceConfigChange: Y,
+				availableVoices: K,
+				selectedVoice: q,
+				onVoiceChange: lw,
 				autoSpeak: Q,
-				onAutoSpeakChange: iw
+				onAutoSpeakChange: dw,
+				onMaximizeToggle: w,
+				isMaximized: F
 			})
 		})]
 	});

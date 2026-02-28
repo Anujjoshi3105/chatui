@@ -123,7 +123,8 @@ export function Header({
         )}
 
         {/* Right */}
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1">
+          {/* Group 1: Navigation & Discovery */}
           {onHome && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -131,53 +132,13 @@ export function Header({
                   variant="ghost"
                   size="icon"
                   onClick={onHome}
-                  className="rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  className="rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-200"
                 >
                   <Home className="h-4 w-4" />
                   <span className="sr-only">Home</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Home</TooltipContent>
-            </Tooltip>
-          )}
-
-          {onHistory && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onHistory}
-                  className="rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <History className="h-4 w-4" />
-                  <span className="sr-only">Chat history</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Chat history</TooltipContent>
-            </Tooltip>
-          )}
-
-          {onMaximize && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onMaximize}
-                  className="rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {isMaximized ? (
-                    <Minimize2 className="h-4 w-4" />
-                  ) : (
-                    <Maximize2 className="h-4 w-4" />
-                  )}
-                  <span className="sr-only">
-                    {isMaximized ? "Minimize" : "Maximize"}
-                  </span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{isMaximized ? "Minimize" : "Maximize"}</TooltipContent>
+              <TooltipContent sideOffset={8}>Home View</TooltipContent>
             </Tooltip>
           )}
 
@@ -196,6 +157,24 @@ export function Header({
             onAutoSpeakChange={onAutoSpeakChange}
           />
 
+          {onHistory && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onHistory}
+                  className="rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-200"
+                >
+                  <History className="h-4 w-4" />
+                  <span className="sr-only">Chat history</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent sideOffset={8}>Chat History</TooltipContent>
+            </Tooltip>
+          )}
+
+          {/* Group 2: Session Actions */}
           {onRefresh && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -204,7 +183,7 @@ export function Header({
                   size="icon"
                   onClick={handleRefresh}
                   disabled={isRefreshing}
-                  className="rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  className="rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-200"
                 >
                   <RefreshCw
                     className={cn(
@@ -212,10 +191,36 @@ export function Header({
                       isRefreshing && "animate-spin text-primary"
                     )}
                   />
-                  <span className="sr-only">Refresh Chat</span>
+                  <span className="sr-only">Restart Chat</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Restart</TooltipContent>
+              <TooltipContent sideOffset={8}>Restart Chat</TooltipContent>
+            </Tooltip>
+          )}
+
+          {/* Group 3: Window Management */}
+          {onMaximize && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onMaximize}
+                  className="rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-200"
+                >
+                  {isMaximized ? (
+                    <Minimize2 className="h-4 w-4" />
+                  ) : (
+                    <Maximize2 className="h-4 w-4" />
+                  )}
+                  <span className="sr-only">
+                    {isMaximized ? "Minimize" : "Maximize"}
+                  </span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent sideOffset={8}>
+                {isMaximized ? "Minimize View" : "Maximize View"}
+              </TooltipContent>
             </Tooltip>
           )}
 
@@ -226,13 +231,13 @@ export function Header({
                   variant="ghost"
                   size="icon"
                   onClick={onClose}
-                  className="rounded-full h-8 w-8 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors ml-1"
+                  className="rounded-full h-8 w-8 hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex items-center justify-center transition-all duration-200"
                 >
                   <X className="h-4 w-4" />
                   <span className="sr-only">Close</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Close Chat</TooltipContent>
+              <TooltipContent sideOffset={8}>Close Assistant</TooltipContent>
             </Tooltip>
           )}
         </div>

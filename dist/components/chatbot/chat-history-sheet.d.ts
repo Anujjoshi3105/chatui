@@ -11,6 +11,7 @@ export interface ChatHistorySheetProps {
     setThreadsLoading: (v: boolean) => void;
     currentThreadId: string | undefined;
     onSelectThread: (threadId: string) => void;
+    onNewChat?: () => void;
     getThreads: (options?: GetThreadsOptions) => Promise<ThreadListResponse>;
     deleteThread?: (threadId: string) => Promise<void>;
 }

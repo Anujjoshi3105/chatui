@@ -8,6 +8,7 @@ import type {
   ThreadListResponse,
   ChatHistoryResponse,
   GetHistoryOptions,
+  HealthStatus,
 } from "./types"
 
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
@@ -122,6 +123,47 @@ export class ChatService {
     return data
   }
 
+  async healthCheck(): Promise<HealthStatus> {
+    try {
+      const response = await fetch(`${this.config.baseUrl}/health`, {
+        headers: this.getHeaders(),
+      })
+      if (!response.ok) {
+        return { status: "error", details: { code: response.status } }
+      }
+      const data = await response.json()
+      return { status: data.status === "ok" ? "ok" : "error", details: data }
+    } catch (e) {
+      return { status: "error", details: { error: e instanceof Error ? e.message : "Network error" } }
+    }
+  }
+
+  async invoke(
+    message: string,
+    options: { agent?: string; model?: string; threadId?: string; userId?: string } = {}
+  ): Promise<ApiChatMessage> {
+    const agent = options.agent ?? this.config.defaultAgent
+    const endpoint = `${this.config.baseUrl}/${agent}/invoke`
+    const requestBody = {
+      message,
+      model: options.model ?? this.config.defaultModel,
+      thread_id: options.threadId,
+      user_id: options.userId,
+    }
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: this.getHeaders(),
+      body: JSON.stringify(requestBody),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Invoke failed: ${response.statusText}`)
+    }
+
+    return (await response.json()) as ApiChatMessage
+  }
+
   async *stream(
     message: string,
     options: StreamOptions & { agent?: string; model?: string }
@@ -224,11 +266,11 @@ export class ChatService {
     }
   }
 
-  async sendFeedback(runId: string, key: string, score: number): Promise<unknown> {
+  async sendFeedback(runId: string, key: string, score: number, kwargs?: Record<string, any>): Promise<unknown> {
     const response = await fetch(`${this.config.baseUrl}/feedback`, {
       method: "POST",
       headers: this.getHeaders(),
-      body: JSON.stringify({ run_id: runId, key, score }),
+      body: JSON.stringify({ run_id: runId, key, score, kwargs }),
     })
     if (!response.ok) {
       throw new Error(`Failed to send feedback: ${response.statusText}`)
@@ -241,17 +283,17 @@ export class ChatService {
     if (!uid) {
       throw new Error("User ID is required to delete a thread")
     }
-    
+
     const params = new URLSearchParams({
       user_id: uid,
       thread_id: threadId,
     })
-    
+
     const response = await fetch(
       `${this.config.baseUrl}/history?${params.toString()}`,
       { method: "DELETE", headers: this.getHeaders() }
     )
-    
+
     if (!response.ok) {
       throw new Error(`Failed to delete thread: ${response.statusText}`)
     }

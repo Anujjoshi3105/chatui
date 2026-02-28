@@ -1,5 +1,5 @@
 import React, { useEffect } from "react"
-import { motion } from "framer-motion"
+import { m as motion } from "framer-motion"
 import { FileIcon, X } from "lucide-react"
 
 interface FilePreviewProps {

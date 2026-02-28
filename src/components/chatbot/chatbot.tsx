@@ -1,15 +1,15 @@
-import { useState, useCallback, useEffect, useMemo, memo } from "react"
+import { useCallback, useEffect, useMemo, memo } from "react"
 import { Header } from "./header"
 import { AgentSelector } from "./agent-selector"
 import { Chat, useChatContext } from "@/components/chat"
 import { ChatHistorySheet } from "./chat-history-sheet"
 import { cn } from "@/lib/utils"
+import { useChatbotStore } from "@/store/chatbot-store"
 import Footer from "./footer"
 import { useVoice } from "@/hooks/use-voice"
 import { Disclaimer } from "./disclaimer"
 import type { ChatRuntimeConfig } from "@/core/runtime/chat-state"
-import type { ServiceMetadata, ThreadSummary } from "@/core/services/types"
-
+import type { ServiceMetadata } from "@/core/services/types"
 export interface ChatbotHeaderProps {
   show?: boolean
   title?: string
@@ -56,11 +56,7 @@ const MemoizedChatSuggestions = memo(Chat.Suggestions)
 
 
 function ChatbotLayout({
-  setSelectedAgent,
-  setSelectedModel,
-  selectedAgent,
   effectiveAgent,
-  selectedModel,
   showHeader,
   headerTitle,
   headerTitleUrl,
@@ -76,18 +72,6 @@ function ChatbotLayout({
   placeholder,
   starterMessage,
   userId,
-  currentThreadId: _currentThreadId,
-  setCurrentThreadId,
-  historySheetOpen,
-  setHistorySheetOpen,
-  threadList,
-  setThreadList,
-  totalThreads,
-  setTotalThreads,
-  threadsLoading,
-  setThreadsLoading,
-  isMaximized,
-  toggleMaximize,
   voiceConfig,
   onVoiceConfigChange,
   availableVoices,
@@ -96,12 +80,10 @@ function ChatbotLayout({
   autoSpeak,
   onAutoSpeakChange,
   deleteThread,
+  onMaximizeToggle,
+  isMaximized: propsIsMaximized,
 }: {
-  setSelectedAgent: (a: string) => void
-  setSelectedModel: (m: string) => void
-  selectedAgent: string
   effectiveAgent: string
-  selectedModel: string
   showHeader: boolean
   headerTitle?: string
   headerTitleUrl?: string
@@ -117,19 +99,6 @@ function ChatbotLayout({
   placeholder: string
   starterMessage?: string
   userId?: string
-  threadId?: string
-  currentThreadId: string | undefined
-  setCurrentThreadId: (id: string | undefined) => void
-  historySheetOpen: boolean
-  setHistorySheetOpen: (open: boolean) => void
-  threadList: ThreadSummary[]
-  setThreadList: (list: ThreadSummary[] | ((prev: ThreadSummary[]) => ThreadSummary[])) => void
-  totalThreads: number
-  setTotalThreads: (n: number) => void
-  threadsLoading: boolean
-  setThreadsLoading: (v: boolean) => void
-  isMaximized: boolean
-  toggleMaximize: () => void
   voiceConfig?: import("@/lib/voice.sdk").VoiceConfig
   onVoiceConfigChange?: (config: Partial<import("@/lib/voice.sdk").VoiceConfig>) => void
   availableVoices?: SpeechSynthesisVoice[]
@@ -138,8 +107,30 @@ function ChatbotLayout({
   autoSpeak?: boolean
   onAutoSpeakChange?: (enabled: boolean) => void
   deleteThread?: (threadId: string) => Promise<void>
+  onMaximizeToggle?: (isMaximized: boolean) => void
+  isMaximized?: boolean
 }) {
-  const { metadata, metadataLoading, clearChat, loadThread, getThreads, setThreadId, deleteThread: contextDeleteThread } =
+  const {
+    selectedAgent,
+    setSelectedAgent,
+    selectedModel,
+    setSelectedModel,
+    currentThreadId,
+    setCurrentThreadId,
+    historySheetOpen,
+    setHistorySheetOpen,
+    threadList,
+    setThreadList,
+    totalThreads,
+    setTotalThreads,
+    threadsLoading,
+    setThreadsLoading,
+    isMaximized: storeIsMaximized,
+    setIsMaximized,
+  } = useChatbotStore()
+
+  const isMaximized = propsIsMaximized ?? storeIsMaximized
+  const { metadata, metadataLoading, backendStatus, clearChat, loadThread, getThreads, setThreadId, deleteThread: contextDeleteThread } =
     useChatContext()
 
   const effectiveDeleteThread = deleteThread ?? contextDeleteThread
@@ -156,7 +147,10 @@ function ChatbotLayout({
 
   const handleRefresh = useCallback(() => {
     clearChat({ keepStarter: !!starterMessage, createNewThread: true })
-  }, [clearChat, starterMessage])
+    setSelectedAgent("")
+    setCurrentThreadId(undefined)
+    setThreadId(undefined)
+  }, [clearChat, starterMessage, setSelectedAgent, setCurrentThreadId, setThreadId])
 
   const effectiveOnRefresh = onRefresh ?? handleRefresh
 
@@ -174,6 +168,12 @@ function ChatbotLayout({
     },
     [loadThread, setHistorySheetOpen, setCurrentThreadId, setThreadId, userId]
   )
+
+  const toggleMaximize = useCallback(() => {
+    const next = !isMaximized
+    setIsMaximized(next)
+    onMaximizeToggle?.(next)
+  }, [isMaximized, setIsMaximized, onMaximizeToggle])
 
   return (
     <>
@@ -201,6 +201,7 @@ function ChatbotLayout({
           titleUrl={headerTitleUrl}
           subtitle={headerSubtitle}
           avatar={avatar}
+          backendStatus={backendStatus}
         />
       )}
       <ChatHistorySheet
@@ -213,8 +214,9 @@ function ChatbotLayout({
         setTotalThreads={setTotalThreads}
         threadsLoading={threadsLoading}
         setThreadsLoading={setThreadsLoading}
-        currentThreadId={_currentThreadId}
+        currentThreadId={currentThreadId}
         onSelectThread={handleSelectThread}
+        onNewChat={effectiveOnRefresh}
         getThreads={getThreads}
         deleteThread={effectiveDeleteThread}
       />
@@ -261,7 +263,7 @@ export function Chatbot({
     subtitle: headerSubtitle,
     avatar,
     allowMaximize = false,
-    onMaximizeToggle: onMaximizeToggleProp,
+    onMaximizeToggle,
     onClose,
     onRefresh,
     onHome,
@@ -275,15 +277,28 @@ export function Chatbot({
 
   const { message: starterMessage, suggestions: starterSuggestions } = starter
 
-  const [selectedAgent, setSelectedAgent] = useState(initialAgent ?? "")
-  const [selectedModel, setSelectedModel] = useState(initialModel ?? "")
-  const [internalIsMaximized, setInternalIsMaximized] = useState(false)
-  const isMaximized = propsIsMaximized ?? internalIsMaximized
-  const [currentThreadId, setCurrentThreadId] = useState<string | undefined>(threadId)
-  const [historySheetOpen, setHistorySheetOpen] = useState(false)
-  const [threadsLoading, setThreadsLoading] = useState(false)
-  const [threadList, setThreadList] = useState<ThreadSummary[]>([])
-  const [totalThreads, setTotalThreads] = useState(0)
+  const storeIsMaximized = useChatbotStore((s) => s.isMaximized)
+  const setIsMaximized = useChatbotStore((s) => s.setIsMaximized)
+  const isMaximized = propsIsMaximized ?? storeIsMaximized
+
+  const selectedAgent = useChatbotStore((s) => s.selectedAgent)
+  const setSelectedAgent = useChatbotStore((s) => s.setSelectedAgent)
+  const selectedModel = useChatbotStore((s) => s.selectedModel)
+  const setSelectedModel = useChatbotStore((s) => s.setSelectedModel)
+  const currentThreadId = useChatbotStore((s) => s.currentThreadId)
+  const setCurrentThreadId = useChatbotStore((s) => s.setCurrentThreadId)
+
+  useEffect(() => {
+    if (initialAgent !== undefined) setSelectedAgent(initialAgent)
+  }, [initialAgent, setSelectedAgent])
+
+  useEffect(() => {
+    if (initialModel !== undefined) setSelectedModel(initialModel)
+  }, [initialModel, setSelectedModel])
+
+  useEffect(() => {
+    if (propsIsMaximized !== undefined) setIsMaximized(propsIsMaximized)
+  }, [propsIsMaximized, setIsMaximized])
 
   const {
     isListening,
@@ -298,8 +313,11 @@ export function Chatbot({
     isRecognitionSupported,
   } = useVoice()
 
-  const [autoSpeak, setAutoSpeak] = useState(false)
-  const [showDisclaimer, setShowDisclaimer] = useState(false)
+  const autoSpeak = useChatbotStore((s) => s.autoSpeak)
+  const setAutoSpeak = useChatbotStore((s) => s.setAutoSpeak)
+
+  const showDisclaimer = useChatbotStore((s) => s.showDisclaimer)
+  const setShowDisclaimer = useChatbotStore((s) => s.setShowDisclaimer)
 
   useEffect(() => {
     const savedVoiceConfig = localStorage.getItem("voice-config")
@@ -327,12 +345,15 @@ export function Chatbot({
     localStorage.setItem("auto-speak", String(autoSpeak))
   }, [autoSpeak])
 
-  const [metadata, setMetadata] = useState<ServiceMetadata | null>(null)
+  const metadata = useChatbotStore((s) => s.metadata)
+  const setMetadata = useChatbotStore((s) => s.setMetadata)
 
   const onMetadataLoaded = useCallback((meta: ServiceMetadata) => {
     setMetadata(meta)
-    setSelectedModel((prev) => (prev ? prev : meta.default_model))
-  }, [])
+    if (!selectedModel) {
+      setSelectedModel(meta.default_model)
+    }
+  }, [selectedModel, setSelectedModel])
 
   const defaultSuggestionsForChat = useMemo(() => {
     if (starterSuggestions !== undefined) return starterSuggestions
@@ -382,12 +403,6 @@ export function Chatbot({
       setSelectedAgent(metadata.default_agent)
   }, [currentThreadId, selectedAgent, metadata?.default_agent])
 
-  const toggleMaximize = useCallback(() => {
-    const newState = !isMaximized
-    setInternalIsMaximized(newState)
-    onMaximizeToggleProp?.(newState)
-  }, [isMaximized, onMaximizeToggleProp])
-
   return (
     <div
       className={cn(
@@ -409,11 +424,7 @@ export function Chatbot({
         onMetadata={onMetadataLoaded}
       >
         <ChatbotLayout
-          setSelectedAgent={setSelectedAgent}
-          setSelectedModel={setSelectedModel}
-          selectedAgent={selectedAgent}
           effectiveAgent={effectiveAgent}
-          selectedModel={selectedModel}
           showHeader={showHeader}
           headerTitle={headerTitle}
           headerTitleUrl={headerTitleUrl}
@@ -429,19 +440,6 @@ export function Chatbot({
           placeholder={placeholder}
           starterMessage={starterMessage}
           userId={userId}
-          threadId={threadId}
-          currentThreadId={currentThreadId}
-          setCurrentThreadId={setCurrentThreadId}
-          historySheetOpen={historySheetOpen}
-          setHistorySheetOpen={setHistorySheetOpen}
-          threadList={threadList}
-          setThreadList={setThreadList}
-          totalThreads={totalThreads}
-          setTotalThreads={setTotalThreads}
-          threadsLoading={threadsLoading}
-          setThreadsLoading={setThreadsLoading}
-          isMaximized={isMaximized}
-          toggleMaximize={toggleMaximize}
           voiceConfig={voiceConfig}
           onVoiceConfigChange={updateConfig}
           availableVoices={availableVoices}
@@ -449,6 +447,8 @@ export function Chatbot({
           onVoiceChange={setSelectedVoice}
           autoSpeak={autoSpeak}
           onAutoSpeakChange={setAutoSpeak}
+          onMaximizeToggle={onMaximizeToggle}
+          isMaximized={isMaximized}
         />
       </Chat.Root>
     </div>

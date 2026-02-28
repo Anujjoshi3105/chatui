@@ -1,10 +1,11 @@
-import { useState } from "react"
+import { useState, lazy, Suspense } from "react"
 import { RefreshCw, X, Maximize2, Minimize2, Home, History } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { ServiceMetadata } from "@/hooks/use-chatbot-api"
-import Setting from "./setting"
 import type { VoiceConfig } from "@/lib/voice.sdk"
+
+const Setting = lazy(() => import("./setting"))
 import {
   Tooltip,
   TooltipContent,
@@ -39,6 +40,7 @@ interface HeaderProps {
   isMaximized?: boolean
   onMaximize?: () => void
   avatar?: string
+  backendStatus?: import("@/core/services/types").HealthStatus
 }
 
 export function Header({
@@ -65,6 +67,7 @@ export function Header({
   isMaximized,
   onMaximize,
   avatar,
+  backendStatus,
 }: HeaderProps) {
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -87,7 +90,23 @@ export function Header({
           <AvatarImage src={avatar} />
           <AvatarFallback>{title}</AvatarFallback>
         </Avatar>
-        <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-emerald-500 ring-2 ring-background shadow-sm animate-pulse" />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span
+              className={cn(
+                "absolute bottom-0 right-0 size-2.5 rounded-full ring-2 ring-background shadow-sm transition-colors duration-500",
+                backendStatus?.status === "ok" ? "bg-emerald-500 animate-pulse" :
+                  backendStatus?.status === "error" ? "bg-rose-500" :
+                    "bg-amber-400 animate-bounce"
+              )}
+            />
+          </TooltipTrigger>
+          <TooltipContent side="bottom" align="center" className="text-[10px] py-1 px-2">
+            {backendStatus?.status === "ok" ? "Backend Online" :
+              backendStatus?.status === "error" ? "Backend Offline" :
+                "Checking Status..."}
+          </TooltipContent>
+        </Tooltip>
       </div>
       <div className="flex flex-col gap-0.5">
         <h3 className="text-sm font-semibold text-foreground/90 tracking-tight leading-none group-hover:text-primary transition-colors">
@@ -123,7 +142,8 @@ export function Header({
         )}
 
         {/* Right */}
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1">
+          {/* Group 1: Navigation & Discovery */}
           {onHome && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -131,15 +151,32 @@ export function Header({
                   variant="ghost"
                   size="icon"
                   onClick={onHome}
-                  className="rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  className="rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-200"
                 >
                   <Home className="h-4 w-4" />
                   <span className="sr-only">Home</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Home</TooltipContent>
+              <TooltipContent sideOffset={8}>Home View</TooltipContent>
             </Tooltip>
           )}
+
+          <Suspense fallback={<div className="h-8 w-8 rounded-full bg-muted animate-pulse" />}>
+            <Setting
+              metadata={metadata}
+              selectedAgent={selectedAgent}
+              selectedModel={selectedModel}
+              onAgentChange={onAgentChange}
+              onModelChange={onModelChange}
+              voiceConfig={voiceConfig}
+              onVoiceConfigChange={onVoiceConfigChange}
+              availableVoices={availableVoices}
+              selectedVoice={selectedVoice}
+              onVoiceChange={onVoiceChange}
+              autoSpeak={autoSpeak}
+              onAutoSpeakChange={onAutoSpeakChange}
+            />
+          </Suspense>
 
           {onHistory && (
             <Tooltip>
@@ -148,16 +185,41 @@ export function Header({
                   variant="ghost"
                   size="icon"
                   onClick={onHistory}
-                  className="rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  className="rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-200"
                 >
                   <History className="h-4 w-4" />
                   <span className="sr-only">Chat history</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Chat history</TooltipContent>
+              <TooltipContent sideOffset={8}>Chat History</TooltipContent>
             </Tooltip>
           )}
 
+          {/* Group 2: Session Actions */}
+          {onRefresh && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-200"
+                >
+                  <RefreshCw
+                    className={cn(
+                      "h-4 w-4",
+                      isRefreshing && "animate-spin text-primary"
+                    )}
+                  />
+                  <span className="sr-only">Restart Chat</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent sideOffset={8}>Restart Chat</TooltipContent>
+            </Tooltip>
+          )}
+
+          {/* Group 3: Window Management */}
           {onMaximize && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -165,7 +227,7 @@ export function Header({
                   variant="ghost"
                   size="icon"
                   onClick={onMaximize}
-                  className="rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  className="rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-200"
                 >
                   {isMaximized ? (
                     <Minimize2 className="h-4 w-4" />
@@ -177,45 +239,9 @@ export function Header({
                   </span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>{isMaximized ? "Minimize" : "Maximize"}</TooltipContent>
-            </Tooltip>
-          )}
-
-          <Setting
-            metadata={metadata}
-            selectedAgent={selectedAgent}
-            selectedModel={selectedModel}
-            onAgentChange={onAgentChange}
-            onModelChange={onModelChange}
-            voiceConfig={voiceConfig}
-            onVoiceConfigChange={onVoiceConfigChange}
-            availableVoices={availableVoices}
-            selectedVoice={selectedVoice}
-            onVoiceChange={onVoiceChange}
-            autoSpeak={autoSpeak}
-            onAutoSpeakChange={onAutoSpeakChange}
-          />
-
-          {onRefresh && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleRefresh}
-                  disabled={isRefreshing}
-                  className="rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <RefreshCw
-                    className={cn(
-                      "h-4 w-4",
-                      isRefreshing && "animate-spin text-primary"
-                    )}
-                  />
-                  <span className="sr-only">Refresh Chat</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Restart</TooltipContent>
+              <TooltipContent sideOffset={8}>
+                {isMaximized ? "Minimize View" : "Maximize View"}
+              </TooltipContent>
             </Tooltip>
           )}
 
@@ -226,13 +252,13 @@ export function Header({
                   variant="ghost"
                   size="icon"
                   onClick={onClose}
-                  className="rounded-full h-8 w-8 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors ml-1"
+                  className="rounded-full h-8 w-8 hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex items-center justify-center transition-all duration-200"
                 >
                   <X className="h-4 w-4" />
                   <span className="sr-only">Close</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Close Chat</TooltipContent>
+              <TooltipContent sideOffset={8}>Close Assistant</TooltipContent>
             </Tooltip>
           )}
         </div>

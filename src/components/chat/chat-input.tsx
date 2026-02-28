@@ -1,9 +1,8 @@
 "use client"
 
-import { useCallback } from "react"
+import { forwardRef, type ReactElement, useCallback, useState } from "react"
 import { useChatContext } from "./context"
 import { MessageInput } from "@/components/ui/message-input"
-import { ChatForm } from "@/components/ui/chat"
 import { cn } from "@/lib/utils"
 
 export interface ChatInputProps {
@@ -11,6 +10,51 @@ export interface ChatInputProps {
   className?: string
   transcribeAudio?: (blob: Blob) => Promise<string>
 }
+
+interface ChatFormProps {
+  className?: string
+  isPending: boolean
+  handleSubmit: (
+    event?: { preventDefault?: () => void },
+    options?: { experimental_attachments?: FileList }
+  ) => void
+  children: (props: {
+    files: File[] | null
+    setFiles: React.Dispatch<React.SetStateAction<File[] | null>>
+  }) => ReactElement
+}
+
+function createFileList(files: File[] | FileList): FileList {
+  const dataTransfer = new DataTransfer()
+  for (const file of Array.from(files)) {
+    dataTransfer.items.add(file)
+  }
+  return dataTransfer.files
+}
+
+const ChatForm = forwardRef<HTMLFormElement, ChatFormProps>(
+  ({ children, handleSubmit, className }, ref) => {
+    const [files, setFiles] = useState<File[] | null>(null)
+
+    const onSubmit = (event: React.FormEvent) => {
+      if (!files) {
+        handleSubmit(event)
+        return
+      }
+
+      const fileList = createFileList(files)
+      handleSubmit(event, { experimental_attachments: fileList })
+      setFiles(null)
+    }
+
+    return (
+      <form ref={ref} onSubmit={onSubmit} className={className}>
+        {children({ files, setFiles })}
+      </form>
+    )
+  }
+)
+ChatForm.displayName = "ChatForm"
 
 export function ChatInput({
   placeholder = "Hi, how can I help you?",
@@ -109,7 +153,7 @@ export function ChatInput({
   return (
     <ChatForm
       className={cn(
-        "mt-auto border-t border-border/50 bg-gradient-to-t from-background to-muted/10 px-6 relative",
+        "chat-input-container",
         messages.length > 0 ? "py-4" : "py-2",
         className
       )}
@@ -136,3 +180,4 @@ export function ChatInput({
     </ChatForm>
   )
 }
+

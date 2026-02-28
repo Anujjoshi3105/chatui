@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, memo } from "react"
+import { useCallback, useEffect, useMemo, memo } from "react"
 import { Header } from "./header"
 import { AgentSelector } from "./agent-selector"
 import { Chat, useChatContext } from "@/components/chat"
@@ -130,7 +130,7 @@ function ChatbotLayout({
   } = useChatbotStore()
 
   const isMaximized = propsIsMaximized ?? storeIsMaximized
-  const { metadata, metadataLoading, clearChat, loadThread, getThreads, setThreadId, deleteThread: contextDeleteThread } =
+  const { metadata, metadataLoading, backendStatus, clearChat, loadThread, getThreads, setThreadId, deleteThread: contextDeleteThread } =
     useChatContext()
 
   const effectiveDeleteThread = deleteThread ?? contextDeleteThread
@@ -201,6 +201,7 @@ function ChatbotLayout({
           titleUrl={headerTitleUrl}
           subtitle={headerSubtitle}
           avatar={avatar}
+          backendStatus={backendStatus}
         />
       )}
       <ChatHistorySheet
@@ -312,8 +313,11 @@ export function Chatbot({
     isRecognitionSupported,
   } = useVoice()
 
-  const [autoSpeak, setAutoSpeak] = useState(false)
-  const [showDisclaimer, setShowDisclaimer] = useState(false)
+  const autoSpeak = useChatbotStore((s) => s.autoSpeak)
+  const setAutoSpeak = useChatbotStore((s) => s.setAutoSpeak)
+
+  const showDisclaimer = useChatbotStore((s) => s.showDisclaimer)
+  const setShowDisclaimer = useChatbotStore((s) => s.setShowDisclaimer)
 
   useEffect(() => {
     const savedVoiceConfig = localStorage.getItem("voice-config")
@@ -341,7 +345,8 @@ export function Chatbot({
     localStorage.setItem("auto-speak", String(autoSpeak))
   }, [autoSpeak])
 
-  const [metadata, setMetadata] = useState<ServiceMetadata | null>(null)
+  const metadata = useChatbotStore((s) => s.metadata)
+  const setMetadata = useChatbotStore((s) => s.setMetadata)
 
   const onMetadataLoaded = useCallback((meta: ServiceMetadata) => {
     setMetadata(meta)

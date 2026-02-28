@@ -1,5 +1,7 @@
 import { PopupChatbot } from "./components/chatbot";
-import { motion } from "framer-motion";
+import { m as motion, LazyMotion } from "framer-motion";
+
+const loadFeatures = () => import("framer-motion").then(res => res.domAnimation);
 import { Bot, Code2, Sparkles, Zap, ArrowRight, Copy, Check } from "lucide-react";
 import { useState } from "react";
 
@@ -68,7 +70,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="relative group rounded-xl overflow-hidden bg-[#0A0A0B] border border-white/10 shadow-2xl">
+    <div className="relative group rounded-xl overflow-hidden bg-zinc-950 border border-white/10 shadow-2xl">
       <div className="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/5">
         <div className="flex items-center space-x-4">
           <div className="flex space-x-2">
@@ -126,7 +128,8 @@ export default function ChatPage() {
 
 export default function App() {
   return (
-    <div className="chatbot-theme min-h-screen bg-background text-foreground selection:bg-primary/20">
+    <LazyMotion features={loadFeatures}>
+      <div className="chatbot-theme min-h-screen bg-background text-foreground selection:bg-primary/20">
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 px-6 overflow-hidden">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-background to-background opacity-40" />
@@ -224,7 +227,7 @@ export default function App() {
       </footer>
 
       <PopupChatbot
-        url="https://anujjoshi-portfolio-chatbot-backend.hf.space"
+        url="http://localhost:8080"
         position="bottom-right"
         placeholder="Ask me about anything..."
         tooltip="Chat with AI Assistant"
@@ -248,5 +251,6 @@ export default function App() {
         height={600}
       />
     </div>
+    </LazyMotion>
   );
 }

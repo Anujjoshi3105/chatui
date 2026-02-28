@@ -6,6 +6,7 @@ export interface PersistedMessage {
   custom_data?: Record<string, unknown>
   toolInvocations?: unknown[]
   parts?: unknown[]
+  runId?: string
 }
 
 const DATE_KEYS = ["createdAt"]

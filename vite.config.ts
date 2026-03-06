@@ -6,51 +6,59 @@ import dts from "vite-plugin-dts"
 import { visualizer } from "rollup-plugin-visualizer"
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-    dts({
-      insertTypesEntry: true,
-      tsconfigPath: "./tsconfig.app.json",
-    }),
-    process.env.ANALYZE === "true" && visualizer({ open: true, filename: "dist/stats.html" }),
-  ],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
-  build: {
-    lib: {
-      entry: path.resolve(__dirname, "src/lib.ts"),
-      name: "Chatui",
-      formats: ["es", "umd"],
-      fileName: (format) => `chatui.${format}.js`,
-    },
-    rollupOptions: {
-      external: [
-        "react",
-        "react-dom",
-        "react/jsx-runtime",
-        "react/jsx-dev-runtime",
-        "react-is",
-        "tailwindcss",
-        "use-sync-external-store",
-        /^use-sync-external-store\/.*/,
-      ],
-      output: {
-        globals: {
-          react: "React",
-          "react-dom": "ReactDOM",
-          "react/jsx-runtime": "jsxRuntime",
-          tailwindcss: "tailwindcss",
-          "use-sync-external-store": "useSyncExternalStore",
-          "use-sync-external-store/shim": "useSyncExternalStore",
-        },
+export default defineConfig(() => {
+  const isLib = process.env.BUILD_LIB === "true"
+
+  return {
+    plugins: [
+      react(),
+      tailwindcss(),
+      isLib && dts({
+        insertTypesEntry: true,
+        tsconfigPath: "./tsconfig.app.json",
+      }),
+      process.env.ANALYZE === "true" && visualizer({ open: true, filename: "dist/stats.html" }),
+    ].filter(Boolean),
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
       },
     },
-    outDir: "dist",
-    emptyOutDir: true,
-  },
+    build: isLib ? {
+      lib: {
+        entry: path.resolve(__dirname, "src/lib.ts"),
+        name: "Chatui",
+        formats: ["es", "umd"],
+        fileName: (format) => `chatui.${format}.js`,
+      },
+      rollupOptions: {
+        external: [
+          "react",
+          "react-dom",
+          "react/jsx-runtime",
+          "react/jsx-dev-runtime",
+          "react-is",
+          "tailwindcss",
+          "use-sync-external-store",
+          /^use-sync-external-store\/.*/,
+        ],
+        output: {
+          globals: {
+            react: "React",
+            "react-dom": "ReactDOM",
+            "react/jsx-runtime": "jsxRuntime",
+            tailwindcss: "tailwindcss",
+            "use-sync-external-store": "useSyncExternalStore",
+            "use-sync-external-store/shim": "useSyncExternalStore",
+          },
+        },
+      },
+      outDir: "dist",
+      emptyOutDir: true,
+    } : {
+      outDir: "dist",
+      emptyOutDir: true,
+    },
+  }
 })
+

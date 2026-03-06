@@ -1,4 +1,4 @@
-import { AnimatePresence, m as motion } from "framer-motion"
+import { AnimatePresence, m as motion } from "motion/react"
 import { X } from "lucide-react"
 
 interface InterruptPromptProps {

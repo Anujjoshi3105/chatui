@@ -32,7 +32,7 @@ function CodeBlock({
   ...props
 }: CodeBlockProps) {
   const code = extractText(children)
-  const languageClass = React.isValidElement(children) ? (children.props as any).className : className
+  const languageClass = React.isValidElement(children) ? (children.props as { className?: string }).className : className
 
   return (
     <div className="group relative my-4">
@@ -48,7 +48,7 @@ function CodeBlock({
 }
 
 function withClass(Tag: keyof React.JSX.IntrinsicElements, className: string) {
-  const Component = ({ node, className: propClassName, ...props }: any) =>
+  const Component = ({ className: propClassName, ...props }: React.HTMLAttributes<HTMLElement>) =>
     React.createElement(Tag, {
       ...props,
       className: cn(className, propClassName)
@@ -67,7 +67,7 @@ const components: Components = {
 
   p: withClass("p", "whitespace-pre-wrap mb-4 last:mb-0"),
   strong: withClass("strong", "font-semibold"),
-  a({ node, className, children, href, ...props }: any) {
+  a({ className, children, href, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { children?: React.ReactNode }) {
     if (!href) {
       return <a className={cn("text-primary underline underline-offset-2 hover:opacity-80 transition-opacity", className)} {...props}>{children}</a>
     }
@@ -82,7 +82,7 @@ const components: Components = {
   ol: withClass("ol", "list-decimal space-y-2 pl-6 my-4"),
   li: withClass("li", "my-1.5"),
 
-  table({ node, className, children, ...props }: any) {
+  table({ className, children, ...props }: React.HTMLAttributes<HTMLTableElement>) {
     return (
       <div className="my-4 max-w-[90%] overflow-x-hidden rounded-md border border-foreground/20 shadow-sm">
         <table className={cn("border-collapse ", className)} {...props}>
@@ -95,7 +95,7 @@ const components: Components = {
   td: withClass("td", "border border-foreground/20 px-4 py-2"),
   tr: withClass("tr", "even:bg-muted/40"),
 
-  code({ node, className, children, ...props }: any) {
+  code({ className, children, ...props }: React.HTMLAttributes<HTMLElement>) {
     return <code className={cn("rounded bg-muted px-1 py-0.5 font-mono text-sm", className)} {...props}>{children}</code>
   },
   pre({ children }) {

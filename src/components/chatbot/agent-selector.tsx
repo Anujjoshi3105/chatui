@@ -1,6 +1,6 @@
 import React, { useCallback, memo, useId } from "react"
 import { cn } from "@/lib/utils"
-import type { AgentInfo } from "@/hooks/use-chatbot-api"
+import type { AgentInfo } from "@/core/services/types"
 import { MessageSquare, Bot, Sparkles, Zap, ChevronRight } from "lucide-react"
 
 const AGENT_ICONS = [Bot, Sparkles, MessageSquare, Zap] as const
@@ -50,6 +50,7 @@ const AgentCard = memo(function AgentCard({
   onSelect: (key: string) => void
   selected?: boolean
 }) {
+  // eslint-disable-next-line react-hooks/static-components
   const Icon = getAgentIcon(index)
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {

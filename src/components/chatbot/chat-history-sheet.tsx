@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react"
+import { useEffect, useRef, useCallback, useState } from "react"
 import {
   Sheet,
   SheetContent,
@@ -15,10 +15,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Loader2, Search, Trash2, Clock } from "lucide-react"
-import { m as motion, AnimatePresence } from "framer-motion"
+import { m as motion, AnimatePresence } from "motion/react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { useChatbotStore } from "@/store/chatbot-store"
 import type {
   ThreadSummary,
   GetThreadsOptions,
@@ -128,18 +127,11 @@ export function ChatHistorySheet({
   getThreads,
   deleteThread,
 }: ChatHistorySheetProps) {
-  const {
-    searchInput,
-    setSearchInput,
-    searchQuery,
-    setSearchQuery,
-    loadingMore,
-    setLoadingMore,
-    threadToDelete,
-    setThreadToDelete,
-    isDeleting,
-    setIsDeleting,
-  } = useChatbotStore()
+  const [searchInput, setSearchInput] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [threadToDelete, setThreadToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null)
   const loadingMoreRef = useRef(false)
   const threadListLengthRef = useRef(threadList.length)
@@ -257,7 +249,7 @@ export function ChatHistorySheet({
     try {
       await deleteThread(threadToDelete)
       setThreadList((prev) => {
-        return prev.filter((t: any) => t.thread_id !== threadToDelete)
+        return prev.filter((t: ThreadSummary) => t.thread_id !== threadToDelete)
       })
       setTotalThreads(Math.max(0, totalThreads - 1))
       setThreadToDelete(null)

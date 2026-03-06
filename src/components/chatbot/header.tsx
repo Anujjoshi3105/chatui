@@ -2,7 +2,7 @@ import { useState, lazy, Suspense } from "react"
 import { RefreshCw, X, Maximize2, Minimize2, Home, History } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { ServiceMetadata } from "@/hooks/use-chatbot-api"
+import type { ServiceMetadata } from "@/core/services/types"
 import type { VoiceConfig } from "@/lib/voice.sdk"
 
 const Setting = lazy(() => import("./setting"))
@@ -41,6 +41,56 @@ interface HeaderProps {
   onMaximize?: () => void
   avatar?: string
   backendStatus?: import("@/core/services/types").HealthStatus
+}
+
+function TitleContent({
+  avatar,
+  title,
+  backendStatus,
+  subtitle,
+  selectedAgent,
+}: {
+  avatar?: string
+  title: string
+  backendStatus?: import("@/core/services/types").HealthStatus
+  subtitle?: string
+  selectedAgent: string
+}) {
+  return (
+    <div className="flex items-center gap-3 group cursor-pointer">
+      <div className="relative">
+        <Avatar className="size-9 border border-border/40 shadow-sm transition-transform group-hover:scale-105">
+          <AvatarImage src={avatar} />
+          <AvatarFallback>{title}</AvatarFallback>
+        </Avatar>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span
+              className={cn(
+                "absolute bottom-0 right-0 size-2.5 rounded-full ring-2 ring-background shadow-sm transition-colors duration-500",
+                backendStatus?.status === "ok" ? "bg-emerald-500 animate-pulse" :
+                  backendStatus?.status === "error" ? "bg-rose-500" :
+                    "bg-amber-400 animate-bounce"
+              )}
+            />
+          </TooltipTrigger>
+          <TooltipContent side="bottom" align="center" className="text-[10px] py-1 px-2">
+            {backendStatus?.status === "ok" ? "Backend Online" :
+              backendStatus?.status === "error" ? "Backend Offline" :
+                "Checking Status..."}
+          </TooltipContent>
+        </Tooltip>
+      </div>
+      <div className="flex flex-col gap-0.5">
+        <h3 className="text-sm font-semibold text-foreground/90 tracking-tight leading-none group-hover:text-primary transition-colors">
+          {title}
+        </h3>
+        <p className="text-[11px] text-muted-foreground font-medium leading-none capitalize">
+          {subtitle || selectedAgent.replace(/-/g, " ")}
+        </p>
+      </div>
+    </div>
+  )
 }
 
 export function Header({
@@ -83,41 +133,6 @@ export function Header({
     }, 1000)
   }
 
-  const TitleContent = () => (
-    <div className="flex items-center gap-3 group cursor-pointer">
-      <div className="relative">
-        <Avatar className="size-9 border border-border/40 shadow-sm transition-transform group-hover:scale-105">
-          <AvatarImage src={avatar} />
-          <AvatarFallback>{title}</AvatarFallback>
-        </Avatar>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span
-              className={cn(
-                "absolute bottom-0 right-0 size-2.5 rounded-full ring-2 ring-background shadow-sm transition-colors duration-500",
-                backendStatus?.status === "ok" ? "bg-emerald-500 animate-pulse" :
-                  backendStatus?.status === "error" ? "bg-rose-500" :
-                    "bg-amber-400 animate-bounce"
-              )}
-            />
-          </TooltipTrigger>
-          <TooltipContent side="bottom" align="center" className="text-[10px] py-1 px-2">
-            {backendStatus?.status === "ok" ? "Backend Online" :
-              backendStatus?.status === "error" ? "Backend Offline" :
-                "Checking Status..."}
-          </TooltipContent>
-        </Tooltip>
-      </div>
-      <div className="flex flex-col gap-0.5">
-        <h3 className="text-sm font-semibold text-foreground/90 tracking-tight leading-none group-hover:text-primary transition-colors">
-          {title}
-        </h3>
-        <p className="text-[11px] text-muted-foreground font-medium leading-none capitalize">
-          {subtitle || selectedAgent.replace(/-/g, " ")}
-        </p>
-      </div>
-    </div>
-  )
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -135,10 +150,10 @@ export function Header({
             rel="noopener noreferrer"
             className="focus-visible:outline-none rounded-md"
           >
-            <TitleContent />
+            <TitleContent avatar={avatar} title={title} backendStatus={backendStatus} subtitle={subtitle} selectedAgent={selectedAgent} />
           </a>
         ) : (
-          <TitleContent />
+          <TitleContent avatar={avatar} title={title} backendStatus={backendStatus} subtitle={subtitle} selectedAgent={selectedAgent} />
         )}
 
         {/* Right */}

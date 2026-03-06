@@ -266,7 +266,7 @@ export class ChatService {
     }
   }
 
-  async sendFeedback(runId: string, key: string, score: number, kwargs?: Record<string, any>): Promise<unknown> {
+  async sendFeedback(runId: string, key: string, score: number, kwargs?: Record<string, unknown>): Promise<unknown> {
     const response = await fetch(`${this.config.baseUrl}/feedback`, {
       method: "POST",
       headers: this.getHeaders(),

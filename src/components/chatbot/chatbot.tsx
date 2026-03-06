@@ -4,7 +4,7 @@ import { AgentSelector } from "./agent-selector"
 import { Chat, useChatContext } from "@/components/chat"
 import { ChatHistorySheet } from "./chat-history-sheet"
 import { cn } from "@/lib/utils"
-import { useChatbotStore } from "@/store/chatbot-store"
+import { useChatSessionStore, useChatUIStore } from "@/store/chatbot-store"
 import Footer from "./footer"
 import { useVoice } from "@/hooks/use-voice"
 import { Disclaimer } from "./disclaimer"
@@ -110,24 +110,23 @@ function ChatbotLayout({
   onMaximizeToggle?: (isMaximized: boolean) => void
   isMaximized?: boolean
 }) {
-  const {
-    selectedAgent,
-    setSelectedAgent,
-    selectedModel,
-    setSelectedModel,
-    currentThreadId,
-    setCurrentThreadId,
-    historySheetOpen,
-    setHistorySheetOpen,
-    threadList,
-    setThreadList,
-    totalThreads,
-    setTotalThreads,
-    threadsLoading,
-    setThreadsLoading,
-    isMaximized: storeIsMaximized,
-    setIsMaximized,
-  } = useChatbotStore()
+  const selectedAgent = useChatSessionStore((s) => s.selectedAgent)
+  const setSelectedAgent = useChatSessionStore((s) => s.setSelectedAgent)
+  const selectedModel = useChatSessionStore((s) => s.selectedModel)
+  const setSelectedModel = useChatSessionStore((s) => s.setSelectedModel)
+  const currentThreadId = useChatSessionStore((s) => s.currentThreadId)
+  const setCurrentThreadId = useChatSessionStore((s) => s.setCurrentThreadId)
+  const threadList = useChatSessionStore((s) => s.threadList)
+  const setThreadList = useChatSessionStore((s) => s.setThreadList)
+  const totalThreads = useChatSessionStore((s) => s.totalThreads)
+  const setTotalThreads = useChatSessionStore((s) => s.setTotalThreads)
+  const threadsLoading = useChatSessionStore((s) => s.threadsLoading)
+  const setThreadsLoading = useChatSessionStore((s) => s.setThreadsLoading)
+
+  const historySheetOpen = useChatUIStore((s) => s.historySheetOpen)
+  const setHistorySheetOpen = useChatUIStore((s) => s.setHistorySheetOpen)
+  const storeIsMaximized = useChatUIStore((s) => s.isMaximized)
+  const setIsMaximized = useChatUIStore((s) => s.setIsMaximized)
 
   const isMaximized = propsIsMaximized ?? storeIsMaximized
   const { metadata, metadataLoading, backendStatus, clearChat, loadThread, getThreads, setThreadId, deleteThread: contextDeleteThread } =
@@ -277,16 +276,16 @@ export function Chatbot({
 
   const { message: starterMessage, suggestions: starterSuggestions } = starter
 
-  const storeIsMaximized = useChatbotStore((s) => s.isMaximized)
-  const setIsMaximized = useChatbotStore((s) => s.setIsMaximized)
+  const storeIsMaximized = useChatUIStore((s) => s.isMaximized)
+  const setIsMaximized = useChatUIStore((s) => s.setIsMaximized)
   const isMaximized = propsIsMaximized ?? storeIsMaximized
 
-  const selectedAgent = useChatbotStore((s) => s.selectedAgent)
-  const setSelectedAgent = useChatbotStore((s) => s.setSelectedAgent)
-  const selectedModel = useChatbotStore((s) => s.selectedModel)
-  const setSelectedModel = useChatbotStore((s) => s.setSelectedModel)
-  const currentThreadId = useChatbotStore((s) => s.currentThreadId)
-  const setCurrentThreadId = useChatbotStore((s) => s.setCurrentThreadId)
+  const selectedAgent = useChatSessionStore((s) => s.selectedAgent)
+  const setSelectedAgent = useChatSessionStore((s) => s.setSelectedAgent)
+  const selectedModel = useChatSessionStore((s) => s.selectedModel)
+  const setSelectedModel = useChatSessionStore((s) => s.setSelectedModel)
+  const currentThreadId = useChatSessionStore((s) => s.currentThreadId)
+  const setCurrentThreadId = useChatSessionStore((s) => s.setCurrentThreadId)
 
   useEffect(() => {
     if (initialAgent !== undefined) setSelectedAgent(initialAgent)
@@ -313,11 +312,11 @@ export function Chatbot({
     isRecognitionSupported,
   } = useVoice()
 
-  const autoSpeak = useChatbotStore((s) => s.autoSpeak)
-  const setAutoSpeak = useChatbotStore((s) => s.setAutoSpeak)
+  const autoSpeak = useChatUIStore((s) => s.autoSpeak)
+  const setAutoSpeak = useChatUIStore((s) => s.setAutoSpeak)
 
-  const showDisclaimer = useChatbotStore((s) => s.showDisclaimer)
-  const setShowDisclaimer = useChatbotStore((s) => s.setShowDisclaimer)
+  const showDisclaimer = useChatUIStore((s) => s.showDisclaimer)
+  const setShowDisclaimer = useChatUIStore((s) => s.setShowDisclaimer)
 
   useEffect(() => {
     const savedVoiceConfig = localStorage.getItem("voice-config")
@@ -331,11 +330,13 @@ export function Chatbot({
     const savedAutoSpeak = localStorage.getItem("auto-speak")
     if (savedAutoSpeak) setAutoSpeak(savedAutoSpeak === "true")
     if (!localStorage.getItem("chatbot-consent")) setShowDisclaimer(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [updateConfig])
 
   const handleDisclaimerAccept = useCallback(() => {
     localStorage.setItem("chatbot-consent", "true")
     setShowDisclaimer(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -345,15 +346,15 @@ export function Chatbot({
     localStorage.setItem("auto-speak", String(autoSpeak))
   }, [autoSpeak])
 
-  const metadata = useChatbotStore((s) => s.metadata)
-  const setMetadata = useChatbotStore((s) => s.setMetadata)
+  const metadata = useChatSessionStore((s) => s.metadata)
+  const setMetadata = useChatSessionStore((s) => s.setMetadata)
 
   const onMetadataLoaded = useCallback((meta: ServiceMetadata) => {
     setMetadata(meta)
     if (!selectedModel) {
       setSelectedModel(meta.default_model)
     }
-  }, [selectedModel, setSelectedModel])
+  }, [selectedModel, setSelectedModel, setMetadata])
 
   const defaultSuggestionsForChat = useMemo(() => {
     if (starterSuggestions !== undefined) return starterSuggestions
@@ -396,11 +397,13 @@ export function Chatbot({
 
   useEffect(() => {
     if (threadId != null) setCurrentThreadId(threadId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId])
 
   useEffect(() => {
     if (currentThreadId && !selectedAgent && metadata?.default_agent)
       setSelectedAgent(metadata.default_agent)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentThreadId, selectedAgent, metadata?.default_agent])
 
   return (

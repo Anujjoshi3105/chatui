@@ -40,11 +40,11 @@ import {
   RotateCcw
 } from "lucide-react"
 
-import type { ServiceMetadata } from "@/hooks/use-chatbot-api"
+import type { ServiceMetadata } from "@/core/services/types"
 import { cn } from "@/lib/utils"
 import type { VoiceConfig } from "@/lib/voice.sdk"
 import { getVoiceSupport } from "@/lib/voice.sdk"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 
 interface SettingProps {
   metadata: ServiceMetadata | null
@@ -79,11 +79,9 @@ export default function Setting({
 }: SettingProps) {
   const currentAgent = metadata?.agents.find((a) => a.key === selectedAgent)
   const currentModel = selectedModel
-  const [support, setSupport] = useState(() => getVoiceSupport())
+  const [support] = useState(() => getVoiceSupport())
 
-  useEffect(() => {
-    setSupport(getVoiceSupport())
-  }, [])
+
 
   // Group voices by language
   const voicesByLanguage = availableVoices?.reduce((acc, voice) => {

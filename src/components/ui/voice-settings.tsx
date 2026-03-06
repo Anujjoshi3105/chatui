@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Volume2, Mic, MicOff, VolumeX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -42,11 +42,7 @@ export function VoiceSettings({
     onAutoSpeakChange,
     className,
 }: VoiceSettingsProps) {
-    const [support, setSupport] = useState(() => getVoiceSupport())
-
-    useEffect(() => {
-        setSupport(getVoiceSupport())
-    }, [])
+    const [support] = useState(() => getVoiceSupport())
 
     // Group voices by language
     const voicesByLanguage = availableVoices.reduce((acc, voice) => {

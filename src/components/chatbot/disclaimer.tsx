@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { ShieldCheck } from "lucide-react"
-import { m as motion, AnimatePresence } from "framer-motion"
+import { m as motion, AnimatePresence } from "motion/react"
 
 interface DisclaimerProps {
     onAccept: () => void

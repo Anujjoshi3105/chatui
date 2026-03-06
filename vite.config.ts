@@ -3,6 +3,7 @@ import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
 import dts from "vite-plugin-dts"
+import { visualizer } from "rollup-plugin-visualizer"
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -13,6 +14,7 @@ export default defineConfig({
       insertTypesEntry: true,
       tsconfigPath: "./tsconfig.app.json",
     }),
+    visualizer({ open: true, filename: "dist/stats.html" }),
   ],
   resolve: {
     alias: {

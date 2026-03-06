@@ -1,7 +1,7 @@
 "use client";
 import * as HoverCardPrimitive from "@radix-ui/react-hover-card";
 
-import { encode } from "qss";
+
 import React from "react";
 import {
   AnimatePresence,
@@ -34,17 +34,17 @@ export const LinkPreview = ({
 }: LinkPreviewProps) => {
   let src;
   if (!isStatic) {
-    const params = encode({
+    const params = new URLSearchParams({
       url,
-      screenshot: true,
-      meta: false,
+      screenshot: "true",
+      meta: "false",
       embed: "screenshot.url",
       colorScheme: "dark",
-      "viewport.isMobile": true,
-      "viewport.deviceScaleFactor": 1,
-      "viewport.width": width * 3,
-      "viewport.height": height * 3,
-    });
+      "viewport.isMobile": "true",
+      "viewport.deviceScaleFactor": "1",
+      "viewport.width": String(width * 3),
+      "viewport.height": String(height * 3),
+    }).toString();
     src = `https://api.microlink.io/?${params}`;
   } else {
     src = imageSrc;
@@ -63,8 +63,8 @@ export const LinkPreview = ({
 
   const translateX = useSpring(x, springConfig);
 
-  const handleMouseMove = (event: any) => {
-    const targetRect = event.target.getBoundingClientRect();
+  const handleMouseMove = (event: React.MouseEvent<HTMLElement>) => {
+    const targetRect = (event.target as HTMLElement).getBoundingClientRect();
     const eventOffsetX = event.clientX - targetRect.left;
     const offsetFromCenter = (eventOffsetX - targetRect.width / 2) / 2; // Reduce the effect to make it subtle
     x.set(offsetFromCenter);

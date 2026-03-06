@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react"
-import { AnimatePresence, m as motion } from "framer-motion"
+import { AnimatePresence, m as motion } from "motion/react"
 import { ChevronRight, Info, Loader2, Mic, Paperclip, Square } from "lucide-react"
-import { omit } from "remeda"
+
 import { cn } from "@/lib/utils"
 import { useAudioRecording } from "@/hooks/use-audio-recording"
 import { useAutosizeTextArea } from "@/hooks/use-autosize-textarea"
@@ -80,8 +80,8 @@ export function MessageInput({
     stopRecording,
   } = useAudioRecording({
     transcribeAudio,
-    onTranscriptionComplete: (text) => {
-      props.onChange?.({ target: { value: text } } as any)
+    onTranscriptionComplete: (text: string) => {
+      props.onChange?.({ target: { value: text } } as React.ChangeEvent<HTMLTextAreaElement>)
     },
   })
 
@@ -152,9 +152,11 @@ export function MessageInput({
     if (text && text.length > 500 && props.allowAttachments) {
       event.preventDefault()
       const blob = new Blob([text], { type: "text/plain" })
+      const lastModified = Date.now()
       const file = new File([blob], "Pasted text", {
         type: "text/plain",
-        lastModified: Date.now(),
+        // eslint-disable-next-line react-hooks/purity
+        lastModified,
       })
       addFiles([file])
       return
@@ -250,9 +252,10 @@ export function MessageInput({
               showFileList && "pb-20",
               className
             )}
-            {...(props.allowAttachments
-              ? omit(props, ["allowAttachments", "files", "setFiles"])
-              : omit(props, ["allowAttachments"]))}
+            {...((() => {
+              const { allowAttachments: _allowAttachments, files: _files, setFiles: _setFiles, ...restProps } = props as MessageInputWithAttachmentsProps;
+              return restProps;
+            })())}
           />
 
           {props.allowAttachments && (
@@ -261,22 +264,22 @@ export function MessageInput({
                 <AnimatePresence mode="popLayout">
                   {props.files?.map((file) => {
                     return (
-                    <Suspense key={file.name + String(file.lastModified)} fallback={<div className="h-16 w-16 animate-pulse bg-muted rounded-xl" />}>
-                      <FilePreview
-                        file={file}
-                        onRemove={() => {
-                          props.setFiles((files) => {
-                            if (!files) return null
+                      <Suspense key={file.name + String(file.lastModified)} fallback={<div className="h-16 w-16 animate-pulse bg-muted rounded-xl" />}>
+                        <FilePreview
+                          file={file}
+                          onRemove={() => {
+                            props.setFiles((files) => {
+                              if (!files) return null
 
-                            const filtered = Array.from(files).filter(
-                              (f) => f !== file
-                            )
-                            if (filtered.length === 0) return null
-                            return filtered
-                          })
-                        }}
-                      />
-                    </Suspense>
+                              const filtered = Array.from(files).filter(
+                                (f) => f !== file
+                              )
+                              if (filtered.length === 0) return null
+                              return filtered
+                            })
+                          }}
+                        />
+                      </Suspense>
                     )
                   })}
                 </AnimatePresence>
@@ -286,11 +289,6 @@ export function MessageInput({
         </div>
       </div>
 
-      {suggestions && append && suggestions.length > 0 && (
-        <div className="mt-2">
-          <PromptSuggestions append={append} suggestions={suggestions} />
-        </div>
-      )}
 
       <div className="absolute right-3 top-3 z-20 flex gap-1">
         <TooltipProvider delayDuration={0}>

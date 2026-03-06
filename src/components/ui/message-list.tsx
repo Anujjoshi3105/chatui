@@ -40,7 +40,7 @@ const MemoizedChatMessage = memo(ChatMessage, (prevProps, nextProps) => {
   for (let i = 0; i < prevTools.length; i++) {
     if (prevTools[i].state !== nextTools[i].state) return false
     // Use optional chaining since PartialToolCall doesn't have toolCallId
-    if ((prevTools[i] as any).toolCallId !== (nextTools[i] as any).toolCallId) return false
+    if ((prevTools[i] as { toolCallId?: string }).toolCallId !== (nextTools[i] as { toolCallId?: string }).toolCallId) return false
   }
 
   // Compare parts if present

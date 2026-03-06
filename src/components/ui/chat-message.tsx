@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-import { m as motion } from "framer-motion"
+import { m as motion } from "motion/react"
 import { Ban, ChevronRight, Terminal } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -76,7 +76,7 @@ interface ToolCall {
 interface ToolResult {
   state: "result"
   toolName: string
-  result: any
+  result: unknown
 }
 
 type ToolInvocation = PartialToolCall | ToolCall | ToolResult
@@ -99,7 +99,7 @@ interface TextPart {
 // For compatibility with AI SDK types, not used
 interface SourcePart {
   type: "source"
-  source?: any
+  source?: unknown
 }
 
 interface FilePart {
@@ -128,7 +128,7 @@ export interface Message {
   experimental_attachments?: Attachment[]
   toolInvocations?: ToolInvocation[]
   parts?: MessagePart[]
-  custom_data?: Record<string, any>
+  custom_data?: Record<string, unknown>
   rating?: number
   comment?: string
   runId?: string
@@ -330,11 +330,11 @@ function ToolCall({
   if (!toolInvocations?.length) return null
 
   return (
-    <div className="flex flex-col items-start gap-3 max-w-[85%] ml-4 mr-auto min-w-0">
+    <div className="flex flex-col items-start gap-3 max-w-[85%] mr-auto min-w-0">
       {toolInvocations.map((invocation, index) => {
         const isCancelled =
           invocation.state === "result" &&
-          invocation.result?.__cancelled === true
+          (invocation.result as Record<string, unknown>)?.__cancelled === true
 
         if (isCancelled) {
           return (

@@ -33,12 +33,12 @@ interface SpeechRecognition extends EventTarget {
     start(): void
     stop(): void
     abort(): void
-    onstart: ((this: SpeechRecognition, ev: Event) => any) | null
-    onend: ((this: SpeechRecognition, ev: Event) => any) | null
-    onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any) | null
-    onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null
-    onspeechstart: ((this: SpeechRecognition, ev: Event) => any) | null
-    onspeechend: ((this: SpeechRecognition, ev: Event) => any) | null
+    onstart: ((this: SpeechRecognition, ev: Event) => void) | null
+    onend: ((this: SpeechRecognition, ev: Event) => void) | null
+    onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void) | null
+    onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void) | null
+    onspeechstart: ((this: SpeechRecognition, ev: Event) => void) | null
+    onspeechend: ((this: SpeechRecognition, ev: Event) => void) | null
 }
 
 interface SpeechGrammarList {
@@ -53,12 +53,12 @@ interface SpeechGrammar {
     weight: number
 }
 
-declare var webkitSpeechRecognition: {
+declare const webkitSpeechRecognition: {
     new(): SpeechRecognition
     prototype: SpeechRecognition
 }
 
-declare var SpeechRecognition: {
+declare const SpeechRecognition: {
     new(): SpeechRecognition
     prototype: SpeechRecognition
 }
@@ -94,7 +94,8 @@ export interface VoiceSupport {
 export function getVoiceSupport(): VoiceSupport {
     const speechRecognition = !!(
         typeof window !== "undefined" &&
-        ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
+        ((window as Window & { SpeechRecognition?: any; webkitSpeechRecognition?: any }).SpeechRecognition ||
+            (window as Window & { SpeechRecognition?: any; webkitSpeechRecognition?: any }).webkitSpeechRecognition)
     )
 
     const speechSynthesis = !!(
@@ -130,7 +131,8 @@ export class SpeechRecognitionManager {
         if (typeof window === "undefined") return false
 
         const SpeechRecognitionAPI =
-            (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+            (window as Window & { SpeechRecognition?: any; webkitSpeechRecognition?: any }).SpeechRecognition ||
+            (window as Window & { SpeechRecognition?: any; webkitSpeechRecognition?: any }).webkitSpeechRecognition
 
         if (!SpeechRecognitionAPI) {
             console.warn("Speech Recognition is not supported in this browser")

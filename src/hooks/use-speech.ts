@@ -7,13 +7,15 @@ import {
 } from "@/lib/voice.sdk"
 
 export function useSpeech(voiceConfig?: Partial<VoiceConfig>) {
-  const [isSupported, setIsSupported] = useState(false)
+  const [isSupported, setIsSupported] = useState(() => getVoiceSupport().speechSynthesis)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [manager, setManager] = useState<SpeechSynthesisManager | null>(null)
 
   useEffect(() => {
     const support = getVoiceSupport()
-    setIsSupported(support.speechSynthesis)
+    if (support.speechSynthesis !== isSupported) {
+      setIsSupported(support.speechSynthesis)
+    }
 
     if (support.speechSynthesis) {
       const synthesisManager = new SpeechSynthesisManager(voiceConfig)
@@ -28,6 +30,7 @@ export function useSpeech(voiceConfig?: Partial<VoiceConfig>) {
         synthesisManager.destroy()
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -54,7 +57,7 @@ export function useSpeech(voiceConfig?: Partial<VoiceConfig>) {
   const toggle = useCallback(
     (content: string) => {
       if (!manager || !content) return
-      
+
       if (isSpeaking) {
         stop()
       } else {

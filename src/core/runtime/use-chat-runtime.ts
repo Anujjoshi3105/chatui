@@ -259,12 +259,12 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
     return () => {
       cancelled = true
     }
-  }, [config.url])
+  }, [config.url, config.agent, config.model, config.apiKey])
 
   // Periodic health check
   useEffect(() => {
     let cancelled = false
-    let timer: any
+    let timer: ReturnType<typeof setTimeout>
 
     const check = async () => {
       const svc = getService()
@@ -356,7 +356,7 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
       saveCurrentThreadId(baseKey, newId)
       dispatch({ type: "SET_THREAD_ID", payload: newId })
     }
-  }, [storageBaseKey, config.threadId, getService])
+  }, [storageBaseKey, config.threadId, config.userId, getService])
 
   // Persist current thread id when it changes
   useEffect(() => {

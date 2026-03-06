@@ -67,7 +67,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     })
 
     // Support detection
-    const [support, setSupport] = useState(() => getVoiceSupport())
+    const support = getVoiceSupport()
 
     // Managers
     const recognitionRef = useRef<SpeechRecognitionManager | null>(null)
@@ -75,10 +75,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
 
     // Initialize managers
     useEffect(() => {
-        const voiceSupport = getVoiceSupport()
-        setSupport(voiceSupport)
-
-        if (voiceSupport.speechRecognition) {
+        if (support.speechRecognition) {
             recognitionRef.current = new SpeechRecognitionManager(voiceConfig)
 
             recognitionRef.current.onStart = () => {
@@ -109,7 +106,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
             }
         }
 
-        if (voiceSupport.speechSynthesis) {
+        if (support.speechSynthesis) {
             synthesisRef.current = new SpeechSynthesisManager(voiceConfig)
 
             synthesisRef.current.onStart = () => {

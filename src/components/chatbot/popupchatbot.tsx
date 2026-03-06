@@ -2,9 +2,7 @@ import React, { useState, useRef, useCallback } from "react"
 import { MessageCircle } from "lucide-react"
 import { Chatbot, type ChatbotProps } from "./chatbot"
 import { cn } from "@/lib/utils"
-import { m as motion, AnimatePresence, LazyMotion } from "framer-motion"
-
-const loadFeatures = () => import("framer-motion").then(res => res.domAnimation);
+import { m as motion, AnimatePresence, LazyMotion, domAnimation } from "motion/react"
 import {
   Tooltip,
   TooltipContent,
@@ -64,7 +62,7 @@ export function PopupChatbot({
   }, [isMobile])
 
   return (
-    <LazyMotion features={loadFeatures}>
+    <LazyMotion features={domAnimation}>
       {/* Toggle Button */}
       {tooltip && !isOpen ? (
         <TooltipProvider delayDuration={tooltipDelay}>

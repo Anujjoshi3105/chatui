@@ -78,8 +78,8 @@ export default function Feedback({ onRateResponse, messageId, rating, comment: i
                 size="icon"
                 variant="ghost"
                 className={cn(
-                  "size-6 transition-colors duration-200",
-                  rating ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground hover:text-foreground"
+                  "size-6 transition-colors duration-200 text-primary ",
+                  rating ? "bg-primary/10 hover:bg-primary/20" : "hover:text-foreground"
                 )}
               >
                 <Heart className={cn("size-3.5", rating && "fill-current")} />
@@ -100,7 +100,7 @@ export default function Feedback({ onRateResponse, messageId, rating, comment: i
               How would you rate this response?
             </p>
           </div>
-          
+
           <div className="flex justify-center -mx-2">
             {renderStars()}
           </div>
@@ -117,17 +117,17 @@ export default function Feedback({ onRateResponse, messageId, rating, comment: i
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button 
-              type="button" 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => setOpen(false)}
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
-              size="sm" 
+            <Button
+              type="submit"
+              size="sm"
               disabled={!selectedValue}
             >
               Submit
@@ -137,4 +137,4 @@ export default function Feedback({ onRateResponse, messageId, rating, comment: i
       </PopoverContent>
     </Popover>
   )
-}
+}

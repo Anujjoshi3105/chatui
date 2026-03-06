@@ -29,7 +29,7 @@ export function useAutoScroll(dependencies: React.DependencyList) {
     }
   }, [])
 
-  const handleScroll = () => {
+  const handleScroll = useCallback(() => {
     if (containerRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = containerRef.current
 
@@ -60,11 +60,11 @@ export function useAutoScroll(dependencies: React.DependencyList) {
 
       previousScrollTop.current = scrollTop
     }
-  }
+  }, [])
 
-  const handleTouchStart = () => {
+  const handleTouchStart = useCallback(() => {
     setShouldAutoScroll(false)
-  }
+  }, [])
 
   useEffect(() => {
     if (containerRef.current) {

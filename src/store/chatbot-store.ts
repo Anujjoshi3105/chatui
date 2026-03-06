@@ -1,13 +1,7 @@
 import { create } from "zustand"
 import type { ThreadSummary, ServiceMetadata } from "@/core/services/types"
 
-interface ChatbotState {
-    isMaximized: boolean
-    setIsMaximized: (val: boolean) => void
-
-    historySheetOpen: boolean
-    setHistorySheetOpen: (val: boolean) => void
-
+interface ChatSessionState {
     selectedAgent: string
     setSelectedAgent: (val: string) => void
 
@@ -26,40 +20,11 @@ interface ChatbotState {
     threadsLoading: boolean
     setThreadsLoading: (val: boolean) => void
 
-    // General app state
-    autoSpeak: boolean
-    setAutoSpeak: (val: boolean) => void
-
-    showDisclaimer: boolean
-    setShowDisclaimer: (val: boolean) => void
-
     metadata: ServiceMetadata | null
     setMetadata: (val: ServiceMetadata | null) => void
-
-    // History Sheet state
-    searchInput: string
-    setSearchInput: (val: string) => void
-
-    searchQuery: string
-    setSearchQuery: (val: string) => void
-
-    loadingMore: boolean
-    setLoadingMore: (val: boolean) => void
-
-    threadToDelete: string | null
-    setThreadToDelete: (val: string | null) => void
-
-    isDeleting: boolean
-    setIsDeleting: (val: boolean) => void
 }
 
-export const useChatbotStore = create<ChatbotState>((set) => ({
-    isMaximized: false,
-    setIsMaximized: (val) => set({ isMaximized: val }),
-
-    historySheetOpen: false,
-    setHistorySheetOpen: (val) => set({ historySheetOpen: val }),
-
+export const useChatSessionStore = create<ChatSessionState>((set) => ({
     selectedAgent: "",
     setSelectedAgent: (val) => set({ selectedAgent: val }),
 
@@ -80,27 +45,34 @@ export const useChatbotStore = create<ChatbotState>((set) => ({
     threadsLoading: false,
     setThreadsLoading: (val) => set({ threadsLoading: val }),
 
+    metadata: null,
+    setMetadata: (val) => set({ metadata: val }),
+}))
+
+interface ChatUIState {
+    isMaximized: boolean
+    setIsMaximized: (val: boolean) => void
+
+    historySheetOpen: boolean
+    setHistorySheetOpen: (val: boolean) => void
+
+    autoSpeak: boolean
+    setAutoSpeak: (val: boolean) => void
+
+    showDisclaimer: boolean
+    setShowDisclaimer: (val: boolean) => void
+}
+
+export const useChatUIStore = create<ChatUIState>((set) => ({
+    isMaximized: false,
+    setIsMaximized: (val) => set({ isMaximized: val }),
+
+    historySheetOpen: false,
+    setHistorySheetOpen: (val) => set({ historySheetOpen: val }),
+
     autoSpeak: false,
     setAutoSpeak: (val) => set({ autoSpeak: val }),
 
     showDisclaimer: false,
     setShowDisclaimer: (val) => set({ showDisclaimer: val }),
-
-    metadata: null,
-    setMetadata: (val) => set({ metadata: val }),
-
-    searchInput: "",
-    setSearchInput: (val) => set({ searchInput: val }),
-
-    searchQuery: "",
-    setSearchQuery: (val) => set({ searchQuery: val }),
-
-    loadingMore: false,
-    setLoadingMore: (val) => set({ loadingMore: val }),
-
-    threadToDelete: null,
-    setThreadToDelete: (val) => set({ threadToDelete: val }),
-
-    isDeleting: false,
-    setIsDeleting: (val) => set({ isDeleting: val }),
 }))

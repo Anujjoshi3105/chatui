@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react"
+import React, { useEffect, useRef, useState, lazy, Suspense } from "react"
 import { AnimatePresence, m as motion } from "motion/react"
 import { ChevronRight, Info, Loader2, Mic, Paperclip, Square } from "lucide-react"
 
@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils"
 import { useAudioRecording } from "@/hooks/use-audio-recording"
 import { useAutosizeTextArea } from "@/hooks/use-autosize-textarea"
 import { AudioVisualizer } from "@/components/ui/audio-visualizer"
-import { lazy, Suspense } from "react"
 import { Button } from "@/components/ui/button"
 const FilePreview = lazy(() => import("@/components/ui/file-preview").then(m => ({ default: m.FilePreview })))
 import { InterruptPrompt } from "@/components/ui/interrupt-prompt"
@@ -67,6 +66,7 @@ export function MessageInput({
   isSpeechSupported: externalIsSpeechSupported,
   ...props
 }: MessageInputProps) {
+  const { allowAttachments, files, setFiles, ...textareaProps } = props as MessageInputWithAttachmentsProps
   const [isDragging, setIsDragging] = useState(false)
   const [showInterruptPrompt, setShowInterruptPrompt] = useState(false)
 
@@ -199,10 +199,13 @@ export function MessageInput({
   const [textAreaHeight, setTextAreaHeight] = useState<number>(0)
 
   useEffect(() => {
-    if (textAreaRef.current) {
-      setTextAreaHeight(textAreaRef.current.offsetHeight)
-    }
-  }, [props.value])
+    if (!textAreaRef.current) return
+    const observer = new ResizeObserver(([entry]) => {
+      setTextAreaHeight(entry.contentRect.height)
+    })
+    observer.observe(textAreaRef.current)
+    return () => observer.disconnect()
+  }, [])
 
   const showFileList =
     props.allowAttachments && props.files && props.files.length > 0
@@ -252,10 +255,7 @@ export function MessageInput({
               showFileList && "pb-20",
               className
             )}
-            {...((() => {
-              const { allowAttachments: _allowAttachments, files: _files, setFiles: _setFiles, ...restProps } = props as MessageInputWithAttachmentsProps;
-              return restProps;
-            })())}
+            {...textareaProps}
           />
 
           {props.allowAttachments && (

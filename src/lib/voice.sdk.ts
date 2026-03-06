@@ -53,11 +53,6 @@ interface SpeechGrammar {
     weight: number
 }
 
-declare const webkitSpeechRecognition: {
-    new(): SpeechRecognition
-    prototype: SpeechRecognition
-}
-
 declare const SpeechRecognition: {
     new(): SpeechRecognition
     prototype: SpeechRecognition

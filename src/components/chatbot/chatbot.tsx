@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, memo } from "react"
+import { useShallow } from "zustand/react/shallow"
 import { Header } from "./header"
 import { AgentSelector } from "./agent-selector"
 import { Chat, useChatContext } from "@/components/chat"
@@ -57,6 +58,8 @@ const MemoizedChatSuggestions = memo(Chat.Suggestions)
 
 function ChatbotLayout({
   effectiveAgent,
+  selectedAgent,
+  selectedModel,
   showHeader,
   headerTitle,
   headerTitleUrl,
@@ -84,6 +87,8 @@ function ChatbotLayout({
   isMaximized: propsIsMaximized,
 }: {
   effectiveAgent: string
+  selectedAgent: string
+  selectedModel: string
   showHeader: boolean
   headerTitle?: string
   headerTitleUrl?: string
@@ -110,23 +115,45 @@ function ChatbotLayout({
   onMaximizeToggle?: (isMaximized: boolean) => void
   isMaximized?: boolean
 }) {
-  const selectedAgent = useChatSessionStore((s) => s.selectedAgent)
-  const setSelectedAgent = useChatSessionStore((s) => s.setSelectedAgent)
-  const selectedModel = useChatSessionStore((s) => s.selectedModel)
-  const setSelectedModel = useChatSessionStore((s) => s.setSelectedModel)
-  const currentThreadId = useChatSessionStore((s) => s.currentThreadId)
-  const setCurrentThreadId = useChatSessionStore((s) => s.setCurrentThreadId)
-  const threadList = useChatSessionStore((s) => s.threadList)
-  const setThreadList = useChatSessionStore((s) => s.setThreadList)
-  const totalThreads = useChatSessionStore((s) => s.totalThreads)
-  const setTotalThreads = useChatSessionStore((s) => s.setTotalThreads)
-  const threadsLoading = useChatSessionStore((s) => s.threadsLoading)
-  const setThreadsLoading = useChatSessionStore((s) => s.setThreadsLoading)
+  const {
+    setSelectedAgent,
+    setSelectedModel,
+    currentThreadId,
+    setCurrentThreadId,
+    threadList,
+    setThreadList,
+    totalThreads,
+    setTotalThreads,
+    threadsLoading,
+    setThreadsLoading,
+  } = useChatSessionStore(
+    useShallow((s) => ({
+      setSelectedAgent: s.setSelectedAgent,
+      setSelectedModel: s.setSelectedModel,
+      currentThreadId: s.currentThreadId,
+      setCurrentThreadId: s.setCurrentThreadId,
+      threadList: s.threadList,
+      setThreadList: s.setThreadList,
+      totalThreads: s.totalThreads,
+      setTotalThreads: s.setTotalThreads,
+      threadsLoading: s.threadsLoading,
+      setThreadsLoading: s.setThreadsLoading,
+    }))
+  )
 
-  const historySheetOpen = useChatUIStore((s) => s.historySheetOpen)
-  const setHistorySheetOpen = useChatUIStore((s) => s.setHistorySheetOpen)
-  const storeIsMaximized = useChatUIStore((s) => s.isMaximized)
-  const setIsMaximized = useChatUIStore((s) => s.setIsMaximized)
+  const {
+    historySheetOpen,
+    setHistorySheetOpen,
+    isMaximized: storeIsMaximized,
+    setIsMaximized,
+  } = useChatUIStore(
+    useShallow((s) => ({
+      historySheetOpen: s.historySheetOpen,
+      setHistorySheetOpen: s.setHistorySheetOpen,
+      isMaximized: s.isMaximized,
+      setIsMaximized: s.setIsMaximized,
+    }))
+  )
 
   const isMaximized = propsIsMaximized ?? storeIsMaximized
   const { metadata, metadataLoading, backendStatus, clearChat, loadThread, getThreads, setThreadId, deleteThread: contextDeleteThread } =
@@ -276,28 +303,48 @@ export function Chatbot({
 
   const { message: starterMessage, suggestions: starterSuggestions } = starter
 
-  const storeIsMaximized = useChatUIStore((s) => s.isMaximized)
-  const setIsMaximized = useChatUIStore((s) => s.setIsMaximized)
+  // Derive directly at render time — no extra effect needed
+  const {
+    isMaximized: storeIsMaximized,
+    autoSpeak,
+    setAutoSpeak,
+    showDisclaimer,
+    setShowDisclaimer,
+  } = useChatUIStore(
+    useShallow((s) => ({
+      isMaximized: s.isMaximized,
+      autoSpeak: s.autoSpeak,
+      setAutoSpeak: s.setAutoSpeak,
+      showDisclaimer: s.showDisclaimer,
+      setShowDisclaimer: s.setShowDisclaimer,
+    }))
+  )
   const isMaximized = propsIsMaximized ?? storeIsMaximized
 
-  const selectedAgent = useChatSessionStore((s) => s.selectedAgent)
-  const setSelectedAgent = useChatSessionStore((s) => s.setSelectedAgent)
-  const selectedModel = useChatSessionStore((s) => s.selectedModel)
-  const setSelectedModel = useChatSessionStore((s) => s.setSelectedModel)
-  const currentThreadId = useChatSessionStore((s) => s.currentThreadId)
-  const setCurrentThreadId = useChatSessionStore((s) => s.setCurrentThreadId)
+  const {
+    selectedAgent: storeSelectedAgent,
+    setSelectedAgent,
+    selectedModel: storeSelectedModel,
+    setSelectedModel,
+    currentThreadId,
+    setCurrentThreadId,
+    metadata,
+    setMetadata,
+  } = useChatSessionStore(
+    useShallow((s) => ({
+      selectedAgent: s.selectedAgent,
+      setSelectedAgent: s.setSelectedAgent,
+      selectedModel: s.selectedModel,
+      setSelectedModel: s.setSelectedModel,
+      currentThreadId: s.currentThreadId,
+      setCurrentThreadId: s.setCurrentThreadId,
+      metadata: s.metadata,
+      setMetadata: s.setMetadata,
+    }))
+  )
 
-  useEffect(() => {
-    if (initialAgent !== undefined) setSelectedAgent(initialAgent)
-  }, [initialAgent, setSelectedAgent])
-
-  useEffect(() => {
-    if (initialModel !== undefined) setSelectedModel(initialModel)
-  }, [initialModel, setSelectedModel])
-
-  useEffect(() => {
-    if (propsIsMaximized !== undefined) setIsMaximized(propsIsMaximized)
-  }, [propsIsMaximized, setIsMaximized])
+  const selectedAgent = storeSelectedAgent || (initialAgent ?? "")
+  const selectedModel = storeSelectedModel || (initialModel ?? "")
 
   const {
     isListening,
@@ -311,12 +358,6 @@ export function Chatbot({
     updateConfig,
     isRecognitionSupported,
   } = useVoice()
-
-  const autoSpeak = useChatUIStore((s) => s.autoSpeak)
-  const setAutoSpeak = useChatUIStore((s) => s.setAutoSpeak)
-
-  const showDisclaimer = useChatUIStore((s) => s.showDisclaimer)
-  const setShowDisclaimer = useChatUIStore((s) => s.setShowDisclaimer)
 
   useEffect(() => {
     const savedVoiceConfig = localStorage.getItem("voice-config")
@@ -345,9 +386,6 @@ export function Chatbot({
   useEffect(() => {
     localStorage.setItem("auto-speak", String(autoSpeak))
   }, [autoSpeak])
-
-  const metadata = useChatSessionStore((s) => s.metadata)
-  const setMetadata = useChatSessionStore((s) => s.setMetadata)
 
   const onMetadataLoaded = useCallback((meta: ServiceMetadata) => {
     setMetadata(meta)
@@ -428,6 +466,8 @@ export function Chatbot({
       >
         <ChatbotLayout
           effectiveAgent={effectiveAgent}
+          selectedAgent={selectedAgent}
+          selectedModel={selectedModel}
           showHeader={showHeader}
           headerTitle={headerTitle}
           headerTitleUrl={headerTitleUrl}

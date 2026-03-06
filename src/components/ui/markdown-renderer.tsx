@@ -1,4 +1,4 @@
-import React from "react"
+import React, { memo } from "react"
 import Markdown, { type Components } from "react-markdown"
 import remarkGfm from "remark-gfm"
 
@@ -103,7 +103,7 @@ const components: Components = {
   },
 }
 
-export default function MarkdownRenderer({ children, className }: MarkdownRendererProps) {
+export default memo(function MarkdownRenderer({ children, className }: MarkdownRendererProps) {
   return (
     <div className={cn("prose-sm max-w-none", className)}>
       <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={components}>
@@ -111,5 +111,5 @@ export default function MarkdownRenderer({ children, className }: MarkdownRender
       </Markdown>
     </div>
   )
-}
+})
 

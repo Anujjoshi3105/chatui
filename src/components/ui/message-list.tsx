@@ -62,6 +62,7 @@ export const MessageList = memo(function MessageList({
   scrollRef,
   estimateSize = 120,
 }: MessageListProps) {
+  "use no memo"
   const getMessageOptions = useCallback((message: Message) => {
     if (typeof messageOptions === "function") {
       return messageOptions(message)

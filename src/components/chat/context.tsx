@@ -1,5 +1,4 @@
 /* eslint-disable react-refresh/only-export-components */
-"use client"
 
 import React, { createContext, useContext, useMemo, type ReactNode } from "react"
 import { useChatRuntime } from "@/core/runtime/use-chat-runtime"
@@ -41,7 +40,10 @@ export function ChatProvider({
   onMetadata,
 }: ChatProviderProps) {
   const runtime = useChatRuntime(config)
-  const hasUserMessages = runtime.messages.some((m) => m.role === "user")
+  const hasUserMessages = useMemo(
+    () => runtime.messages.some((m) => m.role === "user"),
+    [runtime.messages]
+  )
   React.useEffect(() => {
     if (runtime.metadata) onMetadata?.(runtime.metadata)
   }, [runtime.metadata, onMetadata])

@@ -225,11 +225,11 @@ export default function App() {
         </footer>
 
         <PopupChatbot
-          url="http://localhost:8080"
+          url={import.meta.env.VITE_BACKEND_URL}
           position="bottom-right"
           placeholder="Ask me about anything..."
           tooltip="Chat with AI Assistant"
-          userId="019c4bsa-71fc-7937-ad35-8b161da9fdde"
+          userId={crypto.randomUUID()}
           apiKey={import.meta.env.VITE_BEARER_TOKEN}
           stream={false}
           header={{

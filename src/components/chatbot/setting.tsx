@@ -44,7 +44,7 @@ import type { ServiceMetadata } from "@/core/services/types"
 import { cn } from "@/lib/utils"
 import type { VoiceConfig } from "@/lib/voice.sdk"
 import { getVoiceSupport } from "@/lib/voice.sdk"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 
 interface SettingProps {
   metadata: ServiceMetadata | null
@@ -61,6 +61,20 @@ interface SettingProps {
   onVoiceChange?: (voice: SpeechSynthesisVoice | null) => void
   autoSpeak?: boolean
   onAutoSpeakChange?: (enabled: boolean) => void
+}
+
+const languageNames: Record<string, string> = {
+  EN: "English",
+  ES: "Spanish",
+  FR: "French",
+  DE: "German",
+  IT: "Italian",
+  PT: "Portuguese",
+  ZH: "Chinese",
+  JA: "Japanese",
+  KO: "Korean",
+  HI: "Hindi",
+  AR: "Arabic",
 }
 
 export default function Setting({
@@ -84,28 +98,16 @@ export default function Setting({
 
 
   // Group voices by language
-  const voicesByLanguage = availableVoices?.reduce((acc, voice) => {
-    const lang = voice.lang.split("-")[0].toUpperCase()
-    if (!acc[lang]) {
-      acc[lang] = []
-    }
-    acc[lang].push(voice)
-    return acc
-  }, {} as Record<string, SpeechSynthesisVoice[]>) || {}
-
-  const languageNames: Record<string, string> = {
-    EN: "English",
-    ES: "Spanish",
-    FR: "French",
-    DE: "German",
-    IT: "Italian",
-    PT: "Portuguese",
-    ZH: "Chinese",
-    JA: "Japanese",
-    KO: "Korean",
-    HI: "Hindi",
-    AR: "Arabic",
-  }
+  const voicesByLanguage = useMemo(() =>
+    availableVoices?.reduce((acc, voice) => {
+      const lang = voice.lang.split("-")[0].toUpperCase()
+      if (!acc[lang]) {
+        acc[lang] = []
+      }
+      acc[lang].push(voice)
+      return acc
+    }, {} as Record<string, SpeechSynthesisVoice[]>) || {},
+    [availableVoices])
 
   const showVoiceSettings =
     voiceConfig &&

@@ -14,7 +14,7 @@ export default defineConfig({
       insertTypesEntry: true,
       tsconfigPath: "./tsconfig.app.json",
     }),
-    visualizer({ open: true, filename: "dist/stats.html" }),
+    process.env.ANALYZE === "true" && visualizer({ open: true, filename: "dist/stats.html" }),
   ],
   resolve: {
     alias: {

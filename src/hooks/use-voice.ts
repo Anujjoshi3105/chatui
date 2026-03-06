@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState, useMemo } from "react"
 import {
     SpeechRecognitionManager,
     SpeechSynthesisManager,
@@ -67,7 +67,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     })
 
     // Support detection
-    const support = getVoiceSupport()
+    const support = useMemo(() => getVoiceSupport(), [])
 
     // Managers
     const recognitionRef = useRef<SpeechRecognitionManager | null>(null)

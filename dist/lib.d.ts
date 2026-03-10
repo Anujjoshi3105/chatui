@@ -6,6 +6,6 @@ export type { ChatRuntimeActions, UseChatRuntimeReturn } from './core/runtime';
 export type { Message as RuntimeMessage, ChatRuntimeConfig } from './core/runtime/chat-state';
 export { ChatService, clearChatServiceMetadataCache } from './core/services';
 export type { ChatServiceConfig, ServiceMetadata, ApiChatMessage, StreamEvent } from './core/services';
-export { useSpeech } from './hooks/use-speech';
+export { useChatVoice } from './hooks/use-chat-voice';
 export { useMessageDisplay } from './hooks/use-message-display';
 export { useChatSessionStore, useChatUIStore } from './store/chatbot-store';

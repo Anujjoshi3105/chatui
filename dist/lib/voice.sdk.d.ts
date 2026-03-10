@@ -54,6 +54,13 @@ export declare class SpeechSynthesisManager {
     getVoices(): SpeechSynthesisVoice[];
     getVoicesByLanguage(lang: string): SpeechSynthesisVoice[];
     speak(text: string): boolean;
+    /**
+     * Speak text starting from a specific character index.
+     * The caller is responsible for updating the store's charOffset to `startCharIndex`
+     * before calling this, so that boundary events (relative to the slice) can be
+     * combined with charOffset to get the absolute position.
+     */
+    speakFrom(text: string, startCharIndex: number): boolean;
     stop(): void;
     pause(): void;
     resume(): void;

@@ -67,6 +67,7 @@ export function ChatProvider({
       startListening,
       stopListening,
       isSpeechSupported,
+      setInput: runtime.setInput,
     }),
     [
       runtime,

@@ -4392,4 +4392,167 @@ var TooltipContent = React$1.forwardRef(({ className: t, sideOffset: i = 0, chil
 	children: [a, /* @__PURE__ */ jsx(Arrow2, { className: "bg-foreground fill-foreground z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px]" })]
 }) }));
 TooltipContent.displayName = Content2.displayName;
-export { Slot as C, Check as D, useComposedRefs as E, cva as S, composeRefs as T, DismissableLayer as _, VISUALLY_HIDDEN_STYLES as a, Button as b, Portal as c, Content as d, Root2 as f, useLayoutEffect2 as g, useId$1 as h, TooltipTrigger as i, Anchor as l, useSize as m, TooltipContent as n, useControllableState as o, createPopperScope as p, TooltipProvider as r, Presence as s, Tooltip as t, Arrow as u, useCallbackRef as v, createSlot$6 as w, cn as x, composeEventHandlers as y };
+const defaultVoiceConfig = {
+	lang: "en-US",
+	continuous: !1,
+	interimResults: !0,
+	maxAlternatives: 1,
+	pitch: 1,
+	rate: 1,
+	volume: 1
+};
+function getVoiceSupport() {
+	return {
+		speechRecognition: !!(typeof window < "u" && (window.SpeechRecognition || window.webkitSpeechRecognition)),
+		speechSynthesis: !!(typeof window < "u" && window.speechSynthesis)
+	};
+}
+var SpeechRecognitionManager = class {
+	constructor(t = {}) {
+		this.recognition = null, this.isListening = !1, this.onResult = null, this.onStart = null, this.onEnd = null, this.onError = null, this.onSpeechStart = null, this.onSpeechEnd = null, this.config = {
+			...defaultVoiceConfig,
+			...t
+		}, this.initRecognition();
+	}
+	initRecognition() {
+		if (typeof window > "u") return !1;
+		let t = window.SpeechRecognition || window.webkitSpeechRecognition;
+		if (!t) return console.warn("Speech Recognition is not supported in this browser"), !1;
+		try {
+			let i = new t();
+			return i.lang = this.config.lang, i.continuous = this.config.continuous, i.interimResults = this.config.interimResults, i.maxAlternatives = this.config.maxAlternatives, i.onstart = () => {
+				this.isListening = !0, this.onStart?.();
+			}, i.onend = () => {
+				this.isListening = !1, this.onEnd?.();
+			}, i.onerror = (t) => {
+				this.isListening = !1;
+				let i = this.getErrorMessage(t.error);
+				this.onError?.(i);
+			}, i.onresult = (t) => {
+				let i = "", a = !1;
+				for (let o = t.resultIndex; o < t.results.length; o++) {
+					let s = t.results[o];
+					i += s[0].transcript, s.isFinal && (a = !0);
+				}
+				this.onResult?.(i, a);
+			}, i.onspeechstart = () => {
+				this.onSpeechStart?.();
+			}, i.onspeechend = () => {
+				this.onSpeechEnd?.();
+			}, this.recognition = i, !0;
+		} catch (t) {
+			return console.error("Failed to initialize speech recognition:", t), !1;
+		}
+	}
+	getErrorMessage(t) {
+		return {
+			"no-speech": "No speech was detected. Please try again.",
+			aborted: "Speech recognition was aborted.",
+			"audio-capture": "No microphone was found. Ensure a microphone is connected.",
+			network: "Network error occurred. Check your internet connection.",
+			"not-allowed": "Microphone access denied. Please allow microphone permissions.",
+			"service-not-available": "Speech service is not available.",
+			"bad-grammar": "Speech grammar error occurred.",
+			"language-not-supported": "Language is not supported."
+		}[t] || `Unknown error: ${t}`;
+	}
+	start() {
+		if (!this.recognition && !this.initRecognition()) return !1;
+		if (this.isListening) return !0;
+		try {
+			return this.recognition?.start(), !0;
+		} catch (t) {
+			return console.error("Failed to start speech recognition:", t), !1;
+		}
+	}
+	stop() {
+		this.recognition && this.isListening && this.recognition.stop();
+	}
+	abort() {
+		this.recognition && this.recognition.abort();
+	}
+	updateConfig(t) {
+		this.config = {
+			...this.config,
+			...t
+		}, this.recognition && (this.recognition.lang = this.config.lang, this.recognition.continuous = this.config.continuous, this.recognition.interimResults = this.config.interimResults, this.recognition.maxAlternatives = this.config.maxAlternatives);
+	}
+	getIsListening() {
+		return this.isListening;
+	}
+	destroy() {
+		this.abort(), this.recognition = null, this.onResult = null, this.onStart = null, this.onEnd = null, this.onError = null, this.onSpeechStart = null, this.onSpeechEnd = null;
+	}
+}, SpeechSynthesisManager = class {
+	constructor(t = {}) {
+		this.utterance = null, this.isSpeaking = !1, this.availableVoices = [], this.onStart = null, this.onEnd = null, this.onPause = null, this.onResume = null, this.onError = null, this.onBoundary = null, this.config = {
+			...defaultVoiceConfig,
+			...t
+		}, this.loadVoices();
+	}
+	loadVoices() {
+		typeof window > "u" || !window.speechSynthesis || (this.availableVoices = window.speechSynthesis.getVoices(), window.speechSynthesis.onvoiceschanged = () => {
+			this.availableVoices = window.speechSynthesis.getVoices();
+		});
+	}
+	getVoices() {
+		return this.availableVoices;
+	}
+	getVoicesByLanguage(t) {
+		return this.availableVoices.filter((i) => i.lang.toLowerCase().startsWith(t.toLowerCase().split("-")[0]));
+	}
+	speak(t) {
+		if (typeof window > "u" || !window.speechSynthesis) return console.warn("Speech Synthesis is not supported in this browser"), !1;
+		this.stop();
+		try {
+			if (this.utterance = new SpeechSynthesisUtterance(t), this.utterance.lang = this.config.lang, this.utterance.pitch = this.config.pitch, this.utterance.rate = this.config.rate, this.utterance.volume = this.config.volume, this.config.voiceURI) {
+				let t = this.availableVoices.find((t) => t.voiceURI === this.config.voiceURI);
+				t && (this.utterance.voice = t);
+			}
+			return this.utterance.onstart = () => {
+				this.isSpeaking = !0, this.onStart?.();
+			}, this.utterance.onend = () => {
+				this.isSpeaking = !1, this.onEnd?.();
+			}, this.utterance.onerror = (t) => {
+				this.isSpeaking = !1, this.onError?.(t.error);
+			}, this.utterance.onpause = () => {
+				this.onPause?.();
+			}, this.utterance.onresume = () => {
+				this.onResume?.();
+			}, this.utterance.onboundary = (t) => {
+				this.onBoundary?.(t.charIndex, t.charLength);
+			}, window.speechSynthesis.speak(this.utterance), !0;
+		} catch (t) {
+			return console.error("Failed to speak:", t), !1;
+		}
+	}
+	speakFrom(t, i) {
+		let a = t.slice(i);
+		return a ? this.speak(a) : !1;
+	}
+	stop() {
+		typeof window > "u" || !window.speechSynthesis || (window.speechSynthesis.cancel(), this.isSpeaking = !1);
+	}
+	pause() {
+		typeof window > "u" || !window.speechSynthesis || window.speechSynthesis.pause();
+	}
+	resume() {
+		typeof window > "u" || !window.speechSynthesis || window.speechSynthesis.resume();
+	}
+	getIsSpeaking() {
+		return this.isSpeaking;
+	}
+	updateConfig(t) {
+		this.config = {
+			...this.config,
+			...t
+		};
+	}
+	destroy() {
+		this.stop(), this.utterance = null, this.onStart = null, this.onEnd = null, this.onPause = null, this.onResume = null, this.onError = null, this.onBoundary = null;
+	}
+};
+function stripMarkdownForSpeech(t) {
+	return t.replace(/```[\s\S]*?```/g, "Code block omitted. ").replace(/`[^`]+`/g, (t) => t.slice(1, -1)).replace(/#{1,6}\s+/g, "").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\*([^*]+)\*/g, "$1").replace(/__([^_]+)__/g, "$1").replace(/_([^_]+)_/g, "$1").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1").replace(/---/g, "").replace(/^>\s+/gm, "").replace(/^[\s]*[-*+]\s+/gm, "").replace(/^[\s]*\d+\.\s+/gm, "").replace(/\n{3,}/g, "\n\n").trim();
+}
+export { composeRefs as A, useCallbackRef as C, cva as D, cn as E, Check as M, Slot as O, DismissableLayer as S, Button as T, Root2 as _, stripMarkdownForSpeech as a, useId$1 as b, TooltipProvider as c, useControllableState as d, Presence as f, Content as g, Arrow as h, getVoiceSupport as i, useComposedRefs as j, createSlot$6 as k, TooltipTrigger as l, Anchor as m, SpeechSynthesisManager as n, Tooltip as o, Portal as p, defaultVoiceConfig as r, TooltipContent as s, SpeechRecognitionManager as t, VISUALLY_HIDDEN_STYLES as u, createPopperScope as v, composeEventHandlers as w, useLayoutEffect2 as x, useSize as y };

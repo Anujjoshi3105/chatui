@@ -10,7 +10,9 @@ import {
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import type { VoiceConfig } from "@/lib/voice.sdk"
-import { useSpeech } from "@/hooks/use-speech"
+import { useChatVoice } from "@/hooks/use-chat-voice"
+
+import { useSpeechStore } from "@/store/speech-store"
 
 interface SpeakButtonProps {
     content: string
@@ -18,6 +20,7 @@ interface SpeakButtonProps {
     className?: string
     size?: "sm" | "default" | "icon"
     variant?: "ghost" | "outline" | "default"
+    messageId?: string
 }
 
 export function SpeakButton({
@@ -26,8 +29,12 @@ export function SpeakButton({
     className,
     size = "icon",
     variant = "ghost",
+    messageId,
 }: SpeakButtonProps) {
-    const { isSupported, isSpeaking, toggle } = useSpeech(voiceConfig)
+    const { isSynthesisSupported: isSupported, isSpeaking, toggleSpeaking } = useChatVoice({ config: voiceConfig })
+
+    const { speakingMessageId } = useSpeechStore()
+    const isActive = isSpeaking && speakingMessageId === messageId
 
     if (!isSupported) {
         return null
@@ -43,13 +50,13 @@ export function SpeakButton({
                         variant={variant}
                         className={cn(
                             "h-6 w-6 transition-colors",
-                            isSpeaking && "text-primary bg-primary/10",
+                            isActive && "text-primary bg-primary/10",
                             className
                         )}
-                        onClick={() => toggle(content)}
-                        aria-label={isSpeaking ? "Stop speaking" : "Listen to message"}
+                        onClick={() => toggleSpeaking(content, messageId)}
+                        aria-label={isActive ? "Stop speaking" : "Listen to message"}
                     >
-                        {isSpeaking ? (
+                        {isActive ? (
                             <Square className="h-3 w-3" fill="currentColor" />
                         ) : (
                             <Volume2 />
@@ -57,7 +64,7 @@ export function SpeakButton({
                     </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-xs">
-                    {isSpeaking ? "Stop" : "Listen"}
+                    {isActive ? "Stop" : "Listen"}
                 </TooltipContent>
             </Tooltip>
         </TooltipProvider>
@@ -69,14 +76,19 @@ interface SpeakButtonInlineProps {
     content: string
     voiceConfig?: Partial<VoiceConfig>
     className?: string
+    messageId?: string
 }
 
 export function SpeakButtonInline({
     content,
     voiceConfig,
     className,
+    messageId,
 }: SpeakButtonInlineProps) {
-    const { isSupported, isSpeaking, toggle } = useSpeech(voiceConfig)
+    const { isSynthesisSupported: isSupported, isSpeaking, toggleSpeaking } = useChatVoice({ config: voiceConfig })
+
+    const { speakingMessageId } = useSpeechStore()
+    const isActive = isSpeaking && speakingMessageId === messageId
 
     if (!isSupported) {
         return null
@@ -85,15 +97,15 @@ export function SpeakButtonInline({
     return (
         <button
             type="button"
-            onClick={() => toggle(content)}
+            onClick={() => toggleSpeaking(content, messageId)}
             className={cn(
                 "inline-flex items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground hover:bg-muted",
-                isSpeaking && "text-primary",
+                isActive && "text-primary",
                 className
             )}
-            aria-label={isSpeaking ? "Stop speaking" : "Listen to message"}
+            aria-label={isActive ? "Stop speaking" : "Listen to message"}
         >
-            {isSpeaking ? (
+            {isActive ? (
                 <Square className="h-3 w-3" fill="currentColor" />
             ) : (
                 <Volume2 className="h-3 w-3" />

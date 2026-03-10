@@ -1,5 +1,7 @@
-import React, { memo } from "react"
+import React, { memo, useMemo } from "react"
 import Markdown, { type Components } from "react-markdown"
+import { useSpeechStore } from "@/store/speech-store"
+import { stripMarkdownForSpeech } from "@/lib/voice.sdk"
 import remarkGfm from "remark-gfm"
 
 import rehypeRaw from "rehype-raw"
@@ -10,6 +12,7 @@ import { LinkPreview } from "@/components/ui/link-preview"
 export interface MarkdownRendererProps {
   children: string
   className?: string
+  messageId?: string
 }
 
 function extractText(node: React.ReactNode): string {
@@ -84,7 +87,7 @@ const components: Components = {
 
   table({ className, children, ...props }: React.HTMLAttributes<HTMLTableElement>) {
     return (
-      <div className="my-4 max-w-[90%] overflow-x-hidden rounded-md border border-foreground/20 shadow-sm">
+      <div className="my-4 w-full overflow-x-auto rounded-md border border-foreground/20 shadow-sm">
         <table className={cn("border-collapse ", className)} {...props}>
           {children}
         </table>
@@ -103,13 +106,92 @@ const components: Components = {
   },
 }
 
-export default memo(function MarkdownRenderer({ children, className }: MarkdownRendererProps) {
+export default memo(function MarkdownRenderer({ children, className, messageId }: MarkdownRendererProps) {
+  const { speakingMessageId, currentCharIndex } = useSpeechStore()
+  const isSpeaking = messageId === speakingMessageId
+
+  // If we are speaking, we might want to highlight the word.
+  // However, mapping direct charIndex to complex markdown nodes is hard.
+  // We'll use a CSS-based approach or a text-node replacement if active.
+
+  const content = useMemo(() => {
+    if (!isSpeaking || !children) return children
+
+    // Simplified approach: find the word at currentCharIndex in the stripped text
+    // and try to highlight it. Since perfect mapping is hard, we'll use a semi-accurate
+    // approach by injecting a <mark> into the raw text if it matches.
+    // WARNING: This is a bit hacky but works for the "text layer" requirement.
+
+    // For now, let's just use the markdown as is, but we'll add a class to the container
+    // and use the browser's ability to potentially find it? No, that's not good.
+
+    return children
+  }, [children, isSpeaking])
+
   return (
-    <div className={cn("prose-sm max-w-none", className)}>
-      <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={components}>
-        {children}
+    <div className={cn(
+      "prose-sm max-w-none transition-all duration-300",
+      className,
+      isSpeaking && "is-speaking"
+    )}>
+      <Markdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw]}
+        components={{
+          ...components,
+          p: ({ children, ...props }) => {
+            if (!isSpeaking) return <p {...props} className={cn("whitespace-pre-wrap mb-4 last:mb-0", props.className)}>{children}</p>
+
+            return (
+              <p {...props} className={cn("whitespace-pre-wrap mb-4 last:mb-0", props.className)}>
+                <WordHighlighter globalIndex={currentCharIndex} fullText={stripMarkdownForSpeech(extractText(children))}>
+                  {children}
+                </WordHighlighter>
+              </p>
+            )
+          }
+        }}
+      >
+        {content}
       </Markdown>
     </div>
   )
 })
+
+function WordHighlighter({ children, globalIndex, fullText }: { children: React.ReactNode, globalIndex: number, fullText: string }) {
+  const currentWord = useMemo(() => {
+    if (globalIndex < 0 || globalIndex >= fullText.length) return ""
+
+    let start = globalIndex
+    while (start > 0 && !/\s/.test(fullText[start - 1])) start--
+
+    let end = globalIndex
+    while (end < fullText.length && !/\s/.test(fullText[end])) end++
+
+    return fullText.slice(start, end).trim()
+  }, [globalIndex, fullText])
+
+  if (!currentWord) return <>{children}</>
+
+  const highlightWord = (node: React.ReactNode): React.ReactNode => {
+    if (typeof node === "string") {
+      const parts = node.split(new RegExp(`(\\b${currentWord}\\b)`, 'gi'))
+      return parts.map((part, i) =>
+        part.toLowerCase() === currentWord.toLowerCase()
+          ? <mark key={i} className="bg-primary/30 text-foreground rounded px-0.5">{part}</mark>
+          : part
+      )
+    }
+    if (React.isValidElement(node)) {
+      const children = (node.props as any).children
+      return React.cloneElement(node, {
+        ...(node.props as any),
+        children: React.Children.map(children, highlightWord)
+      } as any)
+    }
+    return node
+  }
+
+  return <>{React.Children.map(children, highlightWord)}</>
+}
 

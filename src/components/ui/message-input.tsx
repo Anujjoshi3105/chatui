@@ -3,7 +3,7 @@ import { AnimatePresence, m as motion } from "motion/react"
 import { ChevronRight, Info, Loader2, Mic, Paperclip, Square } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { useAudioRecording } from "@/hooks/use-audio-recording"
+import { useChatVoice } from "@/hooks/use-chat-voice"
 import { useAutosizeTextArea } from "@/hooks/use-autosize-textarea"
 import { AudioVisualizer } from "@/components/ui/audio-visualizer"
 import { Button } from "@/components/ui/button"
@@ -33,6 +33,7 @@ interface MessageInputBaseProps
   startListening?: () => void
   stopListening?: () => void
   isSpeechSupported?: boolean
+  setInput?: (value: string) => void
 }
 
 interface MessageInputWithoutAttachmentProps extends MessageInputBaseProps {
@@ -77,13 +78,34 @@ export function MessageInput({
     isTranscribing,
     audioStream,
     toggleListening: internalToggleListening,
-    stopRecording,
-  } = useAudioRecording({
+    stopListening: internalStopListening,
+  } = useChatVoice({
+    mode: transcribeAudio ? "record" : "native",
     transcribeAudio,
+    onTranscript: (text, isFinal) => {
+      if (isFinal && text.trim()) {
+        const newValue = (props.value || "").trim() + " " + text.trim()
+        if (props.setInput) {
+          props.setInput(newValue.trim())
+        } else if (textareaProps.onChange) {
+          textareaProps.onChange({ target: { value: newValue.trim() } } as React.ChangeEvent<HTMLTextAreaElement>)
+        }
+      }
+    },
     onTranscriptionComplete: (text: string) => {
-      props.onChange?.({ target: { value: text } } as React.ChangeEvent<HTMLTextAreaElement>)
+      if (text.trim()) {
+        const newValue = (props.value || "").trim() + " " + text.trim()
+        if (props.setInput) {
+          props.setInput(newValue.trim())
+        } else if (textareaProps.onChange) {
+          textareaProps.onChange({ target: { value: newValue.trim() } } as React.ChangeEvent<HTMLTextAreaElement>)
+        }
+      }
     },
   })
+
+  // Aliasing stopRecording to internalStopListening for compatibility with existing UI
+  const stopRecording = internalStopListening
 
   const isListening = externalIsListening ?? internalIsListening
   const isSpeechSupported = externalIsSpeechSupported ?? internalIsSpeechSupported
@@ -306,7 +328,6 @@ export function MessageInput({
             isListening={!!isListening}
             onClick={toggleListening}
           />
-
           <SubmitActionButton
             isGenerating={isGenerating}
             stop={stop}

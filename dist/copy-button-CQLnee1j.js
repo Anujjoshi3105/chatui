@@ -1,6 +1,6 @@
-import { $ as rgba, A as motionValue, B as defaultTransformValue, C as getAnimatableNone, D as camelToDash, Dt as useConstant, E as optimizedAppearDataAttribute, Et as useIsomorphicLayoutEffect, F as flushKeyframeResolvers, G as mixNumber, H as WithPromise, I as isNumOrPxType, J as color, K as analyseComplexValue, L as positionalValues, M as NativeAnimation, N as isGenerator, O as isMotionValue, Ot as LayoutGroupContext, P as KeyframeResolver, Q as hex, R as transformPropOrder, St as clamp, T as findDimensionValueType, Tt as PresenceContext, U as getFinalKeyframe$1, V as readTransformValue, W as generateLinearEasing, Y as hsla, _ as variantProps, _t as isZeroValueString, at as cancelFrame, b as createBox, bt as invariant, d as buildSVGAttrs, dt as velocityPerSecond, et as containsCSSVariable, f as scrapeMotionValuesFromProps$1, ft as millisecondsToSeconds, g as variantPriorityOrder, gt as memo$1, h as VisualElement, ht as noop, i as isSVGComponent, it as time, j as resolveVariantFromProps, l as scrapeMotionValuesFromProps, m as buildHTMLStyles, nt as isCSSVariableToken, ot as frame, pt as secondsToMilliseconds, q as complex, rt as activeAnimations, s as MotionConfigContext, st as frameData, tt as isCSSVariableName, u as isSVGTag, ut as isBezierDefinition, v as isVariantLabel, vt as isNumericalString, w as getDefaultValueType, xt as warning, y as isAnimationControls, yt as MotionGlobalConfig, z as transformProps } from "./create-proxy-BHzAT_rA.js";
+import { $ as hex, A as motionValue, B as transformProps, C as getAnimatableNone, Ct as clamp, D as camelToDash, Dt as useIsomorphicLayoutEffect, E as optimizedAppearDataAttribute, Et as PresenceContext, F as KeyframeResolver, G as generateLinearEasing, H as readTransformValue, I as flushKeyframeResolvers, J as complex, K as mixNumber, L as isNumOrPxType, M as NativeAnimation, N as isGenerator, O as isMotionValue, Ot as useConstant, P as setStyle, R as positionalValues, St as warning, T as findDimensionValueType, U as WithPromise, V as defaultTransformValue, W as getFinalKeyframe$1, X as hsla, Y as color, _ as variantProps, _t as memo$1, at as time, b as createBox, bt as MotionGlobalConfig, ct as frameData, d as buildSVGAttrs, dt as isBezierDefinition, et as rgba, f as scrapeMotionValuesFromProps$1, ft as velocityPerSecond, g as variantPriorityOrder, gt as noop, h as VisualElement, i as isSVGComponent, it as activeAnimations, j as resolveVariantFromProps, kt as LayoutGroupContext, l as scrapeMotionValuesFromProps, m as buildHTMLStyles, mt as secondsToMilliseconds, nt as isCSSVariableName, ot as cancelFrame, pt as millisecondsToSeconds, q as analyseComplexValue, rt as isCSSVariableToken, s as MotionConfigContext, st as frame, tt as containsCSSVariable, u as isSVGTag, v as isVariantLabel, vt as isZeroValueString, w as getDefaultValueType, xt as invariant, y as isAnimationControls, yt as isNumericalString, z as transformPropOrder } from "./create-proxy-CwJMlGNV.js";
 import { t as createLucideIcon } from "./createLucideIcon-C1Qbi7jU.js";
-import { D as Check, b as Button, i as TooltipTrigger, n as TooltipContent, r as TooltipProvider, t as Tooltip, x as cn } from "./tooltip-CwlCdP1-.js";
+import { E as cn, M as Check, T as Button, c as TooltipProvider, l as TooltipTrigger, o as Tooltip, s as TooltipContent } from "./voice.sdk-8j8W_pOO.js";
 import * as React$1 from "react";
 import React, { Children, Fragment, isValidElement, useCallback, useContext, useEffect, useId, useInsertionEffect, useMemo, useRef, useState } from "react";
 import { Fragment as Fragment$1, jsx, jsxs } from "react/jsx-runtime";
@@ -91,11 +91,11 @@ function asRGBA(e) {
 	let O = D.parse(e);
 	return D === hsla && (O = hslaToRgba(O)), O;
 }
-var mixColor = (D, O) => {
-	let k = asRGBA(D), A = asRGBA(O);
-	if (!k || !A) return mixImmediate(D, O);
-	let j = { ...k };
-	return (D) => (j.red = mixLinearColor(k.red, A.red, D), j.green = mixLinearColor(k.green, A.green, D), j.blue = mixLinearColor(k.blue, A.blue, D), j.alpha = mixNumber(k.alpha, A.alpha, D), rgba.transform(j));
+var mixColor = (e, D) => {
+	let O = asRGBA(e), k = asRGBA(D);
+	if (!O || !k) return mixImmediate(e, D);
+	let A = { ...O };
+	return (e) => (A.red = mixLinearColor(O.red, k.red, e), A.green = mixLinearColor(O.green, k.green, e), A.blue = mixLinearColor(O.blue, k.blue, e), A.alpha = mixNumber(O.alpha, k.alpha, e), rgba.transform(A));
 }, invisibleValues = new Set(["none", "hidden"]);
 function mixVisibility(e, D) {
 	return invisibleValues.has(e) ? (O) => O <= 0 ? e : D : (O) => O >= 1 ? D : e;
@@ -167,11 +167,6 @@ function createGeneratorEasing(e, D = 100, O) {
 		duration: millisecondsToSeconds(A)
 	};
 }
-var velocitySampleDuration = 5;
-function calcGeneratorVelocity(e, D, O) {
-	let k = Math.max(D - velocitySampleDuration, 0);
-	return velocityPerSecond(O - e(k), D - k);
-}
 var springDefaults = {
 	stiffness: 100,
 	damping: 10,
@@ -192,35 +187,9 @@ var springDefaults = {
 	maxDuration: 10,
 	minDamping: .05,
 	maxDamping: 1
-}, safeMin = .001;
-function findSpring({ duration: e = springDefaults.duration, bounce: D = springDefaults.bounce, velocity: O = springDefaults.velocity, mass: k = springDefaults.mass }) {
-	let A, j;
-	warning(e <= secondsToMilliseconds(springDefaults.maxDuration), "Spring duration must be 10 seconds or less", "spring-duration-limit");
-	let M = 1 - D;
-	M = clamp(springDefaults.minDamping, springDefaults.maxDamping, M), e = clamp(springDefaults.minDuration, springDefaults.maxDuration, millisecondsToSeconds(e)), M < 1 ? (A = (D) => {
-		let k = D * M, A = k * e, j = k - O, N = calcAngularFreq(D, M), P = Math.exp(-A);
-		return safeMin - j / N * P;
-	}, j = (D) => {
-		let k = D * M * e, j = k * O + O, N = M ** 2 * D ** 2 * e, P = Math.exp(-k), F = calcAngularFreq(D ** 2, M);
-		return (-A(D) + safeMin > 0 ? -1 : 1) * ((j - N) * P) / F;
-	}) : (A = (D) => {
-		let k = Math.exp(-D * e), A = (D - O) * e + 1;
-		return -safeMin + k * A;
-	}, j = (D) => Math.exp(-D * e) * ((O - D) * (e * e)));
-	let N = 5 / e, P = approximateRoot(A, j, N);
-	if (e = secondsToMilliseconds(e), isNaN(P)) return {
-		stiffness: springDefaults.stiffness,
-		damping: springDefaults.damping,
-		duration: e
-	};
-	{
-		let D = P ** 2 * k;
-		return {
-			stiffness: D,
-			damping: M * 2 * Math.sqrt(k * D),
-			duration: e
-		};
-	}
+};
+function calcAngularFreq(e, D) {
+	return e * Math.sqrt(1 - D * D);
 }
 var rootIterations = 12;
 function approximateRoot(e, D, O) {
@@ -228,8 +197,35 @@ function approximateRoot(e, D, O) {
 	for (let O = 1; O < rootIterations; O++) k -= e(k) / D(k);
 	return k;
 }
-function calcAngularFreq(e, D) {
-	return e * Math.sqrt(1 - D * D);
+var safeMin = .001;
+function findSpring({ duration: e = springDefaults.duration, bounce: D = springDefaults.bounce, velocity: O = springDefaults.velocity, mass: k = springDefaults.mass }) {
+	let j, M;
+	warning(e <= secondsToMilliseconds(springDefaults.maxDuration), "Spring duration must be 10 seconds or less", "spring-duration-limit");
+	let N = 1 - D;
+	N = clamp(springDefaults.minDamping, springDefaults.maxDamping, N), e = clamp(springDefaults.minDuration, springDefaults.maxDuration, millisecondsToSeconds(e)), N < 1 ? (j = (D) => {
+		let k = D * N, A = k * e, j = k - O, M = calcAngularFreq(D, N), P = Math.exp(-A);
+		return safeMin - j / M * P;
+	}, M = (D) => {
+		let k = D * N * e, A = k * O + O, M = N ** 2 * D ** 2 * e, P = Math.exp(-k), F = calcAngularFreq(D ** 2, N);
+		return (-j(D) + safeMin > 0 ? -1 : 1) * ((A - M) * P) / F;
+	}) : (j = (D) => {
+		let k = Math.exp(-D * e), A = (D - O) * e + 1;
+		return -safeMin + k * A;
+	}, M = (D) => Math.exp(-D * e) * ((O - D) * (e * e)));
+	let P = 5 / e, F = approximateRoot(j, M, P);
+	if (e = secondsToMilliseconds(e), isNaN(F)) return {
+		stiffness: springDefaults.stiffness,
+		damping: springDefaults.damping,
+		duration: e
+	};
+	{
+		let D = F ** 2 * k;
+		return {
+			stiffness: D,
+			damping: N * 2 * Math.sqrt(k * D),
+			duration: e
+		};
+	}
 }
 var durationKeys = ["duration", "bounce"], physicsKeys = [
 	"stiffness",
@@ -249,12 +245,12 @@ function getSpringOptions(e) {
 		...e
 	};
 	if (!isSpringType(e, physicsKeys) && isSpringType(e, durationKeys)) if (D.velocity = 0, e.visualDuration) {
-		let O = e.visualDuration, k = 2 * Math.PI / (O * 1.2), A = k * k, j = 2 * clamp(.05, 1, 1 - (e.bounce || 0)) * Math.sqrt(A);
+		let O = e.visualDuration, k = 2 * Math.PI / (O * 1.2), j = k * k, M = 2 * clamp(.05, 1, 1 - (e.bounce || 0)) * Math.sqrt(j);
 		D = {
 			...D,
 			mass: springDefaults.mass,
-			stiffness: A,
-			damping: j
+			stiffness: j,
+			damping: M
 		};
 	} else {
 		let O = findSpring({
@@ -277,48 +273,62 @@ function spring(e = springDefaults.visualDuration, D = springDefaults.bounce) {
 	}, { restSpeed: k, restDelta: A } = O, j = O.keyframes[0], M = O.keyframes[O.keyframes.length - 1], N = {
 		done: !1,
 		value: j
-	}, { stiffness: P, damping: F, mass: I, duration: L, velocity: R, isResolvedFromDuration: z } = getSpringOptions({
+	}, { stiffness: P, damping: F, mass: L, duration: R, velocity: z, isResolvedFromDuration: B } = getSpringOptions({
 		...O,
 		velocity: -millisecondsToSeconds(O.velocity || 0)
-	}), B = R || 0, V = F / (2 * Math.sqrt(P * I)), H = M - j, U = millisecondsToSeconds(Math.sqrt(P / I)), W = Math.abs(H) < 5;
-	k ||= W ? springDefaults.restSpeed.granular : springDefaults.restSpeed.default, A ||= W ? springDefaults.restDelta.granular : springDefaults.restDelta.default;
-	let G;
-	if (V < 1) {
-		let e = calcAngularFreq(U, V);
-		G = (D) => M - Math.exp(-V * U * D) * ((B + V * U * H) / e * Math.sin(e * D) + H * Math.cos(e * D));
-	} else if (V === 1) G = (e) => M - Math.exp(-U * e) * (H + (B + U * H) * e);
-	else {
-		let e = U * Math.sqrt(V * V - 1);
-		G = (D) => {
-			let O = Math.exp(-V * U * D), k = Math.min(e * D, 300);
-			return M - O * ((B + V * U * H) * Math.sinh(k) + e * H * Math.cosh(k)) / e;
+	}), V = z || 0, H = F / (2 * Math.sqrt(P * L)), U = M - j, W = millisecondsToSeconds(Math.sqrt(P / L)), G = Math.abs(U) < 5;
+	k ||= G ? springDefaults.restSpeed.granular : springDefaults.restSpeed.default, A ||= G ? springDefaults.restDelta.granular : springDefaults.restDelta.default;
+	let K, q, J, Y, X, Z;
+	if (H < 1) J = calcAngularFreq(W, H), Y = (V + H * W * U) / J, K = (e) => M - Math.exp(-H * W * e) * (Y * Math.sin(J * e) + U * Math.cos(J * e)), X = H * W * Y + U * J, Z = H * W * U - Y * J, q = (e) => Math.exp(-H * W * e) * (X * Math.sin(J * e) + Z * Math.cos(J * e));
+	else if (H === 1) {
+		K = (e) => M - Math.exp(-W * e) * (U + (V + W * U) * e);
+		let e = V + W * U;
+		q = (D) => Math.exp(-W * D) * (W * e * D - V);
+	} else {
+		let e = W * Math.sqrt(H * H - 1);
+		K = (D) => {
+			let O = Math.exp(-H * W * D), k = Math.min(e * D, 300);
+			return M - O * ((V + H * W * U) * Math.sinh(k) + e * U * Math.cosh(k)) / e;
+		};
+		let D = (V + H * W * U) / e, O = H * W * D - U * e, k = H * W * U - D * e;
+		q = (D) => {
+			let A = Math.exp(-H * W * D), j = Math.min(e * D, 300);
+			return A * (O * Math.sinh(j) + k * Math.cosh(j));
 		};
 	}
-	let K = {
-		calculatedDuration: z && L || null,
+	let Q = {
+		calculatedDuration: B && R || null,
+		velocity: (e) => secondsToMilliseconds(q(e)),
 		next: (e) => {
-			let D = G(e);
-			if (z) N.done = e >= L;
+			if (!B && H < 1) {
+				let D = Math.exp(-H * W * e), O = Math.sin(J * e), j = Math.cos(J * e), P = M - D * (Y * O + U * j), F = secondsToMilliseconds(D * (X * O + Z * j));
+				return N.done = Math.abs(F) <= k && Math.abs(M - P) <= A, N.value = N.done ? M : P, N;
+			}
+			let D = K(e);
+			if (B) N.done = e >= R;
 			else {
-				let O = e === 0 ? B : 0;
-				V < 1 && (O = e === 0 ? secondsToMilliseconds(B) : calcGeneratorVelocity(G, e, D));
-				let j = Math.abs(O) <= k, P = Math.abs(M - D) <= A;
-				N.done = j && P;
+				let O = secondsToMilliseconds(q(e));
+				N.done = Math.abs(O) <= k && Math.abs(M - D) <= A;
 			}
 			return N.value = N.done ? M : D, N;
 		},
 		toString: () => {
-			let e = Math.min(calcGeneratorDuration(K), maxGeneratorDuration), D = generateLinearEasing((D) => K.next(e * D).value, e, 30);
+			let e = Math.min(calcGeneratorDuration(Q), maxGeneratorDuration), D = generateLinearEasing((D) => Q.next(e * D).value, e, 30);
 			return e + "ms " + D;
 		},
 		toTransition: () => {}
 	};
-	return K;
+	return Q;
 }
 spring.applyToOptions = (e) => {
 	let D = createGeneratorEasing(e, 100, spring);
 	return e.ease = D.ease, e.duration = secondsToMilliseconds(D.duration), e.type = "keyframes", e;
 };
+var velocitySampleDuration = 5;
+function getGeneratorVelocity(e, D, O) {
+	let k = Math.max(D - velocitySampleDuration, 0);
+	return velocityPerSecond(O - e(k), D - k);
+}
 function inertia({ keyframes: e, velocity: D = 0, power: O = .8, timeConstant: k = 325, bounceDamping: A = 10, bounceStiffness: j = 500, modifyTarget: M, min: N, max: P, restDelta: F = .5, restSpeed: I }) {
 	let L = e[0], R = {
 		done: !1,
@@ -331,7 +341,7 @@ function inertia({ keyframes: e, velocity: D = 0, power: O = .8, timeConstant: k
 	}, q, J, Y = (e) => {
 		z(R.value) && (q = e, J = spring({
 			keyframes: [R.value, B(R.value)],
-			velocity: calcGeneratorVelocity(G, e, R.value),
+			velocity: getGeneratorVelocity(G, e, R.value),
 			damping: A,
 			stiffness: j,
 			restDelta: F,
@@ -354,20 +364,20 @@ function createMixers(e, D, O) {
 	}
 	return k;
 }
-function interpolate(e, D, { clamp: O = !0, ease: k, mixer: A } = {}) {
-	let j = e.length;
-	if (invariant(j === D.length, "Both input and output ranges must be the same length", "range-length"), j === 1) return () => D[0];
-	if (j === 2 && D[0] === D[1]) return () => D[1];
-	let M = e[0] === e[1];
-	e[0] > e[j - 1] && (e = [...e].reverse(), D = [...D].reverse());
-	let N = createMixers(D, k, A), P = N.length, F = (O) => {
-		if (M && O < e[0]) return D[0];
+function interpolate(e, D, { clamp: O = !0, ease: k, mixer: j } = {}) {
+	let M = e.length;
+	if (invariant(M === D.length, "Both input and output ranges must be the same length", "range-length"), M === 1) return () => D[0];
+	if (M === 2 && D[0] === D[1]) return () => D[1];
+	let N = e[0] === e[1];
+	e[0] > e[M - 1] && (e = [...e].reverse(), D = [...D].reverse());
+	let P = createMixers(D, k, j), F = P.length, I = (O) => {
+		if (N && O < e[0]) return D[0];
 		let k = 0;
-		if (P > 1) for (; k < e.length - 2 && !(O < e[k + 1]); k++);
+		if (F > 1) for (; k < e.length - 2 && !(O < e[k + 1]); k++);
 		let A = /* @__PURE__ */ progress(e[k], e[k + 1], O);
-		return N[k](A);
+		return P[k](A);
 	};
-	return O ? (D) => F(clamp(e[0], e[j - 1], D)) : F;
+	return O ? (D) => I(clamp(e[0], e[M - 1], D)) : I;
 }
 function fillOffset(e, D) {
 	let O = e[e.length - 1];
@@ -435,26 +445,26 @@ var percentToProgress = (e) => e / 100, JSAnimation = class extends WithPromise 
 		this.holdTime === null ? this.currentTime = D : this.currentTime = this.holdTime;
 	}
 	tick(e, D = !1) {
-		let { generator: O, totalDuration: k, mixKeyframes: A, mirroredGenerator: j, resolvedDuration: M, calculatedDuration: N } = this;
+		let { generator: O, totalDuration: k, mixKeyframes: j, mirroredGenerator: M, resolvedDuration: N, calculatedDuration: P } = this;
 		if (this.startTime === null) return O.next(0);
-		let { delay: P = 0, keyframes: F, repeat: I, repeatType: L, repeatDelay: R, type: z, onUpdate: B, finalKeyframe: V } = this.options;
+		let { delay: F = 0, keyframes: I, repeat: L, repeatType: R, repeatDelay: z, type: B, onUpdate: V, finalKeyframe: H } = this.options;
 		this.speed > 0 ? this.startTime = Math.min(this.startTime, e) : this.speed < 0 && (this.startTime = Math.min(e - k / this.speed, this.startTime)), D ? this.currentTime = e : this.updateTime(e);
-		let H = this.currentTime - P * (this.playbackSpeed >= 0 ? 1 : -1), U = this.playbackSpeed >= 0 ? H < 0 : H > k;
-		this.currentTime = Math.max(H, 0), this.state === "finished" && this.holdTime === null && (this.currentTime = k);
-		let W = this.currentTime, G = O;
-		if (I) {
-			let e = Math.min(this.currentTime, k) / M, D = Math.floor(e), O = e % 1;
-			!O && e >= 1 && (O = 1), O === 1 && D--, D = Math.min(D, I + 1), D % 2 && (L === "reverse" ? (O = 1 - O, R && (O -= R / M)) : L === "mirror" && (G = j)), W = clamp(0, 1, O) * M;
+		let U = this.currentTime - F * (this.playbackSpeed >= 0 ? 1 : -1), W = this.playbackSpeed >= 0 ? U < 0 : U > k;
+		this.currentTime = Math.max(U, 0), this.state === "finished" && this.holdTime === null && (this.currentTime = k);
+		let G = this.currentTime, K = O;
+		if (L) {
+			let e = Math.min(this.currentTime, k) / N, D = Math.floor(e), O = e % 1;
+			!O && e >= 1 && (O = 1), O === 1 && D--, D = Math.min(D, L + 1), D % 2 && (R === "reverse" ? (O = 1 - O, z && (O -= z / N)) : R === "mirror" && (K = M)), G = clamp(0, 1, O) * N;
 		}
-		let K = U ? {
+		let q = W ? {
 			done: !1,
-			value: F[0]
-		} : G.next(W);
-		A && (K.value = A(K.value));
-		let { done: q } = K;
-		!U && N !== null && (q = this.playbackSpeed >= 0 ? this.currentTime >= k : this.currentTime <= 0);
-		let Y = this.holdTime === null && (this.state === "finished" || this.state === "running" && q);
-		return Y && z !== inertia && (K.value = getFinalKeyframe$1(F, this.options, V, this.speed)), B && B(K.value), Y && this.finish(), K;
+			value: I[0]
+		} : K.next(G);
+		j && !W && (q.value = j(q.value));
+		let { done: J } = q;
+		!W && P !== null && (J = this.playbackSpeed >= 0 ? this.currentTime >= k : this.currentTime <= 0);
+		let Y = this.holdTime === null && (this.state === "finished" || this.state === "running" && J);
+		return Y && B !== inertia && (q.value = getFinalKeyframe$1(I, this.options, H, this.speed)), V && V(q.value), Y && this.finish(), q;
 	}
 	then(e, D) {
 		return this.finished.then(e, D);
@@ -470,15 +480,21 @@ var percentToProgress = (e) => e / 100, JSAnimation = class extends WithPromise 
 		return millisecondsToSeconds(this.currentTime);
 	}
 	set time(e) {
-		e = secondsToMilliseconds(e), this.currentTime = e, this.startTime === null || this.holdTime !== null || this.playbackSpeed === 0 ? this.holdTime = e : this.driver && (this.startTime = this.driver.now() - e / this.playbackSpeed), this.driver?.start(!1);
+		e = secondsToMilliseconds(e), this.currentTime = e, this.startTime === null || this.holdTime !== null || this.playbackSpeed === 0 ? this.holdTime = e : this.driver && (this.startTime = this.driver.now() - e / this.playbackSpeed), this.driver ? this.driver.start(!1) : (this.startTime = 0, this.state = "paused", this.holdTime = e, this.tick(e));
+	}
+	getGeneratorVelocity() {
+		let e = this.currentTime;
+		if (e <= 0) return this.options.velocity || 0;
+		if (this.generator.velocity) return this.generator.velocity(e);
+		let D = this.generator.next(e).value;
+		return getGeneratorVelocity((e) => this.generator.next(e).value, e, D);
 	}
 	get speed() {
 		return this.playbackSpeed;
 	}
 	set speed(e) {
-		this.updateTime(time.now());
 		let D = this.playbackSpeed !== e;
-		this.playbackSpeed = e, D && (this.time = millisecondsToSeconds(this.currentTime));
+		D && this.driver && this.updateTime(time.now()), this.playbackSpeed = e, D && this.driver && (this.time = millisecondsToSeconds(this.currentTime));
 	}
 	play() {
 		if (this.isStopped) return;
@@ -524,20 +540,20 @@ function replaceStringEasing(e) {
 }
 var sampleDelta = 10, NativeAnimationExtended = class extends NativeAnimation {
 	constructor(e) {
-		replaceStringEasing(e), replaceTransitionType(e), super(e), e.startTime !== void 0 && (this.startTime = e.startTime), this.options = e;
+		replaceStringEasing(e), replaceTransitionType(e), super(e), e.startTime !== void 0 && e.autoplay !== !1 && (this.startTime = e.startTime), this.options = e;
 	}
 	updateMotionValue(e) {
-		let { motionValue: D, onUpdate: O, onComplete: k, element: A, ...j } = this.options;
+		let { motionValue: D, onUpdate: O, onComplete: k, element: j, ...M } = this.options;
 		if (!D) return;
 		if (e !== void 0) {
 			D.set(e);
 			return;
 		}
-		let M = new JSAnimation({
-			...j,
+		let N = new JSAnimation({
+			...M,
 			autoplay: !1
-		}), N = Math.max(sampleDelta, time.now() - this.startTime), P = clamp(0, sampleDelta, N - sampleDelta);
-		D.setWithVelocity(M.sample(Math.max(0, N - P)).value, M.sample(N).value, P), M.stop();
+		}), P = Math.max(sampleDelta, time.now() - this.startTime), F = clamp(0, sampleDelta, P - sampleDelta), I = N.sample(P).value, { name: L } = this.options;
+		j && L && setStyle(j, L, I), D.setWithVelocity(N.sample(Math.max(0, P - F)).value, I, F), N.stop();
 	}
 }, isAnimatable = (e, D) => D === "zIndex" ? !1 : !!(typeof e == "number" || Array.isArray(e) || typeof e == "string" && (complex.test(e) || e === "0") && !e.startsWith("url("));
 function hasKeyframesChanged(e) {
@@ -568,11 +584,11 @@ function supportsBrowserAnimation(e) {
 	return supportsWaapi() && O && acceleratedValues.has(O) && (O !== "transform" || !P) && !N && !k && A !== "mirror" && j !== 0 && M !== "inertia";
 }
 var MAX_RESOLVE_DELAY = 40, AsyncMotionValueAnimation = class extends WithPromise {
-	constructor({ autoplay: e = !0, delay: D = 0, type: O = "keyframes", repeat: k = 0, repeatDelay: A = 0, repeatType: j = "loop", keyframes: M, name: N, motionValue: P, element: F, ...I }) {
+	constructor({ autoplay: e = !0, delay: D = 0, type: O = "keyframes", repeat: k = 0, repeatDelay: A = 0, repeatType: j = "loop", keyframes: M, name: N, motionValue: P, element: I, ...L }) {
 		super(), this.stop = () => {
 			this._animation && (this._animation.stop(), this.stopTimeline?.()), this.keyframeResolver?.cancel();
 		}, this.createdAt = time.now();
-		let L = {
+		let R = {
 			autoplay: e,
 			delay: D,
 			type: O,
@@ -581,10 +597,10 @@ var MAX_RESOLVE_DELAY = 40, AsyncMotionValueAnimation = class extends WithPromis
 			repeatType: j,
 			name: N,
 			motionValue: P,
-			element: F,
-			...I
+			element: I,
+			...L
 		};
-		this.keyframeResolver = new (F?.KeyframeResolver || KeyframeResolver)(M, (e, D, O) => this.onKeyframesResolved(e, D, L, !O), N, P, F), this.keyframeResolver?.scheduleResolve();
+		this.keyframeResolver = new (I?.KeyframeResolver || KeyframeResolver)(M, (e, D, O) => this.onKeyframesResolved(e, D, R, !O), N, P, I), this.keyframeResolver?.scheduleResolve();
 	}
 	onKeyframesResolved(e, D, O, k) {
 		this.keyframeResolver = void 0;
@@ -1163,7 +1179,7 @@ function applyTreeDeltas(e, D, O, k = !1) {
 		A && A.props.style && A.props.style.display === "contents" || (k && j.options.layoutScroll && j.scroll && j !== j.root && transformBox(e, {
 			x: -j.scroll.offset.x,
 			y: -j.scroll.offset.y
-		}), M && (D.x *= M.x.scale, D.y *= M.y.scale, applyBoxDelta(e, M)), k && hasTransform(j.latestValues) && transformBox(e, j.latestValues));
+		}), M && (D.x *= M.x.scale, D.y *= M.y.scale, applyBoxDelta(e, M)), k && hasTransform(j.latestValues) && transformBox(e, j.latestValues, j.layout?.layoutBox));
 	}
 	D.x < TREE_SCALE_SNAP_MAX && D.x > TREE_SCALE_SNAP_MIN && (D.x = 1), D.y < TREE_SCALE_SNAP_MAX && D.y > TREE_SCALE_SNAP_MIN && (D.y = 1);
 }
@@ -1176,8 +1192,9 @@ function transformAxis(e, D, O, k, A = .5) {
 function resolveAxisTranslate(e, D) {
 	return typeof e == "string" ? parseFloat(e) / 100 * (D.max - D.min) : e;
 }
-function transformBox(e, D) {
-	transformAxis(e.x, resolveAxisTranslate(D.x, e.x), D.scaleX, D.scale, D.originX), transformAxis(e.y, resolveAxisTranslate(D.y, e.y), D.scaleY, D.scale, D.originY);
+function transformBox(e, D, O) {
+	let k = O ?? e;
+	transformAxis(e.x, resolveAxisTranslate(D.x, k.x), D.scaleX, D.scale, D.originX), transformAxis(e.y, resolveAxisTranslate(D.y, k.y), D.scaleY, D.scale, D.originY);
 }
 function measureViewportBox(e, D) {
 	return convertBoundingBoxToBox(transformBoxPoints(e.getBoundingClientRect(), D));
@@ -1191,7 +1208,7 @@ function renderHTML(e, { style: D, vars: O }, k, A) {
 	for (M in D) j[M] = D[M];
 	for (M in A?.applyProjectionStyles(j, k), O) j.setProperty(M, O[M]);
 }
-function getComputedStyle(e) {
+function getComputedStyle$1(e) {
 	return window.getComputedStyle(e);
 }
 var HTMLVisualElement = class extends DOMVisualElement {
@@ -1201,7 +1218,7 @@ var HTMLVisualElement = class extends DOMVisualElement {
 	readValueFromInstance(e, D) {
 		if (transformProps.has(D)) return this.projection?.isProjecting ? defaultTransformValue(D) : readTransformValue(e, D);
 		{
-			let O = getComputedStyle(e), k = (isCSSVariableName(D) ? O.getPropertyValue(D) : O[D]) || 0;
+			let O = getComputedStyle$1(e), k = (isCSSVariableName(D) ? O.getPropertyValue(D) : O[D]) || 0;
 			return typeof k == "string" ? k.trim() : k;
 		}
 	}
@@ -1439,9 +1456,9 @@ function useComposedRefs(...e) {
 var PopChildMeasure = class extends React$1.Component {
 	getSnapshotBeforeUpdate(e) {
 		let D = this.props.childRef.current;
-		if (D && e.isPresent && !this.props.isPresent && this.props.pop !== !1) {
-			let e = D.offsetParent, O = isHTMLElement(e) && e.offsetWidth || 0, k = isHTMLElement(e) && e.offsetHeight || 0, A = this.props.sizeRef.current;
-			A.height = D.offsetHeight || 0, A.width = D.offsetWidth || 0, A.top = D.offsetTop, A.left = D.offsetLeft, A.right = O - A.width - A.left, A.bottom = k - A.height - A.top;
+		if (isHTMLElement(D) && e.isPresent && !this.props.isPresent && this.props.pop !== !1) {
+			let e = D.offsetParent, O = isHTMLElement(e) && e.offsetWidth || 0, k = isHTMLElement(e) && e.offsetHeight || 0, A = getComputedStyle(D), j = this.props.sizeRef.current;
+			j.height = parseFloat(A.height), j.width = parseFloat(A.width), j.top = D.offsetTop, j.left = D.offsetLeft, j.right = O - j.width - j.left, j.bottom = k - j.height - j.top;
 		}
 		return null;
 	}
@@ -1486,7 +1503,7 @@ function PopChild({ children: e, isPresent: D, anchorX: O, anchorY: k, root: A, 
 		children: j === !1 ? e : React$1.cloneElement(e, { ref: I })
 	});
 }
-var PresenceChild = ({ children: e, initial: D, isPresent: O, onExitComplete: k, custom: A, presenceAffectsLayout: M, mode: N, anchorX: P, anchorY: F, root: I }) => {
+var PresenceChild = ({ children: e, initial: D, isPresent: O, onExitComplete: k, custom: A, presenceAffectsLayout: j, mode: M, anchorX: N, anchorY: F, root: I }) => {
 	let L = useConstant(newChildrenMap), R = useId(), z = !0, B = useMemo(() => (z = !1, {
 		id: R,
 		initial: D,
@@ -1503,14 +1520,14 @@ var PresenceChild = ({ children: e, initial: D, isPresent: O, onExitComplete: k,
 		L,
 		k
 	]);
-	return M && z && (B = { ...B }), useMemo(() => {
+	return j && z && (B = { ...B }), useMemo(() => {
 		L.forEach((e, D) => L.set(D, !1));
 	}, [O]), React$1.useEffect(() => {
 		!O && !L.size && k && k();
 	}, [O]), e = jsx(PopChild, {
-		pop: N === "popLayout",
+		pop: M === "popLayout",
 		isPresent: O,
-		anchorX: P,
+		anchorX: N,
 		anchorY: F,
 		root: I,
 		children: e
@@ -1543,52 +1560,52 @@ function onlyElements(e) {
 		isValidElement(e) && D.push(e);
 	}), D;
 }
-var AnimatePresence = ({ children: e, custom: D, initial: O = !0, onExitComplete: k, presenceAffectsLayout: A = !0, mode: M = "sync", propagate: P = !1, anchorX: F = "left", anchorY: I = "top", root: L }) => {
-	let [R, z] = usePresence(P), B = useMemo(() => onlyElements(e), [e]), V = P && !R ? [] : B.map(getChildKey), H = useRef(!0), U = useRef(B), G = useConstant(() => /* @__PURE__ */ new Map()), K = useRef(/* @__PURE__ */ new Set()), [q, J] = useState(B), [Y, X] = useState(B);
+var AnimatePresence = ({ children: e, custom: D, initial: O = !0, onExitComplete: k, presenceAffectsLayout: A = !0, mode: j = "sync", propagate: N = !1, anchorX: P = "left", anchorY: F = "top", root: I }) => {
+	let [L, R] = usePresence(N), z = useMemo(() => onlyElements(e), [e]), B = N && !L ? [] : z.map(getChildKey), V = useRef(!0), H = useRef(z), U = useConstant(() => /* @__PURE__ */ new Map()), W = useRef(/* @__PURE__ */ new Set()), [K, q] = useState(z), [J, Y] = useState(z);
 	useIsomorphicLayoutEffect(() => {
-		H.current = !1, U.current = B;
-		for (let e = 0; e < Y.length; e++) {
-			let D = getChildKey(Y[e]);
-			V.includes(D) ? (G.delete(D), K.current.delete(D)) : G.get(D) !== !0 && G.set(D, !1);
+		V.current = !1, H.current = z;
+		for (let e = 0; e < J.length; e++) {
+			let D = getChildKey(J[e]);
+			B.includes(D) ? (U.delete(D), W.current.delete(D)) : U.get(D) !== !0 && U.set(D, !1);
 		}
 	}, [
-		Y,
-		V.length,
-		V.join("-")
+		J,
+		B.length,
+		B.join("-")
 	]);
-	let Z = [];
-	if (B !== q) {
-		let e = [...B];
-		for (let D = 0; D < Y.length; D++) {
-			let O = Y[D], k = getChildKey(O);
-			V.includes(k) || (e.splice(D, 0, O), Z.push(O));
+	let X = [];
+	if (z !== K) {
+		let e = [...z];
+		for (let D = 0; D < J.length; D++) {
+			let O = J[D], k = getChildKey(O);
+			B.includes(k) || (e.splice(D, 0, O), X.push(O));
 		}
-		return M === "wait" && Z.length && (e = Z), X(onlyElements(e)), J(B), null;
+		return j === "wait" && X.length && (e = X), Y(onlyElements(e)), q(z), null;
 	}
-	process.env.NODE_ENV !== "production" && M === "wait" && Y.length > 1 && console.warn("You're attempting to animate multiple children within AnimatePresence, but its mode is set to \"wait\". This will lead to odd visual behaviour.");
-	let { forceRender: Q } = useContext(LayoutGroupContext);
-	return jsx(Fragment$1, { children: Y.map((e) => {
-		let j = getChildKey(e), N = P && !R ? !1 : B === Y || V.includes(j);
+	process.env.NODE_ENV !== "production" && j === "wait" && J.length > 1 && console.warn("You're attempting to animate multiple children within AnimatePresence, but its mode is set to \"wait\". This will lead to odd visual behaviour.");
+	let { forceRender: Z } = useContext(LayoutGroupContext);
+	return jsx(Fragment$1, { children: J.map((e) => {
+		let M = getChildKey(e), G = N && !L ? !1 : z === J || B.includes(M);
 		return jsx(PresenceChild, {
-			isPresent: N,
-			initial: !H.current || O ? void 0 : !1,
+			isPresent: G,
+			initial: !V.current || O ? void 0 : !1,
 			custom: D,
 			presenceAffectsLayout: A,
-			mode: M,
-			root: L,
-			onExitComplete: N ? void 0 : () => {
-				if (K.current.has(j)) return;
-				if (K.current.add(j), G.has(j)) G.set(j, !0);
+			mode: j,
+			root: I,
+			onExitComplete: G ? void 0 : () => {
+				if (W.current.has(M)) return;
+				if (W.current.add(M), U.has(M)) U.set(M, !0);
 				else return;
 				let e = !0;
-				G.forEach((D) => {
+				U.forEach((D) => {
 					D || (e = !1);
-				}), e && (Q?.(), X(U.current), P && z?.(), k && k());
+				}), e && (Z?.(), Y(H.current), N && R?.(), k && k());
 			},
-			anchorX: F,
-			anchorY: I,
+			anchorX: P,
+			anchorY: F,
 			children: e
-		}, j);
+		}, M);
 	}) });
 }, createDomVisualElement = (e, D) => D.isSVG ?? isSVGComponent(e) ? new SVGVisualElement(D) : new HTMLVisualElement(D, { allowProjection: e !== Fragment }), AnimationFeature = class extends Feature {
 	constructor(e) {
@@ -1753,7 +1770,56 @@ var gestureAnimations = {
 	tap: { Feature: PressGesture },
 	focus: { Feature: FocusGesture },
 	hover: { Feature: HoverGesture }
-};
+}, createStoreImpl = (e) => {
+	let D, O = /* @__PURE__ */ new Set(), k = (e, k) => {
+		let A = typeof e == "function" ? e(D) : e;
+		if (!Object.is(A, D)) {
+			let e = D;
+			D = k ?? (typeof A != "object" || !A) ? A : Object.assign({}, D, A), O.forEach((O) => O(D, e));
+		}
+	}, A = () => D, j = {
+		setState: k,
+		getState: A,
+		getInitialState: () => M,
+		subscribe: (e) => (O.add(e), () => O.delete(e))
+	}, M = D = e(k, A, j);
+	return j;
+}, createStore = ((e) => e ? createStoreImpl(e) : createStoreImpl), identity = (e) => e;
+function useStore(e, D = identity) {
+	let O = React.useSyncExternalStore(e.subscribe, React.useCallback(() => D(e.getState()), [e, D]), React.useCallback(() => D(e.getInitialState()), [e, D]));
+	return React.useDebugValue(O), O;
+}
+var createImpl = (e) => {
+	let D = createStore(e), O = (e) => useStore(D, e);
+	return Object.assign(O, D), O;
+}, create = ((e) => e ? createImpl(e) : createImpl);
+const useSpeechStore = create((e) => ({
+	speakingMessageId: null,
+	currentCharIndex: 0,
+	charOffset: 0,
+	isPaused: !1,
+	activeText: "",
+	setSpeaking: (D, O = "") => e({
+		speakingMessageId: D,
+		activeText: O,
+		currentCharIndex: 0,
+		charOffset: 0,
+		isPaused: !1
+	}),
+	setCurrentCharIndex: (D) => e({ currentCharIndex: D }),
+	setCharOffset: (D) => e({
+		charOffset: D,
+		currentCharIndex: 0
+	}),
+	setIsPaused: (D) => e({ isPaused: D }),
+	stop: () => e({
+		speakingMessageId: null,
+		currentCharIndex: 0,
+		charOffset: 0,
+		isPaused: !1,
+		activeText: ""
+	})
+}));
 function __insertCSS(e) {
 	if (!e || typeof document > "u") return;
 	let D = document.head || document.getElementsByTagName("head")[0], O = document.createElement("style");
@@ -1944,4 +2010,4 @@ function CopyButton({ content: e, copyMessage: D }) {
 		})
 	}), /* @__PURE__ */ jsx(TooltipContent, { children: "Copy to clipboard" })] }) }) : null;
 }
-export { JSAnimation as A, isPrimaryPointer as C, addValueToWillChange as D, getOptimisedAppearId as E, isObject as F, circOut as M, progress as N, animateMotionValue as O, pipe as P, isElementTextInput as S, resolveElements as T, hasScale as _, animations as a, convertBoxToBoundingBox as b, usePresence as c, applyBoxDelta as d, applyTreeDeltas as f, has2DTranslate as g, translateAxis as h, extractEventInfo as i, interpolate as j, getValueTransition as k, addDomEvent as l, transformBox as m, gestureAnimations as n, createDomVisualElement as o, scalePoint as p, addPointerInfo as r, AnimatePresence as s, CopyButton as t, measurePageBox as u, hasTransform as v, isDragging as w, Feature as x, convertBoundingBoxToBox as y };
+export { animateMotionValue as A, Feature as C, resolveElements as D, isDragging as E, progress as F, pipe as I, isObject as L, JSAnimation as M, interpolate as N, getOptimisedAppearId as O, circOut as P, convertBoxToBoundingBox as S, isPrimaryPointer as T, translateAxis as _, addPointerInfo as a, hasTransform as b, createDomVisualElement as c, addDomEvent as d, measurePageBox as f, transformBox as g, scalePoint as h, gestureAnimations as i, getValueTransition as j, addValueToWillChange as k, AnimatePresence as l, applyTreeDeltas as m, useSpeechStore as n, extractEventInfo as o, applyBoxDelta as p, create as r, animations as s, CopyButton as t, usePresence as u, has2DTranslate as v, isElementTextInput as w, convertBoundingBoxToBox as x, hasScale as y };

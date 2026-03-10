@@ -69,12 +69,13 @@ export interface ChatMessageProps extends Message {
     actions?: React.ReactNode;
     isGenerating?: boolean;
 }
-export declare function ChatMessageBubble({ isUser, animation, actions, isGenerating, children, }: {
+export declare function ChatMessageBubble({ isUser, animation, actions, isGenerating, children, id, }: {
     isUser: boolean;
     animation?: Animation;
     actions?: React.ReactNode;
     isGenerating?: boolean;
     children?: React.ReactNode;
+    id?: string;
 }): import("react/jsx-runtime").JSX.Element;
 export declare function ChatMessageTimestamp({ createdAt, animation }: {
     createdAt?: Date;

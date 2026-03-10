@@ -240,21 +240,24 @@ function analyseComplexValue(r) {
 function parseComplexValue(r) {
 	return analyseComplexValue(r).values;
 }
-function createTransformer(r) {
-	let { split: M, types: N } = analyseComplexValue(r), P = M.length;
-	return (r) => {
+function buildTransformer({ split: r, types: M }) {
+	let N = r.length;
+	return (P) => {
 		let F = "";
-		for (let I = 0; I < P; I++) if (F += M[I], r[I] !== void 0) {
-			let M = N[I];
-			M === NUMBER_TOKEN ? F += sanitize(r[I]) : M === COLOR_TOKEN ? F += color.transform(r[I]) : F += r[I];
+		for (let I = 0; I < N; I++) if (F += r[I], P[I] !== void 0) {
+			let r = M[I];
+			r === NUMBER_TOKEN ? F += sanitize(P[I]) : r === COLOR_TOKEN ? F += color.transform(P[I]) : F += P[I];
 		}
 		return F;
 	};
 }
-var convertNumbersToZero = (r) => typeof r == "number" ? 0 : color.test(r) ? color.getAnimatableNone(r) : r;
+function createTransformer(r) {
+	return buildTransformer(analyseComplexValue(r));
+}
+var convertNumbersToZero = (r) => typeof r == "number" ? 0 : color.test(r) ? color.getAnimatableNone(r) : r, convertToZero = (r, M) => typeof r == "number" ? M?.trim().endsWith("/") ? r : 0 : convertNumbersToZero(r);
 function getAnimatableNone$1(r) {
-	let M = parseComplexValue(r);
-	return createTransformer(r)(M.map(convertNumbersToZero));
+	let M = analyseComplexValue(r);
+	return buildTransformer(M)(M.values.map((r, N) => convertToZero(r, M.split[N])));
 }
 var complex = {
 	test,
@@ -571,7 +574,8 @@ var NativeAnimation = class extends WithPromise {
 		return /* @__PURE__ */ millisecondsToSeconds(Number(this.animation.currentTime) || 0);
 	}
 	set time(r) {
-		this.manualStartTime = null, this.finishedTime = null, this.animation.currentTime = /* @__PURE__ */ secondsToMilliseconds(r);
+		let M = this.finishedTime !== null;
+		this.manualStartTime = null, this.finishedTime = null, this.animation.currentTime = /* @__PURE__ */ secondsToMilliseconds(r), M && this.animation.pause();
 	}
 	get speed() {
 		return this.animation.playbackRate;
@@ -1559,4 +1563,4 @@ function createMotionProxy(r, M) {
 	let N = /* @__PURE__ */ new Map(), P = (N, P) => createMotionComponent(N, P, r, M);
 	return new Proxy((r, M) => (process.env.NODE_ENV !== "production" && warnOnce(!1, "motion() is deprecated. Use motion.create() instead."), P(r, M)), { get: (F, I) => I === "create" ? P : (N.has(I) || N.set(I, createMotionComponent(I, void 0, r, M)), N.get(I)) });
 }
-export { rgba as $, motionValue as A, __export as At, defaultTransformValue as B, getAnimatableNone as C, addUniqueItem as Ct, camelToDash as D, useConstant as Dt, optimizedAppearDataAttribute as E, useIsomorphicLayoutEffect as Et, flushKeyframeResolvers as F, mixNumber as G, WithPromise as H, isNumOrPxType as I, color as J, analyseComplexValue as K, positionalValues as L, NativeAnimation as M, isGenerator as N, isMotionValue as O, LayoutGroupContext as Ot, KeyframeResolver as P, hex as Q, transformPropOrder as R, microtask as S, clamp as St, findDimensionValueType as T, PresenceContext as Tt, getFinalKeyframe as U, readTransformValue as V, generateLinearEasing as W, percent as X, hsla as Y, px as Z, variantProps as _, isZeroValueString as _t, loadFeatures as a, cancelFrame as at, createBox as b, invariant as bt, resolveMotionValue as c, frameSteps as ct, buildSVGAttrs as d, velocityPerSecond as dt, containsCSSVariable as et, scrapeMotionValuesFromProps$1 as f, millisecondsToSeconds as ft, variantPriorityOrder as g, memo$1 as gt, VisualElement as h, noop as ht, isSVGComponent as i, time as it, resolveVariantFromProps as j, __toESM as jt, collectMotionValues as k, __commonJSMin as kt, scrapeMotionValuesFromProps as l, statsBuffer as lt, buildHTMLStyles as m, SubscriptionManager as mt, isRefObject as n, isCSSVariableToken as nt, LazyContext as o, frame as ot, scaleCorrectors as p, secondsToMilliseconds as pt, complex as q, SwitchLayoutGroupContext as r, activeAnimations as rt, MotionConfigContext as s, frameData as st, createMotionProxy as t, isCSSVariableName as tt, isSVGTag as u, isBezierDefinition as ut, isVariantLabel as v, isNumericalString as vt, getDefaultValueType as w, removeItem as wt, createDelta as x, warning as xt, isAnimationControls as y, MotionGlobalConfig as yt, transformProps as z };
+export { hex as $, motionValue as A, __commonJSMin as At, transformProps as B, getAnimatableNone as C, clamp as Ct, camelToDash as D, useIsomorphicLayoutEffect as Dt, optimizedAppearDataAttribute as E, PresenceContext as Et, KeyframeResolver as F, generateLinearEasing as G, readTransformValue as H, flushKeyframeResolvers as I, complex as J, mixNumber as K, isNumOrPxType as L, NativeAnimation as M, __toESM as Mt, isGenerator as N, isMotionValue as O, useConstant as Ot, setStyle as P, px as Q, positionalValues as R, microtask as S, warning as St, findDimensionValueType as T, removeItem as Tt, WithPromise as U, defaultTransformValue as V, getFinalKeyframe as W, hsla as X, color as Y, percent as Z, variantProps as _, memo$1 as _t, loadFeatures as a, time as at, createBox as b, MotionGlobalConfig as bt, resolveMotionValue as c, frameData as ct, buildSVGAttrs as d, isBezierDefinition as dt, rgba as et, scrapeMotionValuesFromProps$1 as f, velocityPerSecond as ft, variantPriorityOrder as g, noop as gt, VisualElement as h, SubscriptionManager as ht, isSVGComponent as i, activeAnimations as it, resolveVariantFromProps as j, __export as jt, collectMotionValues as k, LayoutGroupContext as kt, scrapeMotionValuesFromProps as l, frameSteps as lt, buildHTMLStyles as m, secondsToMilliseconds as mt, isRefObject as n, isCSSVariableName as nt, LazyContext as o, cancelFrame as ot, scaleCorrectors as p, millisecondsToSeconds as pt, analyseComplexValue as q, SwitchLayoutGroupContext as r, isCSSVariableToken as rt, MotionConfigContext as s, frame as st, createMotionProxy as t, containsCSSVariable as tt, isSVGTag as u, statsBuffer as ut, isVariantLabel as v, isZeroValueString as vt, getDefaultValueType as w, addUniqueItem as wt, createDelta as x, invariant as xt, isAnimationControls as y, isNumericalString as yt, transformPropOrder as z };

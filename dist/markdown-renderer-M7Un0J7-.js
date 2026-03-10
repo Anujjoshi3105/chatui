@@ -1,9 +1,9 @@
-import { A as motionValue, At as __export, Ct as addUniqueItem, Dt as useConstant, Et as useIsomorphicLayoutEffect, G as mixNumber, O as isMotionValue, Ot as LayoutGroupContext, S as microtask, St as clamp, X as percent, Z as px, at as cancelFrame, b as createBox, bt as invariant, c as resolveMotionValue, ct as frameSteps, ft as millisecondsToSeconds, ht as noop, it as time, jt as __toESM, k as collectMotionValues, kt as __commonJSMin, lt as statsBuffer, mt as SubscriptionManager, n as isRefObject, ot as frame, p as scaleCorrectors, pt as secondsToMilliseconds, r as SwitchLayoutGroupContext, rt as activeAnimations, s as MotionConfigContext, st as frameData, t as createMotionProxy, wt as removeItem, x as createDelta } from "./create-proxy-BHzAT_rA.js";
+import { A as motionValue, At as __commonJSMin, Ct as clamp, Dt as useIsomorphicLayoutEffect, K as mixNumber, Mt as __toESM, O as isMotionValue, Ot as useConstant, Q as px, S as microtask, Tt as removeItem, Z as percent, at as time, b as createBox, c as resolveMotionValue, ct as frameData, gt as noop, ht as SubscriptionManager, it as activeAnimations, jt as __export, k as collectMotionValues, kt as LayoutGroupContext, lt as frameSteps, mt as secondsToMilliseconds, n as isRefObject, ot as cancelFrame, p as scaleCorrectors, pt as millisecondsToSeconds, r as SwitchLayoutGroupContext, s as MotionConfigContext, st as frame, t as createMotionProxy, ut as statsBuffer, wt as addUniqueItem, x as createDelta, xt as invariant } from "./create-proxy-CwJMlGNV.js";
 import "./createLucideIcon-C1Qbi7jU.js";
-import { E as useComposedRefs, T as composeRefs, _ as DismissableLayer, c as Portal, d as Content, f as Root2$1, l as Anchor, o as useControllableState, p as createPopperScope, s as Presence, u as Arrow, x as cn, y as composeEventHandlers } from "./tooltip-CwlCdP1-.js";
-import { A as JSAnimation, C as isPrimaryPointer, D as addValueToWillChange, E as getOptimisedAppearId, F as isObject, M as circOut, N as progress, O as animateMotionValue, P as pipe, S as isElementTextInput, T as resolveElements, _ as hasScale, a as animations, b as convertBoxToBoundingBox, c as usePresence, d as applyBoxDelta, f as applyTreeDeltas, g as has2DTranslate, h as translateAxis, i as extractEventInfo, j as interpolate, k as getValueTransition, l as addDomEvent, m as transformBox, n as gestureAnimations, o as createDomVisualElement, p as scalePoint, r as addPointerInfo, s as AnimatePresence, t as CopyButton, u as measurePageBox, v as hasTransform, w as isDragging, x as Feature, y as convertBoundingBoxToBox } from "./copy-button-D8JWNW2s.js";
+import { A as composeRefs, E as cn, S as DismissableLayer, _ as Root2$1, a as stripMarkdownForSpeech, d as useControllableState, f as Presence, g as Content, h as Arrow, j as useComposedRefs, m as Anchor, p as Portal, v as createPopperScope, w as composeEventHandlers } from "./voice.sdk-8j8W_pOO.js";
+import { A as animateMotionValue, C as Feature, D as resolveElements, E as isDragging, F as progress, I as pipe, L as isObject, M as JSAnimation, N as interpolate, O as getOptimisedAppearId, P as circOut, S as convertBoxToBoundingBox, T as isPrimaryPointer, _ as translateAxis, a as addPointerInfo, b as hasTransform, c as createDomVisualElement, d as addDomEvent, f as measurePageBox, g as transformBox, h as scalePoint, i as gestureAnimations, j as getValueTransition, k as addValueToWillChange, l as AnimatePresence, m as applyTreeDeltas, n as useSpeechStore, o as extractEventInfo, p as applyBoxDelta, s as animations, t as CopyButton, u as usePresence, v as has2DTranslate, w as isElementTextInput, x as convertBoundingBoxToBox, y as hasScale } from "./copy-button-CQLnee1j.js";
 import * as React$1 from "react";
-import React, { Component, memo, useContext, useEffect, useInsertionEffect, useState } from "react";
+import React, { Component, memo, useContext, useEffect, useInsertionEffect, useMemo, useState } from "react";
 import { Fragment as Fragment$1, jsx, jsxs } from "react/jsx-runtime";
 import "react-dom";
 function setDragLock(e) {
@@ -81,24 +81,28 @@ function attachFollow(e, t, n = {}) {
 	let r = e.get(), i = null, a = r, c, l = typeof r == "string" ? r.replace(/[\d.-]/g, "") : void 0, u = () => {
 		i &&= (i.stop(), null);
 	}, d = () => {
-		u();
 		let t = asNumber$1(e.get()), r = asNumber$1(a);
-		t !== r && (i = new JSAnimation({
+		if (t === r) {
+			u();
+			return;
+		}
+		let o = i ? i.getGeneratorVelocity() : e.getVelocity();
+		u(), i = new JSAnimation({
 			keyframes: [t, r],
-			velocity: e.getVelocity(),
+			velocity: o,
 			type: "spring",
 			restDelta: .001,
 			restSpeed: .01,
 			...n,
 			onUpdate: c
-		}));
-	};
-	if (e.attach((t, n) => {
-		a = t, c = (e) => n(parseValue(e, l)), frame.postRender(() => {
-			d(), e.events.animationStart?.notify(), i?.then(() => {
-				e.events.animationComplete?.notify();
-			});
 		});
+	}, f = () => {
+		d(), e.events.animationStart?.notify(), i?.then(() => {
+			e.events.animationComplete?.notify();
+		});
+	};
+	if (e.attach((e, t) => {
+		a = e, c = (e) => t(parseValue(e, l)), frame.postRender(f);
 	}, u), isMotionValue(t)) {
 		let n = t.on("change", (t) => e.set(parseValue(t, l))), r = e.on("destroy", n);
 		return () => {
@@ -150,10 +154,10 @@ function calcRelativePosition(e, t, n) {
 function removePointDelta(e, t, n, r, i) {
 	return e -= t, e = scalePoint(e, 1 / n, r), i !== void 0 && (e = scalePoint(e, 1 / i, r)), e;
 }
-function removeAxisDelta(e, t = 0, n = 1, r = .5, i, o = e, c = e) {
+function removeAxisDelta(e, t = 0, n = 1, r = .5, a, o = e, c = e) {
 	if (percent.test(t) && (t = parseFloat(t), t = mixNumber(c.min, c.max, t / 100) - c.min), typeof t != "number") return;
 	let l = mixNumber(o.min, o.max, r);
-	e === o && (l -= t), e.min = removePointDelta(e.min, t, n, l, i), e.max = removePointDelta(e.max, t, n, l, i);
+	e === o && (l -= t), e.min = removePointDelta(e.min, t, n, l, a), e.max = removePointDelta(e.max, t, n, l, a);
 }
 function removeAxisTransforms(e, t, [n, r, i], a, o) {
 	removeAxisDelta(e, t[n], t[r], t[i], t.scale, a, o);
@@ -212,10 +216,10 @@ var borders = [
 	"BottomLeft",
 	"BottomRight"
 ], numBorders = borders.length, asNumber = (e) => typeof e == "string" ? parseFloat(e) : e, isPx = (e) => typeof e == "number" || px.test(e);
-function mixValues(e, t, n, r, i, o) {
-	i ? (e.opacity = mixNumber(0, n.opacity ?? 1, easeCrossfadeIn(r)), e.opacityExit = mixNumber(t.opacity ?? 1, 0, easeCrossfadeOut(r))) : o && (e.opacity = mixNumber(t.opacity ?? 1, n.opacity ?? 1, r));
-	for (let i = 0; i < numBorders; i++) {
-		let o = `border${borders[i]}Radius`, c = getRadius(t, o), l = getRadius(n, o);
+function mixValues(e, t, n, r, a, o) {
+	a ? (e.opacity = mixNumber(0, n.opacity ?? 1, easeCrossfadeIn(r)), e.opacityExit = mixNumber(t.opacity ?? 1, 0, easeCrossfadeOut(r))) : o && (e.opacity = mixNumber(t.opacity ?? 1, n.opacity ?? 1, r));
+	for (let a = 0; a < numBorders; a++) {
+		let o = `border${borders[a]}Radius`, c = getRadius(t, o), l = getRadius(n, o);
 		c === void 0 && l === void 0 || (c ||= 0, l ||= 0, c === 0 || l === 0 || isPx(c) === isPx(l) ? (e[o] = Math.max(mixNumber(asNumber(c), asNumber(l), r), 0), (percent.test(l) || percent.test(c)) && (e[o] += "%")) : e[o] = l);
 	}
 	(t.rotate || n.rotate) && (e.rotate = mixNumber(t.rotate || 0, n.rotate || 0, r));
@@ -327,9 +331,9 @@ function cancelTreeOptimisedTransformAnimations(e) {
 	let { parent: r } = e;
 	r && !r.hasCheckedOptimisedAppear && cancelTreeOptimisedTransformAnimations(r);
 }
-function createProjectionNode({ attachResizeListener: t, defaultParent: n, measureScroll: r, checkIsScrollRoot: i, resetTransform: a }) {
+function createProjectionNode({ attachResizeListener: t, defaultParent: r, measureScroll: i, checkIsScrollRoot: a, resetTransform: o }) {
 	return class {
-		constructor(e = {}, t = n?.()) {
+		constructor(e = {}, t = r?.()) {
 			this.id = id++, this.animationId = 0, this.animationCommitId = 0, this.children = /* @__PURE__ */ new Set(), this.options = {}, this.isTreeAnimating = !1, this.isAnimationBlocked = !1, this.isLayoutDirty = !1, this.isProjectionDirty = !1, this.isSharedProjectionDirty = !1, this.isTransformDirty = !1, this.updateManuallyBlocked = !1, this.updateBlockedByResize = !1, this.isUpdating = !1, this.isSVG = !1, this.needsReset = !1, this.shouldResetTransform = !1, this.hasCheckedOptimisedAppear = !1, this.treeScale = {
 				x: 1,
 				y: 1
@@ -415,7 +419,7 @@ function createProjectionNode({ attachResizeListener: t, defaultParent: n, measu
 			this.isLayoutDirty = !0;
 			for (let e = 0; e < this.path.length; e++) {
 				let t = this.path[e];
-				t.shouldResetTransform = !0, t.updateScroll("snapshot"), t.options.layoutRoot && t.willUpdate(!1);
+				t.shouldResetTransform = !0, (typeof t.latestValues.x == "string" || typeof t.latestValues.y == "string") && (t.isLayoutDirty = !0), t.updateScroll("snapshot"), t.options.layoutRoot && t.willUpdate(!1);
 			}
 			let { layoutId: t, layout: n } = this.options;
 			if (t === void 0 && !n) return;
@@ -463,20 +467,20 @@ function createProjectionNode({ attachResizeListener: t, defaultParent: n, measu
 		updateScroll(e = "measure") {
 			let t = !!(this.options.layoutScroll && this.instance);
 			if (this.scroll && this.scroll.animationId === this.root.animationId && this.scroll.phase === e && (t = !1), t && this.instance) {
-				let t = i(this.instance);
+				let t = a(this.instance);
 				this.scroll = {
 					animationId: this.root.animationId,
 					phase: e,
 					isRoot: t,
-					offset: r(this.instance),
+					offset: i(this.instance),
 					wasRoot: this.scroll ? this.scroll.isRoot : t
 				};
 			}
 		}
 		resetTransform() {
-			if (!a) return;
+			if (!o) return;
 			let e = this.isLayoutDirty || this.shouldResetTransform || this.options.alwaysMeasureLayout, t = this.projectionDelta && !isDeltaZero(this.projectionDelta), n = this.getTransformTemplate(), r = n ? n(this.latestValues, "") : void 0, i = r !== this.prevTransformTemplateValue;
-			e && this.instance && (t || hasTransform(this.latestValues) || i) && (a(this.instance, r), this.shouldResetTransform = !1, this.scheduleRender());
+			e && this.instance && (t || hasTransform(this.latestValues) || i) && (o(this.instance, r), this.shouldResetTransform = !1, this.scheduleRender());
 		}
 		measure(e = !0) {
 			let t = this.measurePageBox(), n = this.removeElementScroll(t);
@@ -515,19 +519,18 @@ function createProjectionNode({ attachResizeListener: t, defaultParent: n, measu
 				!t && r.options.layoutScroll && r.scroll && r !== r.root && transformBox(n, {
 					x: -r.scroll.offset.x,
 					y: -r.scroll.offset.y
-				}), hasTransform(r.latestValues) && transformBox(n, r.latestValues);
+				}), hasTransform(r.latestValues) && transformBox(n, r.latestValues, r.layout?.layoutBox);
 			}
-			return hasTransform(this.latestValues) && transformBox(n, this.latestValues), n;
+			return hasTransform(this.latestValues) && transformBox(n, this.latestValues, this.layout?.layoutBox), n;
 		}
 		removeTransform(e) {
 			let t = createBox();
 			copyBoxInto(t, e);
 			for (let e = 0; e < this.path.length; e++) {
 				let n = this.path[e];
-				if (!n.instance || !hasTransform(n.latestValues)) continue;
-				hasScale(n.latestValues) && n.updateSnapshot();
-				let r = createBox();
-				copyBoxInto(r, n.measurePageBox()), removeBoxTransforms(t, n.latestValues, n.snapshot ? n.snapshot.layoutBox : void 0, r);
+				if (!hasTransform(n.latestValues)) continue;
+				let r;
+				n.instance && (hasScale(n.latestValues) && n.updateSnapshot(), r = createBox(), copyBoxInto(r, n.measurePageBox())), removeBoxTransforms(t, n.latestValues, n.snapshot?.layoutBox, r);
 			}
 			return hasTransform(this.latestValues) && removeBoxTransforms(t, this.latestValues), t;
 		}
@@ -880,12 +883,13 @@ function distance2D(e, t) {
 }
 var overflowStyles = /* @__PURE__ */ new Set(["auto", "scroll"]), PanSession = class {
 	constructor(e, t, { transformPagePoint: n, contextWindow: r = window, dragSnapToOrigin: i = !1, distanceThreshold: a = 3, element: o } = {}) {
-		if (this.startEvent = null, this.lastMoveEvent = null, this.lastMoveEventInfo = null, this.handlers = {}, this.contextWindow = window, this.scrollPositions = /* @__PURE__ */ new Map(), this.removeScrollListeners = null, this.onElementScroll = (e) => {
+		if (this.startEvent = null, this.lastMoveEvent = null, this.lastMoveEventInfo = null, this.lastRawMoveEventInfo = null, this.handlers = {}, this.contextWindow = window, this.scrollPositions = /* @__PURE__ */ new Map(), this.removeScrollListeners = null, this.onElementScroll = (e) => {
 			this.handleScroll(e.target);
 		}, this.onWindowScroll = () => {
 			this.handleScroll(window);
 		}, this.updatePoint = () => {
 			if (!(this.lastMoveEvent && this.lastMoveEventInfo)) return;
+			this.lastRawMoveEventInfo && (this.lastMoveEventInfo = transformPoint(this.lastRawMoveEventInfo, this.transformPagePoint));
 			let e = getPanInfo(this.lastMoveEventInfo, this.history), t = this.startEvent !== null, n = distance2D(e.offset, {
 				x: 0,
 				y: 0
@@ -899,7 +903,7 @@ var overflowStyles = /* @__PURE__ */ new Set(["auto", "scroll"]), PanSession = c
 			let { onStart: a, onMove: o } = this.handlers;
 			t || (a && a(this.lastMoveEvent, e), this.startEvent = this.lastMoveEvent), o && o(this.lastMoveEvent, e);
 		}, this.handlePointerMove = (e, t) => {
-			this.lastMoveEvent = e, this.lastMoveEventInfo = transformPoint(t, this.transformPagePoint), frame.update(this.updatePoint, !0);
+			this.lastMoveEvent = e, this.lastRawMoveEventInfo = t, this.lastMoveEventInfo = transformPoint(t, this.transformPagePoint), frame.update(this.updatePoint, !0);
 		}, this.handlePointerUp = (e, t) => {
 			this.end();
 			let { onEnd: n, onSessionEnd: r, resumeAnimation: i } = this.handlers;
@@ -1029,8 +1033,8 @@ function calcViewportConstraints(e, t) {
 	};
 }
 function calcOrigin(e, t) {
-	let n = .5, r = calcLength(e), i = calcLength(t);
-	return i > r ? n = progress(t.min, t.max - r, e.min) : r > i && (n = progress(e.min, e.max - i, t.min)), clamp(0, 1, n);
+	let r = .5, i = calcLength(e), a = calcLength(t);
+	return a > i ? r = progress(t.min, t.max - i, e.min) : i > a && (r = progress(e.min, e.max - a, t.min)), clamp(0, 1, r);
 }
 function rebaseAxisConstraints(e, t) {
 	let n = {};
@@ -1195,10 +1199,10 @@ var elementDragControls = /* @__PURE__ */ new WeakMap(), VisualElementDragContro
 		eachAxis((t) => {
 			let { drag: n } = this.getProps();
 			if (!shouldDrag(t, n, this.currentDirection)) return;
-			let { projection: r } = this.visualElement, i = this.getAxisMotionValue(t);
+			let { projection: r } = this.visualElement, a = this.getAxisMotionValue(t);
 			if (r && r.layout) {
-				let { min: n, max: o } = r.layout.layoutBox[t], c = i.get() || 0;
-				i.set(e[t] - mixNumber(n, o, .5) + c);
+				let { min: n, max: o } = r.layout.layoutBox[t], c = a.get() || 0;
+				a.set(e[t] - mixNumber(n, o, .5) + c);
 			}
 		});
 	}
@@ -1221,11 +1225,11 @@ var elementDragControls = /* @__PURE__ */ new WeakMap(), VisualElementDragContro
 				}, this.constraints[e]);
 			}
 		});
-		let { transformTemplate: i } = this.visualElement.getProps();
-		this.visualElement.current.style.transform = i ? i({}, "") : "none", n.root && n.root.updateScroll(), n.updateLayout(), this.constraints = !1, this.resolveConstraints(), eachAxis((t) => {
+		let { transformTemplate: a } = this.visualElement.getProps();
+		this.visualElement.current.style.transform = a ? a({}, "") : "none", n.root && n.root.updateScroll(), n.updateLayout(), this.constraints = !1, this.resolveConstraints(), eachAxis((t) => {
 			if (!shouldDrag(t, e, null)) return;
-			let n = this.getAxisMotionValue(t), { min: i, max: o } = this.constraints[t];
-			n.set(mixNumber(i, o, r[t]));
+			let n = this.getAxisMotionValue(t), { min: a, max: o } = this.constraints[t];
+			n.set(mixNumber(a, o, r[t]));
 		}), this.visualElement.render();
 	}
 	addListeners() {
@@ -1398,19 +1402,19 @@ var drag = {
 	...layout
 }, createDomVisualElement);
 function useMotionValue(t) {
-	let n = useConstant(() => motionValue(t)), { isStatic: i } = useContext(MotionConfigContext);
-	if (i) {
+	let n = useConstant(() => motionValue(t)), { isStatic: r } = useContext(MotionConfigContext);
+	if (r) {
 		let [, e] = useState(t);
 		useEffect(() => n.on("change", e), []);
 	}
 	return n;
 }
 function useCombineMotionValues(e, t) {
-	let n = useMotionValue(t()), r = () => n.set(t());
-	return r(), useIsomorphicLayoutEffect(() => {
-		let t = () => frame.preRender(r, !1, !0), n = e.map((e) => e.on("change", t));
+	let n = useMotionValue(t()), i = () => n.set(t());
+	return i(), useIsomorphicLayoutEffect(() => {
+		let t = () => frame.preRender(i, !1, !0), n = e.map((e) => e.on("change", t));
 		return () => {
-			n.forEach((e) => e()), cancelFrame(r);
+			n.forEach((e) => e()), cancelFrame(i);
 		};
 	}), n;
 }
@@ -1440,10 +1444,10 @@ function useListTransform(e, t) {
 		return t(n);
 	});
 }
-function useMapTransform(e, t, n, i) {
-	let a = useConstant(() => Object.keys(n)), o = useConstant(() => ({}));
-	for (let r of a) o[r] = useTransform(e, t, n[r], i);
-	return o;
+function useMapTransform(e, t, n, r) {
+	let i = useConstant(() => Object.keys(n)), a = useConstant(() => ({}));
+	for (let o of i) a[o] = useTransform(e, t, n[o], r);
+	return a;
 }
 function useFollowValue(e, t = {}) {
 	let { isStatic: n } = useContext(MotionConfigContext), r = () => isMotionValue(e) ? e.get() : e;
@@ -4946,49 +4950,49 @@ function compiler(e) {
 			autolinkProtocol: D,
 			autolinkEmail: D,
 			atxHeading: a(J),
-			blockQuote: a(Sy),
+			blockQuote: a(Ey),
 			characterEscape: D,
 			characterReference: D,
 			codeFenced: a(q),
 			codeFencedFenceInfo: o,
 			codeFencedFenceMeta: o,
 			codeIndented: a(q, o),
-			codeText: a(Cy, o),
+			codeText: a(Dy, o),
 			codeTextData: D,
 			data: D,
 			codeFlowValue: D,
-			definition: a(wy),
+			definition: a(Oy),
 			definitionDestinationString: o,
 			definitionLabelString: o,
 			definitionTitleString: o,
-			emphasis: a(Ty),
+			emphasis: a(ky),
 			hardBreakEscape: a(Y),
 			hardBreakTrailing: a(Y),
 			htmlFlow: a(X, o),
 			htmlFlowData: D,
 			htmlText: a(X, o),
 			htmlTextData: D,
-			image: a(Ey),
+			image: a(Ay),
 			label: o,
 			link: a(Z),
-			listItem: a(Dy),
+			listItem: a(jy),
 			listItemValue: p,
 			listOrdered: a(Q, f),
 			listUnordered: a(Q),
-			paragraph: a(Oy),
+			paragraph: a(My),
 			reference: V,
 			referenceString: o,
 			resourceDestinationString: o,
 			resourceTitleString: o,
 			setextHeading: a(J),
-			strong: a(ky),
-			thematicBreak: a(jy)
+			strong: a(Ny),
+			thematicBreak: a(Fy)
 		},
 		exit: {
 			atxHeading: l(),
 			atxHeadingSequence: C,
 			autolink: l(),
-			autolinkEmail: xy,
+			autolinkEmail: Ty,
 			autolinkProtocol: K,
 			blockQuote: l(),
 			characterEscapeValue: O,
@@ -5221,7 +5225,7 @@ function compiler(e) {
 	}
 	function D(e) {
 		let t = this.stack[this.stack.length - 1].children, n = t[t.length - 1];
-		(!n || n.type !== "text") && (n = Ay(), n.position = {
+		(!n || n.type !== "text") && (n = Py(), n.position = {
 			start: point$1(e.start),
 			end: void 0
 		}, t.push(n)), this.stack.push(n);
@@ -5314,12 +5318,12 @@ function compiler(e) {
 		let t = this.stack[this.stack.length - 1];
 		t.url = this.sliceSerialize(e);
 	}
-	function xy(e) {
+	function Ty(e) {
 		O.call(this, e);
 		let t = this.stack[this.stack.length - 1];
 		t.url = "mailto:" + this.sliceSerialize(e);
 	}
-	function Sy() {
+	function Ey() {
 		return {
 			type: "blockquote",
 			children: []
@@ -5333,13 +5337,13 @@ function compiler(e) {
 			value: ""
 		};
 	}
-	function Cy() {
+	function Dy() {
 		return {
 			type: "inlineCode",
 			value: ""
 		};
 	}
-	function wy() {
+	function Oy() {
 		return {
 			type: "definition",
 			identifier: "",
@@ -5348,7 +5352,7 @@ function compiler(e) {
 			url: ""
 		};
 	}
-	function Ty() {
+	function ky() {
 		return {
 			type: "emphasis",
 			children: []
@@ -5370,7 +5374,7 @@ function compiler(e) {
 			value: ""
 		};
 	}
-	function Ey() {
+	function Ay() {
 		return {
 			type: "image",
 			title: null,
@@ -5395,7 +5399,7 @@ function compiler(e) {
 			children: []
 		};
 	}
-	function Dy(e) {
+	function jy(e) {
 		return {
 			type: "listItem",
 			spread: e._spread,
@@ -5403,25 +5407,25 @@ function compiler(e) {
 			children: []
 		};
 	}
-	function Oy() {
+	function My() {
 		return {
 			type: "paragraph",
 			children: []
 		};
 	}
-	function ky() {
+	function Ny() {
 		return {
 			type: "strong",
 			children: []
 		};
 	}
-	function Ay() {
+	function Py() {
 		return {
 			type: "text",
 			value: ""
 		};
 	}
-	function jy() {
+	function Fy() {
 		return { type: "thematicBreak" };
 	}
 }
@@ -14326,7 +14330,7 @@ var components = {
 	li: withClass("li", "my-1.5"),
 	table({ className: e, children: t, ...n }) {
 		return /* @__PURE__ */ jsx("div", {
-			className: "my-4 max-w-[90%] overflow-x-hidden rounded-md border border-foreground/20 shadow-sm",
+			className: "my-4 w-full overflow-x-auto rounded-md border border-foreground/20 shadow-sm",
 			children: /* @__PURE__ */ jsx("table", {
 				className: cn("border-collapse ", e),
 				...n,
@@ -14347,15 +14351,57 @@ var components = {
 	pre({ children: e }) {
 		return /* @__PURE__ */ jsx(CodeBlock, { children: e });
 	}
-}, markdown_renderer_default = memo(function({ children: e, className: t }) {
+}, markdown_renderer_default = memo(function({ children: e, className: t, messageId: n }) {
+	let { speakingMessageId: r, currentCharIndex: i } = useSpeechStore(), a = n === r, o = useMemo(() => e, [e, a]);
 	return /* @__PURE__ */ jsx("div", {
-		className: cn("prose-sm max-w-none", t),
+		className: cn("prose-sm max-w-none transition-all duration-300", t, a && "is-speaking"),
 		children: /* @__PURE__ */ jsx(Markdown, {
 			remarkPlugins: [remarkGfm],
 			rehypePlugins: [rehypeRaw],
-			components,
-			children: e
+			components: {
+				...components,
+				p: ({ children: e, ...t }) => a ? /* @__PURE__ */ jsx("p", {
+					...t,
+					className: cn("whitespace-pre-wrap mb-4 last:mb-0", t.className),
+					children: /* @__PURE__ */ jsx(WordHighlighter, {
+						globalIndex: i,
+						fullText: stripMarkdownForSpeech(extractText(e)),
+						children: e
+					})
+				}) : /* @__PURE__ */ jsx("p", {
+					...t,
+					className: cn("whitespace-pre-wrap mb-4 last:mb-0", t.className),
+					children: e
+				})
+			},
+			children: o
 		})
 	});
 });
+function WordHighlighter({ children: e, globalIndex: t, fullText: n }) {
+	let r = useMemo(() => {
+		if (t < 0 || t >= n.length) return "";
+		let e = t;
+		for (; e > 0 && !/\s/.test(n[e - 1]);) e--;
+		let r = t;
+		for (; r < n.length && !/\s/.test(n[r]);) r++;
+		return n.slice(e, r).trim();
+	}, [t, n]);
+	if (!r) return /* @__PURE__ */ jsx(Fragment$1, { children: e });
+	let i = (e) => {
+		if (typeof e == "string") return e.split(RegExp(`(\\b${r}\\b)`, "gi")).map((e, t) => e.toLowerCase() === r.toLowerCase() ? /* @__PURE__ */ jsx("mark", {
+			className: "bg-primary/30 text-foreground rounded px-0.5",
+			children: e
+		}, t) : e);
+		if (React.isValidElement(e)) {
+			let t = e.props.children;
+			return React.cloneElement(e, {
+				...e.props,
+				children: React.Children.map(t, i)
+			});
+		}
+		return e;
+	};
+	return /* @__PURE__ */ jsx(Fragment$1, { children: React.Children.map(e, i) });
+}
 export { markdown_renderer_default as default };

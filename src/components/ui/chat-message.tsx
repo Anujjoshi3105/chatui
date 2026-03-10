@@ -14,6 +14,8 @@ const FilePreview = lazy(() => import("@/components/ui/file-preview").then(m => 
 import { LazyMarkdownRenderer } from "@/components/ui/lazy-markdown-renderer"
 import { TypingIndicator } from "@/components/ui/typing-indicator"
 import { ToolResult } from "@/components/ui/tool-result"
+import { WordHighlighter } from "@/components/ui/word-highlighter"
+import { useSpeechStore } from "@/store/speech-store"
 
 const chatBubbleVariants = cva(
   "group/message relative rounded-lg p-4 text-sm shadow-sm transition-all duration-200 hover:shadow-md",
@@ -147,19 +149,31 @@ export function ChatMessageBubble({
   actions,
   isGenerating,
   children,
+  id,
 }: {
   isUser: boolean
   animation?: Animation
   actions?: React.ReactNode
   isGenerating?: boolean
   children?: React.ReactNode
+  id?: string
 }) {
+  const { speakingMessageId, currentCharIndex, charOffset, activeText } = useSpeechStore()
+  const isSpeakingThis = !!id && speakingMessageId === id
+
   return (
     <div className={cn(chatBubbleVariants({ isUser, animation }))}>
       {isGenerating && !children ? (
         <TypingIndicator />
       ) : (
-        <LazyMarkdownRenderer>{typeof children === "string" ? children : ""}</LazyMarkdownRenderer>
+        <LazyMarkdownRenderer messageId={id}>{typeof children === "string" ? children : ""}</LazyMarkdownRenderer>
+      )}
+      {isSpeakingThis && activeText && (
+        <WordHighlighter
+          text={activeText}
+          charOffset={charOffset}
+          currentCharIndex={currentCharIndex}
+        />
       )}
       {actions ? (
         <div className="absolute -bottom-6 right-2 flex space-x-1 rounded-lg border bg-background/95 backdrop-blur-sm p-1 text-foreground opacity-0 transition-all duration-200 group-hover/message:opacity-100 shadow-sm">
@@ -198,6 +212,7 @@ export function ChatMessageTimestamp({
 }
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({
+  id,
   role,
   content,
   createdAt,
@@ -242,7 +257,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           if (part.type === "text") {
             return (
               <div key={`text-${index}`} className={cn("flex flex-col", isUser ? "items-end" : "items-start")}>
-                <ChatMessageBubble isUser={isUser} animation={animation} actions={actions}>
+                <ChatMessageBubble isUser={isUser} animation={animation} actions={actions} id={id}>
                   {part.text}
                 </ChatMessageBubble>
                 {showTimeStamp && <ChatMessageTimestamp createdAt={createdAt} animation={animation} />}
@@ -258,7 +273,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       ) : (
         (content || isGenerating) ? (
           <div className={cn("flex flex-col", isUser ? "items-end" : "items-start")}>
-            <ChatMessageBubble isUser={isUser} animation={animation} actions={actions} isGenerating={isGenerating}>
+            <ChatMessageBubble isUser={isUser} animation={animation} actions={actions} isGenerating={isGenerating} id={id}>
               {content}
             </ChatMessageBubble>
             {showTimeStamp && <ChatMessageTimestamp createdAt={createdAt} animation={animation} />}

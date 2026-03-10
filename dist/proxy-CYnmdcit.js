@@ -1,4 +1,4 @@
-import { t as createMotionProxy } from "./create-proxy-BHzAT_rA.js";
+import { t as createMotionProxy } from "./create-proxy-CwJMlGNV.js";
 import { t as createLucideIcon } from "./createLucideIcon-C1Qbi7jU.js";
 var X = createLucideIcon("x", [["path", {
 	d: "M18 6 6 18",

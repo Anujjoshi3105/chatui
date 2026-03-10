@@ -15,6 +15,7 @@ interface MessageInputBaseProps extends React.TextareaHTMLAttributes<HTMLTextAre
     startListening?: () => void;
     stopListening?: () => void;
     isSpeechSupported?: boolean;
+    setInput?: (value: string) => void;
 }
 interface MessageInputWithoutAttachmentProps extends MessageInputBaseProps {
     allowAttachments?: false;

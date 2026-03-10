@@ -41,7 +41,7 @@ export function ChatMessages({ className }: { className?: string }) {
         <div className="flex items-center gap-1">
           <CopyButton content={message.content} copyMessage="Copied to clipboard!" />
           {message.content && (
-            <SpeakButton content={message.content} voiceConfig={voiceConfig} />
+            <SpeakButton content={message.content} voiceConfig={voiceConfig} messageId={message.id} />
           )}
           {message.content && rateResponse && message.role === "assistant" && (
             <Feedback
@@ -63,33 +63,33 @@ export function ChatMessages({ className }: { className?: string }) {
 
   return (
     <div className={cn("flex flex-col h-full w-full", className)}>
-       <div className="flex-1 relative overflow-hidden">
+      <div className="flex-1 relative overflow-hidden">
         <div
-            className={cn(
+          className={cn(
             "h-full w-full overflow-y-auto",
             hasMessages && "py-4"
-            )}
-            ref={containerRef}
-            onScroll={handleScroll}
-            onTouchStart={handleTouchStart}
+          )}
+          ref={containerRef}
+          onScroll={handleScroll}
+          onTouchStart={handleTouchStart}
         >
-            <MessageList
+          <MessageList
             messages={displayMessages as UIMessage[]}
             isTyping={isTyping}
             messageOptions={messageOptions}
-            />
+          />
         </div>
         {isScrollable && !shouldAutoScroll && (
-            <div className="absolute bottom-4 right-6 pointer-events-auto z-10">
+          <div className="absolute bottom-4 right-6 pointer-events-auto z-10">
             <Button
-                onClick={scrollToBottom}
-                className="h-9 w-9 rounded-full bg-primary/90 hover:bg-primary text-primary-foreground shadow-lg transition-all duration-200 hover:shadow-xl animate-in fade-in-0 slide-in-from-bottom-2"
-                size="icon"
-                variant="default"
+              onClick={scrollToBottom}
+              className="h-9 w-9 rounded-full bg-primary/90 hover:bg-primary text-primary-foreground shadow-lg transition-all duration-200 hover:shadow-xl animate-in fade-in-0 slide-in-from-bottom-2"
+              size="icon"
+              variant="default"
             >
-                <ArrowDown />
+              <ArrowDown />
             </Button>
-            </div>
+          </div>
         )}
       </div>
     </div>

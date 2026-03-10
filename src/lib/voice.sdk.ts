@@ -361,6 +361,18 @@ export class SpeechSynthesisManager {
         }
     }
 
+    /**
+     * Speak text starting from a specific character index.
+     * The caller is responsible for updating the store's charOffset to `startCharIndex`
+     * before calling this, so that boundary events (relative to the slice) can be
+     * combined with charOffset to get the absolute position.
+     */
+    speakFrom(text: string, startCharIndex: number): boolean {
+        const slice = text.slice(startCharIndex)
+        if (!slice) return false
+        return this.speak(slice)
+    }
+
     stop(): void {
         if (typeof window === "undefined" || !window.speechSynthesis) return
         window.speechSynthesis.cancel()

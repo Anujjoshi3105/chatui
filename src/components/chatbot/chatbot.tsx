@@ -7,8 +7,9 @@ import { ChatHistorySheet } from "./chat-history-sheet"
 import { cn } from "@/lib/utils"
 import { useChatSessionStore, useChatUIStore } from "@/store/chatbot-store"
 import Footer from "./footer"
-import { useVoice } from "@/hooks/use-voice"
+import { useChatVoice } from "@/hooks/use-chat-voice"
 import { Disclaimer } from "./disclaimer"
+import { SpeechControlBar } from "@/components/chat/speech-control-bar"
 import type { ChatRuntimeConfig } from "@/core/runtime/chat-state"
 import type { ServiceMetadata } from "@/core/services/types"
 export interface ChatbotHeaderProps {
@@ -246,7 +247,8 @@ function ChatbotLayout({
         getThreads={getThreads}
         deleteThread={effectiveDeleteThread}
       />
-      <div className="flex-1 overflow-hidden flex flex-col">
+      <div className="flex-1 overflow-hidden flex flex-col relative">
+        <SpeechControlBar />
         {!effectiveAgent ? (
           <AgentSelector
             agents={metadata?.agents ?? []}
@@ -346,10 +348,7 @@ export function Chatbot({
   const selectedAgent = storeSelectedAgent || (initialAgent ?? "")
   const selectedModel = storeSelectedModel || (initialModel ?? "")
 
-  const {
-    isListening,
-    startListening,
-    stopListening,
+    const {
     speak,
     availableVoices,
     selectedVoice,
@@ -357,7 +356,7 @@ export function Chatbot({
     voiceConfig,
     updateConfig,
     isRecognitionSupported,
-  } = useVoice()
+  } = useChatVoice()
 
   useEffect(() => {
     const savedVoiceConfig = localStorage.getItem("voice-config")
@@ -458,9 +457,6 @@ export function Chatbot({
         config={runtimeConfig}
         initialSuggestions={defaultSuggestionsForChat}
         voiceConfig={voiceConfig}
-        isListening={isListening}
-        startListening={startListening}
-        stopListening={stopListening}
         isSpeechSupported={isRecognitionSupported}
         onMetadata={onMetadataLoaded}
       >

@@ -31,6 +31,12 @@ const chatBubbleVariants = cva(
         scale: "duration-300 animate-in fade-in-0 zoom-in-95",
         fade: "duration-500 animate-in fade-in-0",
       },
+      variant: {
+        single: "",
+        first: "",
+        middle: "",
+        last: "",
+      },
     },
     compoundVariants: [
       {
@@ -52,6 +58,38 @@ const chatBubbleVariants = cva(
         isUser: false,
         animation: "scale",
         class: "origin-bottom-left",
+      },
+      // Grouping corner adjustment for user (Right aligned)
+      {
+        isUser: true,
+        variant: "first",
+        class: "rounded-br-[4px]",
+      },
+      {
+        isUser: true,
+        variant: "middle",
+        class: "rounded-tr-[4px] rounded-br-[4px]",
+      },
+      {
+        isUser: true,
+        variant: "last",
+        class: "rounded-tr-[4px]",
+      },
+      // Grouping corner adjustment for bot (Left aligned)
+      {
+        isUser: false,
+        variant: "first",
+        class: "rounded-bl-[4px]",
+      },
+      {
+        isUser: false,
+        variant: "middle",
+        class: "rounded-tl-[4px] rounded-bl-[4px]",
+      },
+      {
+        isUser: false,
+        variant: "last",
+        class: "rounded-tl-[4px]",
       },
     ],
   }
@@ -141,6 +179,7 @@ export interface ChatMessageProps extends Message {
   animation?: Animation
   actions?: React.ReactNode
   isGenerating?: boolean
+  variant?: "single" | "first" | "middle" | "last"
 }
 
 export function ChatMessageBubble({
@@ -150,6 +189,7 @@ export function ChatMessageBubble({
   isGenerating,
   children,
   id,
+  variant = "single",
 }: {
   isUser: boolean
   animation?: Animation
@@ -157,12 +197,13 @@ export function ChatMessageBubble({
   isGenerating?: boolean
   children?: React.ReactNode
   id?: string
+  variant?: "single" | "first" | "middle" | "last"
 }) {
   const { speakingMessageId, currentCharIndex, charOffset, activeText } = useSpeechStore()
   const isSpeakingThis = !!id && speakingMessageId === id
 
   return (
-    <div className={cn(chatBubbleVariants({ isUser, animation }))}>
+    <div className={cn(chatBubbleVariants({ isUser, animation, variant }))}>
       {isGenerating && !children ? (
         <TypingIndicator />
       ) : (
@@ -223,6 +264,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   toolInvocations,
   parts,
   isGenerating = false,
+  variant = "single",
 }) => {
   const isUser = role === "user"
 
@@ -257,7 +299,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           if (part.type === "text") {
             return (
               <div key={`text-${index}`} className={cn("flex flex-col", isUser ? "items-end" : "items-start")}>
-                <ChatMessageBubble isUser={isUser} animation={animation} actions={actions} id={id}>
+                <ChatMessageBubble isUser={isUser} animation={animation} actions={actions} id={id} variant={variant}>
                   {part.text}
                 </ChatMessageBubble>
                 {showTimeStamp && <ChatMessageTimestamp createdAt={createdAt} animation={animation} />}
@@ -273,7 +315,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       ) : (
         (content || isGenerating) ? (
           <div className={cn("flex flex-col", isUser ? "items-end" : "items-start")}>
-            <ChatMessageBubble isUser={isUser} animation={animation} actions={actions} isGenerating={isGenerating} id={id}>
+            <ChatMessageBubble isUser={isUser} animation={animation} actions={actions} isGenerating={isGenerating} id={id} variant={variant}>
               {content}
             </ChatMessageBubble>
             {showTimeStamp && <ChatMessageTimestamp createdAt={createdAt} animation={animation} />}

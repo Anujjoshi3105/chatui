@@ -31,6 +31,7 @@ const MemoizedChatMessage = memo(ChatMessage, (prevProps, nextProps) => {
   if (prevProps.content !== nextProps.content) return false
   if (prevProps.role !== nextProps.role) return false
   if (prevProps.isGenerating !== nextProps.isGenerating) return false
+  if (prevProps.variant !== nextProps.variant) return false
 
   // Deep compare toolInvocations length and states
   const prevTools = prevProps.toolInvocations || []
@@ -96,16 +97,35 @@ export const MessageList = memo(function MessageList({
           {virtualItems.map((virtualRow) => {
             const message = messages[virtualRow.index]
             const additionalOptions = getMessageOptions(message)
+
+            const prevMessage = messages[virtualRow.index - 1]
+            const nextMessage = messages[virtualRow.index + 1]
+
+            const isPrevSameRole = prevMessage && prevMessage.role === message.role
+            const isNextSameRole = nextMessage && nextMessage.role === message.role
+
+            let variant: "single" | "first" | "middle" | "last" = "single"
+            if (isPrevSameRole && isNextSameRole) {
+              variant = "middle"
+            } else if (isPrevSameRole) {
+              variant = "last"
+            } else if (isNextSameRole) {
+              variant = "first"
+            }
+
+            const marginBottom = isNextSameRole ? "0.25rem" : "1rem"
+
             return (
               <div
                 key={message.id}
                 data-index={virtualRow.index}
                 ref={rowVirtualizer.measureElement}
-                style={{ marginBottom: "1rem" }}
+                style={{ marginBottom }}
               >
                 <MemoizedChatMessage
                   showTimeStamp={showTimeStamps}
                   {...message}
+                  variant={variant}
                   {...additionalOptions}
                 />
               </div>
@@ -118,20 +138,43 @@ export const MessageList = memo(function MessageList({
   }
 
   return (
-    <div className="space-y-4">
-      {messages.map((message) => {
+    <div className="flex flex-col">
+      {messages.map((message, index) => {
         const additionalOptions = getMessageOptions(message)
 
+        const prevMessage = messages[index - 1]
+        const nextMessage = messages[index + 1]
+
+        const isPrevSameRole = prevMessage && prevMessage.role === message.role
+        const isNextSameRole = nextMessage && nextMessage.role === message.role
+
+        let variant: "single" | "first" | "middle" | "last" = "single"
+        if (isPrevSameRole && isNextSameRole) {
+          variant = "middle"
+        } else if (isPrevSameRole) {
+          variant = "last"
+        } else if (isNextSameRole) {
+          variant = "first"
+        }
+
+        const mtClass = index === 0 ? "mt-0" : (isPrevSameRole ? "mt-1" : "mt-4")
+
         return (
-          <MemoizedChatMessage
-            key={message.id}
-            showTimeStamp={showTimeStamps}
-            {...message}
-            {...additionalOptions}
-          />
+          <div key={message.id} className={mtClass}>
+            <MemoizedChatMessage
+              showTimeStamp={showTimeStamps}
+              {...message}
+              variant={variant}
+              {...additionalOptions}
+            />
+          </div>
         )
       })}
-      {isTyping && <TypingIndicator />}
+      {isTyping && (
+        <div className={messages.length > 0 && messages[messages.length - 1].role === "assistant" ? "mt-1" : "mt-4"}>
+          <TypingIndicator />
+        </div>
+      )}
     </div>
   )
 })

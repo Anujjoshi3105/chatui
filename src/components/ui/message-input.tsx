@@ -5,7 +5,7 @@ import { ChevronRight, Info, Loader2, Mic, Paperclip, Square } from "lucide-reac
 import { cn } from "@/lib/utils"
 import { useChatVoice } from "@/hooks/use-chat-voice"
 import { useAutosizeTextArea } from "@/hooks/use-autosize-textarea"
-import { AudioVisualizer } from "@/components/ui/audio-visualizer"
+const AudioVisualizer = lazy(() => import("@/components/ui/audio-visualizer").then(m => ({ default: m.AudioVisualizer })))
 import { Button } from "@/components/ui/button"
 const FilePreview = lazy(() => import("@/components/ui/file-preview").then(m => ({ default: m.FilePreview })))
 import { InterruptPrompt } from "@/components/ui/interrupt-prompt"
@@ -19,6 +19,7 @@ import {
 
 interface MessageInputBaseProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  allowFileOnly?: boolean
   value: string
   submitOnEnter?: boolean
   stop?: () => void
@@ -67,8 +68,10 @@ export function MessageInput({
   isSpeechSupported: externalIsSpeechSupported,
   ...props
 }: MessageInputProps) {
-  const { allowAttachments, files, setFiles, ...textareaProps } = props as MessageInputWithAttachmentsProps
+  const textareaProps = props as MessageInputBaseProps
   const [isDragging, setIsDragging] = useState(false)
+  const draftBeforeVoice = useRef("")
+  const ignoreVoice = useRef(false)
   const [showInterruptPrompt, setShowInterruptPrompt] = useState(false)
 
   const {
@@ -76,6 +79,9 @@ export function MessageInput({
     isSpeechSupported: internalIsSpeechSupported,
     isRecording,
     isTranscribing,
+    interimTranscript,
+    error: voiceError,
+    cancelListening,
     audioStream,
     toggleListening: internalToggleListening,
     stopListening: internalStopListening,
@@ -83,7 +89,7 @@ export function MessageInput({
     mode: transcribeAudio ? "record" : "native",
     transcribeAudio,
     onTranscript: (text, isFinal) => {
-      if (isFinal && text.trim()) {
+      if (!ignoreVoice.current && isFinal && text.trim()) {
         const newValue = (props.value || "").trim() + " " + text.trim()
         if (props.setInput) {
           props.setInput(newValue.trim())
@@ -93,7 +99,7 @@ export function MessageInput({
       }
     },
     onTranscriptionComplete: (text: string) => {
-      if (text.trim()) {
+      if (!ignoreVoice.current && text.trim()) {
         const newValue = (props.value || "").trim() + " " + text.trim()
         if (props.setInput) {
           props.setInput(newValue.trim())
@@ -111,6 +117,7 @@ export function MessageInput({
   const isSpeechSupported = externalIsSpeechSupported ?? internalIsSpeechSupported
 
   const toggleListening = () => {
+    if (!isListening) { draftBeforeVoice.current = props.value; ignoreVoice.current = false }
     if (externalIsListening !== undefined && startListening && stopListening) {
       if (externalIsListening) {
         stopListening()
@@ -122,14 +129,10 @@ export function MessageInput({
     }
   }
 
-  useEffect(() => {
-    if (!isGenerating) {
-      setShowInterruptPrompt(false)
-    }
-  }, [isGenerating])
+  const interruptPromptOpen = isGenerating && showInterruptPrompt
 
   const addFiles = (files: File[] | null) => {
-    if (props.allowAttachments) {
+    if (props.allowAttachments && !props.disabled) {
       props.setFiles((currentFiles) => {
         if (currentFiles === null) {
           return files
@@ -170,20 +173,6 @@ export function MessageInput({
     const items = event.clipboardData?.items
     if (!items) return
 
-    const text = event.clipboardData.getData("text")
-    if (text && text.length > 500 && props.allowAttachments) {
-      event.preventDefault()
-      const blob = new Blob([text], { type: "text/plain" })
-      const lastModified = Date.now()
-      const file = new File([blob], "Pasted text", {
-        type: "text/plain",
-        // eslint-disable-next-line react-hooks/purity
-        lastModified,
-      })
-      addFiles([file])
-      return
-    }
-
     const files = Array.from(items)
       .map((item) => item.getAsFile())
       .filter((file) => file !== null)
@@ -194,11 +183,12 @@ export function MessageInput({
   }
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (submitOnEnter && event.key === "Enter" && !event.shiftKey) {
+    if ((isListening || isTranscribing) && event.key === "Enter" && !event.shiftKey) { event.preventDefault(); return }
+    if (submitOnEnter && event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault()
 
       if (isGenerating && stop && enableInterrupt) {
-        if (showInterruptPrompt) {
+        if (interruptPromptOpen) {
           stop()
           setShowInterruptPrompt(false)
           event.currentTarget.form?.requestSubmit()
@@ -241,14 +231,14 @@ export function MessageInput({
 
   return (
     <div
-      className="relative flex w-full"
+      className="relative flex w-full flex-col gap-2"
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
       {enableInterrupt && (
         <InterruptPrompt
-          isOpen={showInterruptPrompt}
+          isOpen={interruptPromptOpen}
           close={() => setShowInterruptPrompt(false)}
         />
       )}
@@ -273,11 +263,16 @@ export function MessageInput({
             onPaste={onPaste}
             onKeyDown={onKeyDown}
             className={cn(
-              "z-10 w-full grow resize-none rounded-lg border border-input bg-background/50 backdrop-blur-sm p-4 pr-28 text-sm ring-offset-background transition-all duration-200 placeholder:text-muted-foreground/70 focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-background disabled:cursor-not-allowed disabled:opacity-50 shadow-sm",
+              "z-10 w-full grow resize-none rounded-lg border border-input bg-background/50 backdrop-blur-sm p-4 text-sm ring-offset-background transition-all duration-200 placeholder:text-muted-foreground/70 focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-background disabled:cursor-not-allowed disabled:opacity-50 shadow-sm",
+              props.allowAttachments ? "pr-40" : "pr-28",
               showFileList && "pb-20",
               className
             )}
-            {...textareaProps}
+            value={props.value}
+            onChange={textareaProps.onChange}
+            disabled={props.disabled}
+            onBlur={textareaProps.onBlur}
+            onFocus={textareaProps.onFocus}
           />
 
           {props.allowAttachments && (
@@ -290,6 +285,7 @@ export function MessageInput({
                         <FilePreview
                           file={file}
                           onRemove={() => {
+                            if (props.disabled) return
                             props.setFiles((files) => {
                               if (!files) return null
 
@@ -312,10 +308,10 @@ export function MessageInput({
       </div>
 
 
-      <div className="absolute right-3 top-3 z-20 flex gap-1">
+      <div className="absolute right-2 top-2 z-20 flex gap-1">
         <TooltipProvider delayDuration={0}>
           {props.allowAttachments && (
-            <AttachmentButton
+            <AttachmentButton disabled={props.disabled}
               onClick={async () => {
                 const files = await showFileUploadDialog()
                 addFiles(files)
@@ -331,11 +327,22 @@ export function MessageInput({
           <SubmitActionButton
             isGenerating={isGenerating}
             stop={stop}
-            disabled={props.value === "" || isGenerating}
+            disabled={props.disabled || (!props.value.trim() && !(props.allowFileOnly && props.allowAttachments && props.files?.length)) || isGenerating || !!isListening || isTranscribing}
           />
         </TooltipProvider>
       </div>
 
+      {(isListening || isTranscribing) && <div className="flex items-center justify-between gap-2 text-sm">
+        <span role="status">{isTranscribing ? "Transcribing…" : interimTranscript || "Listening… Speak, then stop to review your draft."}</span>
+        <Button type="button" variant="ghost" onClick={() => {
+          ignoreVoice.current = true
+          cancelListening()
+          stopListening?.()
+          textareaProps.onChange?.({ target: { value: draftBeforeVoice.current } } as React.ChangeEvent<HTMLTextAreaElement>)
+        }}>Cancel voice</Button>
+      </div>}
+      {voiceError && <p role="alert" className="text-sm text-destructive">{voiceError} You can keep typing or try the microphone again.</p>}
+      {!isSpeechSupported && <p className="text-xs text-muted-foreground">Voice input is unavailable in this browser. You can type your question.</p>}
       {props.allowAttachments && <FileUploadOverlay isDragging={isDragging} />}
 
       <RecordingControls
@@ -380,9 +387,8 @@ function showFileUploadDialog() {
   input.type = "file"
   input.multiple = true
   input.accept = "*/*"
-  input.click()
-
   return new Promise<File[] | null>((resolve) => {
+    input.oncancel = () => resolve(null)
     input.onchange = (e) => {
       const files = (e.currentTarget as HTMLInputElement).files
 
@@ -393,6 +399,7 @@ function showFileUploadDialog() {
 
       resolve(null)
     }
+    input.click()
   })
 }
 
@@ -406,9 +413,9 @@ function TranscribingOverlay() {
       transition={{ duration: 0.2 }}
     >
       <div className="relative">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-11 w-11 animate-spin text-primary" />
         <motion.div
-          className="absolute inset-0 h-8 w-8 animate-pulse rounded-full bg-primary/20"
+          className="absolute inset-0 h-11 w-11 animate-pulse rounded-full bg-primary/20"
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1.2, opacity: 1 }}
           transition={{
@@ -480,11 +487,11 @@ function RecordingControls({
         className="absolute inset-[1px] z-50 overflow-hidden rounded-xl"
         style={{ height: textAreaHeight - 2 }}
       >
-        <AudioVisualizer
+        <Suspense fallback={<span role="status">Loading audio…</span>}><AudioVisualizer
           stream={audioStream}
           isRecording={isRecording}
           onClick={onStopRecording}
-        />
+        /></Suspense>
       </div>
     )
   }
@@ -509,7 +516,7 @@ interface ActionButtonProps {
   className?: string
 }
 
-function AttachmentButton({ onClick, className }: ActionButtonProps) {
+function AttachmentButton({ onClick, className, disabled }: ActionButtonProps) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -517,7 +524,8 @@ function AttachmentButton({ onClick, className }: ActionButtonProps) {
           type="button"
           size="icon"
           variant="ghost"
-          className={cn("h-8 w-8 text-muted-foreground hover:text-foreground", className)}
+          className={cn("h-11 w-11 text-muted-foreground hover:text-foreground", className)}
+          disabled={disabled}
           aria-label="Attach a file"
           onClick={onClick}
         >
@@ -550,7 +558,7 @@ function VoiceInputButton({
           size="icon"
           onClick={onClick}
           className={cn(
-            "h-8 w-8 transition-all duration-200",
+            "h-11 w-11 transition-all duration-200",
             isListening
               ? "bg-red-500/10 text-red-500 hover:bg-red-500/20"
               : "text-muted-foreground hover:text-foreground"
@@ -590,7 +598,7 @@ function SubmitActionButton({
             type="button"
             size="icon"
             variant="ghost"
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            className="h-11 w-11 text-muted-foreground hover:text-foreground"
             aria-label="Stop generating"
             onClick={stop}
           >
@@ -609,7 +617,7 @@ function SubmitActionButton({
           type="submit"
           size="icon"
           className={cn(
-            "h-8 w-8 rounded-full transition-all duration-200",
+            "h-11 w-11 rounded-full transition-all duration-200",
             disabled ? "opacity-50" : "bg-primary text-primary-foreground shadow-sm"
           )}
           aria-label="Send message"

@@ -1,4 +1,4 @@
-import { memo, useCallback } from "react"
+import { memo } from "react"
 import {
   ChatMessage,
   type ChatMessageProps,
@@ -24,35 +24,14 @@ interface MessageListProps {
   estimateSize?: number
 }
 
-// Memoized individual message component
-const MemoizedChatMessage = memo(ChatMessage, (prevProps, nextProps) => {
-  // Custom comparison to prevent unnecessary re-renders
-  if (prevProps.id !== nextProps.id) return false
-  if (prevProps.content !== nextProps.content) return false
-  if (prevProps.role !== nextProps.role) return false
-  if (prevProps.isGenerating !== nextProps.isGenerating) return false
-  if (prevProps.variant !== nextProps.variant) return false
-
-  // Deep compare toolInvocations length and states
-  const prevTools = prevProps.toolInvocations || []
-  const nextTools = nextProps.toolInvocations || []
-  if (prevTools.length !== nextTools.length) return false
-
-  for (let i = 0; i < prevTools.length; i++) {
-    if (prevTools[i].state !== nextTools[i].state) return false
-    // Use optional chaining since PartialToolCall doesn't have toolCallId
-    if ((prevTools[i] as { toolCallId?: string }).toolCallId !== (nextTools[i] as { toolCallId?: string }).toolCallId) return false
-  }
-
-  // Compare parts if present
-  const prevParts = prevProps.parts || []
-  const nextParts = nextProps.parts || []
-  if (prevParts.length !== nextParts.length) return false
-
-  return true
+// Memoize at the message boundary, before constructing action elements.
+const MessageRow = memo(function MessageRow({ message, options, variant, showTimeStamp }: {
+  message: Message; options?: MessageListProps["messageOptions"];
+  variant: ChatMessageProps["variant"]; showTimeStamp: boolean
+}) {
+  return <ChatMessage {...message} variant={variant} showTimeStamp={showTimeStamp}
+    {...(typeof options === "function" ? options(message) : options)} />
 })
-
-MemoizedChatMessage.displayName = "MemoizedChatMessage"
 
 export const MessageList = memo(function MessageList({
   messages,
@@ -64,15 +43,12 @@ export const MessageList = memo(function MessageList({
   estimateSize = 120,
 }: MessageListProps) {
   "use no memo"
-  const getMessageOptions = useCallback((message: Message) => {
-    if (typeof messageOptions === "function") {
-      return messageOptions(message)
-    }
-    return messageOptions
-  }, [messageOptions])
 
+  // This component deliberately opts out of compiler memoization above.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const rowVirtualizer = useVirtualizer({
     count: messages.length,
+    getItemKey: index => messages[index].id,
     getScrollElement: () => scrollRef?.current ?? null,
     estimateSize: () => estimateSize,
     overscan: 3,
@@ -87,7 +63,7 @@ export const MessageList = memo(function MessageList({
       rowVirtualizer.getTotalSize() - (virtualItems[virtualItems.length - 1]?.end ?? 0)
 
     return (
-      <div style={{ height: "100%", width: "100%" }}>
+      <div style={{ width: "100%" }}>
         <div
           style={{
             paddingTop: `${paddingTop}px`,
@@ -96,7 +72,7 @@ export const MessageList = memo(function MessageList({
         >
           {virtualItems.map((virtualRow) => {
             const message = messages[virtualRow.index]
-            const additionalOptions = getMessageOptions(message)
+
 
             const prevMessage = messages[virtualRow.index - 1]
             const nextMessage = messages[virtualRow.index + 1]
@@ -120,13 +96,13 @@ export const MessageList = memo(function MessageList({
                 key={message.id}
                 data-index={virtualRow.index}
                 ref={rowVirtualizer.measureElement}
-                style={{ marginBottom }}
+                style={{ paddingBottom: marginBottom }}
               >
-                <MemoizedChatMessage
+                <MessageRow
                   showTimeStamp={showTimeStamps}
-                  {...message}
+                  message={message}
                   variant={variant}
-                  {...additionalOptions}
+                  options={messageOptions}
                 />
               </div>
             )
@@ -140,7 +116,7 @@ export const MessageList = memo(function MessageList({
   return (
     <div className="flex flex-col">
       {messages.map((message, index) => {
-        const additionalOptions = getMessageOptions(message)
+
 
         const prevMessage = messages[index - 1]
         const nextMessage = messages[index + 1]
@@ -161,11 +137,11 @@ export const MessageList = memo(function MessageList({
 
         return (
           <div key={message.id} className={mtClass}>
-            <MemoizedChatMessage
+            <MessageRow
               showTimeStamp={showTimeStamps}
-              {...message}
+              message={message}
               variant={variant}
-              {...additionalOptions}
+              options={messageOptions}
             />
           </div>
         )

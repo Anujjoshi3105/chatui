@@ -1,5 +1,5 @@
 import { useState, lazy, Suspense } from "react"
-import { RefreshCw, X, Maximize2, Minimize2, Home, History } from "lucide-react"
+import { RefreshCw, X, Maximize2, Minimize2, Home, History, SettingsIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { ServiceMetadata } from "@/core/services/types"
@@ -57,11 +57,11 @@ function TitleContent({
   selectedAgent: string
 }) {
   return (
-    <div className="flex items-center gap-3 group cursor-pointer">
-      <div className="relative">
+    <div className="flex min-w-0 items-center gap-2 group">
+      <div className="relative shrink-0">
         <Avatar className="size-9 border border-border/40 shadow-sm transition-transform group-hover:scale-105">
           <AvatarImage src={avatar} />
-          <AvatarFallback>{title}</AvatarFallback>
+          <AvatarFallback>{title.split(/\s+/).map(word => word[0]).slice(0, 2).join("")}</AvatarFallback>
         </Avatar>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -81,8 +81,8 @@ function TitleContent({
           </TooltipContent>
         </Tooltip>
       </div>
-      <div className="flex flex-col gap-0.5">
-        <h3 className="text-sm font-semibold text-foreground/90 tracking-tight leading-none group-hover:text-primary transition-colors">
+      <div className="min-w-0 flex flex-col gap-1">
+        <h3 className="truncate text-sm font-semibold text-foreground/90 tracking-tight leading-none group-hover:text-primary transition-colors">
           {title}
         </h3>
         <p className="text-[11px] text-muted-foreground font-medium leading-none capitalize">
@@ -119,6 +119,7 @@ export function Header({
   avatar,
   backendStatus,
 }: HeaderProps) {
+  const [settingsLoaded, setSettingsLoaded] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   const handleRefresh = () => {
@@ -138,7 +139,7 @@ export function Header({
     <TooltipProvider delayDuration={300}>
       <div
         className={cn(
-          "flex items-center justify-between border-b border-border/40 bg-background/80 p-3.5 backdrop-blur-md supports-[backdrop-filter]:bg-background/60",
+          "chat-header flex shrink-0 gap-2 items-center justify-between border-b border-border/40 bg-background/80 p-2.5 backdrop-blur-md supports-[backdrop-filter]:bg-background/60",
           className
         )}
       >
@@ -157,7 +158,7 @@ export function Header({
         )}
 
         {/* Right */}
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           {/* Group 1: Navigation & Discovery */}
           {onHome && (
             <Tooltip>
@@ -176,8 +177,9 @@ export function Header({
             </Tooltip>
           )}
 
-          <Suspense fallback={<div className="h-8 w-8 rounded-full bg-muted animate-pulse" />}>
+          {settingsLoaded ? <Suspense fallback={<span role="status">Loading settings…</span>}>
             <Setting
+              defaultOpen
               metadata={metadata}
               selectedAgent={selectedAgent}
               selectedModel={selectedModel}
@@ -191,7 +193,7 @@ export function Header({
               autoSpeak={autoSpeak}
               onAutoSpeakChange={onAutoSpeakChange}
             />
-          </Suspense>
+          </Suspense> : <Button variant="ghost" size="icon" aria-label="Settings" className="h-8 w-8" onClick={() => setSettingsLoaded(true)}><SettingsIcon className="h-4 w-4" /></Button>}
 
           {onHistory && (
             <Tooltip>
@@ -227,10 +229,10 @@ export function Header({
                       isRefreshing && "animate-spin text-primary"
                     )}
                   />
-                  <span className="sr-only">Restart Chat</span>
+                  <span className="sr-only">New chat</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent sideOffset={8}>Restart Chat</TooltipContent>
+              <TooltipContent sideOffset={8}>New chat</TooltipContent>
             </Tooltip>
           )}
 

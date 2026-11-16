@@ -58,6 +58,11 @@ declare const SpeechRecognition: {
     prototype: SpeechRecognition
 }
 
+interface SpeechRecognitionWindow extends Window {
+    SpeechRecognition?: typeof SpeechRecognition
+    webkitSpeechRecognition?: typeof SpeechRecognition
+}
+
 // Voice SDK Configuration
 export interface VoiceConfig {
     lang: string
@@ -89,8 +94,8 @@ export interface VoiceSupport {
 export function getVoiceSupport(): VoiceSupport {
     const speechRecognition = !!(
         typeof window !== "undefined" &&
-        ((window as Window & { SpeechRecognition?: any; webkitSpeechRecognition?: any }).SpeechRecognition ||
-            (window as Window & { SpeechRecognition?: any; webkitSpeechRecognition?: any }).webkitSpeechRecognition)
+        ((window as SpeechRecognitionWindow).SpeechRecognition ||
+            (window as SpeechRecognitionWindow).webkitSpeechRecognition)
     )
 
     const speechSynthesis = !!(
@@ -126,8 +131,8 @@ export class SpeechRecognitionManager {
         if (typeof window === "undefined") return false
 
         const SpeechRecognitionAPI =
-            (window as Window & { SpeechRecognition?: any; webkitSpeechRecognition?: any }).SpeechRecognition ||
-            (window as Window & { SpeechRecognition?: any; webkitSpeechRecognition?: any }).webkitSpeechRecognition
+            (window as SpeechRecognitionWindow).SpeechRecognition ||
+            (window as SpeechRecognitionWindow).webkitSpeechRecognition
 
         if (!SpeechRecognitionAPI) {
             console.warn("Speech Recognition is not supported in this browser")
@@ -284,13 +289,10 @@ export class SpeechSynthesisManager {
         // Load voices immediately if available
         this.availableVoices = window.speechSynthesis.getVoices()
 
-        // Also listen for voiceschanged event (some browsers load voices async)
-        window.speechSynthesis.onvoiceschanged = () => {
-            this.availableVoices = window.speechSynthesis.getVoices()
-        }
     }
 
     getVoices(): SpeechSynthesisVoice[] {
+        this.loadVoices()
         return this.availableVoices
     }
 

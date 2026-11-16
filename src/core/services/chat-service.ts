@@ -65,6 +65,29 @@ export interface ChatServiceConfig {
 export class ChatService {
   private config: ChatServiceConfig
   private abortController: AbortController | null = null
+  private lifetime = new AbortController()
+  private historyLifetime = new AbortController()
+  private historyRequests = new Map<string, Promise<ChatHistoryResponse>>()
+  private get cacheKey() { return JSON.stringify([this.config.baseUrl, this.config.apiKey ?? ""]) }
+
+  /** Bound non-stream operations; streams have a separate five-minute limit. */
+  private request(url: string, init: RequestInit = {}): Promise<Response> {
+    return fetch(url, { ...init, signal: AbortSignal.any([this.lifetime.signal, AbortSignal.timeout(30_000), ...(init.signal ? [init.signal] : [])]) })
+  }
+
+  abortAll(): void {
+    this.abortStream()
+    this.abortHistory()
+    this.lifetime.abort()
+    this.lifetime = new AbortController()
+    this.historyRequests.clear()
+  }
+
+  abortHistory(): void {
+    this.historyLifetime.abort()
+    this.historyLifetime = new AbortController()
+    this.historyRequests.clear()
+  }
 
   constructor(config: ChatServiceConfig) {
     this.config = config
@@ -79,16 +102,16 @@ export class ChatService {
   }
 
   getMetadataFromCache(): ServiceMetadata | null {
-    return getCachedMetadata(this.config.baseUrl)
+    return getCachedMetadata(this.cacheKey)
   }
 
   async getMetadata(force = false): Promise<ServiceMetadata> {
     if (!force) {
-      const cached = getCachedMetadata(this.config.baseUrl)
+      const cached = getCachedMetadata(this.cacheKey)
       if (cached) return cached
     }
 
-    const existing = metadataCache.get(this.config.baseUrl)
+    const existing = metadataCache.get(this.cacheKey)
     if (existing?.promise) {
       try {
         return await existing.promise
@@ -99,6 +122,7 @@ export class ChatService {
 
     const fetchPromise = (async () => {
       const response = await fetch(`${this.config.baseUrl}/info`, {
+        signal: AbortSignal.timeout(30_000),
         headers: this.getHeaders(),
       })
       if (!response.ok) {
@@ -107,25 +131,30 @@ export class ChatService {
       return (await response.json()) as ServiceMetadata
     })()
 
-    const entry = metadataCache.get(this.config.baseUrl) ?? {
+    const entry = metadataCache.get(this.cacheKey) ?? {
       data: null as unknown as ServiceMetadata,
       timestamp: 0,
     }
-    metadataCache.set(this.config.baseUrl, {
+    metadataCache.set(this.cacheKey, {
       ...entry,
       promise: fetchPromise,
       timestamp: 0,
       data: entry.data,
     })
 
-    const data = await fetchPromise
-    setCachedMetadata(this.config.baseUrl, data)
-    return data
+    try {
+      const data = await fetchPromise
+      setCachedMetadata(this.cacheKey, data)
+      return data
+    } catch (error) {
+      if (metadataCache.get(this.cacheKey)?.promise === fetchPromise) metadataCache.delete(this.cacheKey)
+      throw error
+    }
   }
 
   async healthCheck(): Promise<HealthStatus> {
     try {
-      const response = await fetch(`${this.config.baseUrl}/health`, {
+      const response = await this.request(`${this.config.baseUrl}/health`, {
         headers: this.getHeaders(),
       })
       if (!response.ok) {
@@ -151,7 +180,11 @@ export class ChatService {
       user_id: options.userId,
     }
 
-    const response = await fetch(endpoint, {
+    this.abortStream()
+    const controller = new AbortController()
+    this.abortController = controller
+    const response = await this.request(endpoint, {
+      signal: controller.signal,
       method: "POST",
       headers: this.getHeaders(),
       body: JSON.stringify(requestBody),
@@ -171,7 +204,8 @@ export class ChatService {
     if (this.abortController) {
       this.abortController.abort()
     }
-    this.abortController = new AbortController()
+    const controller = new AbortController()
+    this.abortController = controller
 
     const agent = options.agent ?? this.config.defaultAgent
     const endpoint = `${this.config.baseUrl}/${agent}/stream`
@@ -183,6 +217,7 @@ export class ChatService {
       ...(options.threadId && { thread_id: options.threadId }),
       ...(options.userId && { user_id: options.userId }),
       stream_tokens: options.streamTokens ?? true,
+      ...(options.agentConfig && { agent_config: options.agentConfig }),
     }
 
     try {
@@ -190,7 +225,7 @@ export class ChatService {
         method: "POST",
         headers: this.getHeaders(),
         body: JSON.stringify(requestBody),
-        signal: this.abortController.signal,
+        signal: AbortSignal.any([controller.signal, this.lifetime.signal, AbortSignal.timeout(300_000)]),
       })
 
       if (!response.ok) {
@@ -226,13 +261,13 @@ export class ChatService {
       try {
         while (true) {
           const { done, value } = await reader.read()
-          if (done) break
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split("\n\n")
+          buffer += done ? decoder.decode() : decoder.decode(value, { stream: true })
+          if (done && buffer.trim()) buffer += "\n\n"
+          const lines = buffer.split(/\r?\n\r?\n/)
           buffer = lines.pop() ?? ""
           for (const line of lines) {
-            if (!line.startsWith("data: ")) continue
-            const data = line.slice(6)
+            const data = line.split(/\r?\n/).filter(part => part.startsWith("data:")).map(part => part.slice(5).trimStart()).join("\n")
+            if (!data) continue
             if (data === "[DONE]") {
               yield { type: "done" }
               return
@@ -245,12 +280,18 @@ export class ChatService {
               console.error("Error parsing SSE data:", e)
             }
           }
+          if (done) {
+            yield { type: "error", content: "The connection ended before the response completed." }
+            break
+          }
         }
       } finally {
-        this.abortController = null
+        await reader.cancel().catch(() => {})
+        reader.releaseLock()
+        if (this.abortController === controller) this.abortController = null
       }
     } catch (err) {
-      this.abortController = null
+      if (this.abortController === controller) this.abortController = null
       if (err instanceof Error && err.name === "AbortError") return
       yield {
         type: "error",
@@ -267,7 +308,7 @@ export class ChatService {
   }
 
   async sendFeedback(runId: string, key: string, score: number, kwargs?: Record<string, unknown>): Promise<unknown> {
-    const response = await fetch(`${this.config.baseUrl}/feedback`, {
+    const response = await this.request(`${this.config.baseUrl}/feedback`, {
       method: "POST",
       headers: this.getHeaders(),
       body: JSON.stringify({ run_id: runId, key, score, kwargs }),
@@ -289,7 +330,7 @@ export class ChatService {
       thread_id: threadId,
     })
 
-    const response = await fetch(
+    const response = await this.request(
       `${this.config.baseUrl}/history?${params.toString()}`,
       { method: "DELETE", headers: this.getHeaders() }
     )
@@ -299,7 +340,18 @@ export class ChatService {
     }
   }
 
-  async getHistory(
+  getHistory(threadId: string, userId?: string, options?: GetHistoryOptions): Promise<ChatHistoryResponse> {
+    const key = JSON.stringify([threadId, userId, options])
+    const existing = this.historyRequests.get(key)
+    if (existing) return existing
+    const request = this.fetchHistory(threadId, userId, options).finally(() => {
+      if (this.historyRequests.get(key) === request) this.historyRequests.delete(key)
+    })
+    this.historyRequests.set(key, request)
+    return request
+  }
+
+  private async fetchHistory(
     threadId: string,
     userId?: string,
     options?: GetHistoryOptions
@@ -322,6 +374,7 @@ export class ChatService {
     }
 
     const headers = this.getHeaders()
+    const signal = this.historyLifetime.signal
 
     try {
       const params = new URLSearchParams({
@@ -331,9 +384,9 @@ export class ChatService {
         view,
       })
       if (cursor != null && cursor !== "") params.set("cursor", cursor)
-      const response = await fetch(
+      const response = await this.request(
         `${this.config.baseUrl}/history?${params.toString()}`,
-        { method: "GET", headers }
+        { method: "GET", headers, signal }
       )
       if (response.ok) {
         return parseResponse(await response.json())
@@ -346,8 +399,9 @@ export class ChatService {
           view,
         }
         if (cursor != null && cursor !== "") body.cursor = cursor
-        const postRes = await fetch(`${this.config.baseUrl}/history`, {
+        const postRes = await this.request(`${this.config.baseUrl}/history`, {
           method: "POST",
+          signal,
           headers,
           body: JSON.stringify(body),
         })
@@ -372,7 +426,7 @@ export class ChatService {
       if (options?.offset != null) body.offset = options.offset
       if (options?.search != null && options.search !== "")
         body.search = options.search
-      const response = await fetch(`${this.config.baseUrl}/history/threads`, {
+      const response = await this.request(`${this.config.baseUrl}/history/threads`, {
         method: "POST",
         headers: this.getHeaders(),
         body: JSON.stringify(body),
@@ -389,7 +443,7 @@ export class ChatService {
         total: data.total ?? (data.threads?.length ?? 0),
       }
     } catch {
-      return { threads: [], total: 0 }
+      throw new Error("Could not load conversations. Please try again.")
     }
   }
 }

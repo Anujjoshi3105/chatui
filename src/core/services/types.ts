@@ -41,6 +41,7 @@ export interface StreamEvent {
 export interface StreamOptions {
   threadId?: string
   userId?: string
+  agentConfig?: Record<string, unknown>
   streamTokens?: boolean
 }
 

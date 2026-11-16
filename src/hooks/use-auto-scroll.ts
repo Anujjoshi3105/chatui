@@ -24,6 +24,8 @@ export function useAutoScroll(dependencies: React.DependencyList) {
   }, [])
 
   const scrollToBottom = useCallback(() => {
+    shouldAutoScrollRef.current = true
+    setShouldAutoScroll(true)
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
     }
@@ -91,9 +93,14 @@ export function useAutoScroll(dependencies: React.DependencyList) {
   useEffect(() => {
     checkScrollable()
 
-    const handleResize = () => checkScrollable()
+    const handleResize = () => {
+      checkScrollable()
+      if (shouldAutoScrollRef.current && containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight
+    }
+    const observer = new ResizeObserver(handleResize)
+    if (containerRef.current?.firstElementChild) observer.observe(containerRef.current.firstElementChild)
     window.addEventListener("resize", handleResize)
-    return () => window.removeEventListener("resize", handleResize)
+    return () => { observer.disconnect(); window.removeEventListener("resize", handleResize) }
   }, [checkScrollable])
 
   return {

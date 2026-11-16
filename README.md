@@ -14,8 +14,12 @@ A premium, highly customizable React chatbot library designed for modern web app
 - **Configurable**: extensive props for avatars, placeholder text, initial prompts, and more.
 - **Agent & Model Selection**: Built-in UI for selecting different AI agents and models (configurable).
 - **Voice Support**: Built-in speech-to-text and text-to-speech (Chromium browsers only).
-- **Feedback System**: Integrated thumbs up/down user feedback mechanism.
+- **Feedback System**: Accessible five-point ratings with save/retry states and optional comments.
 - **Thread Management**: Automatic handling of conversation threads and user sessions.
+
+## Interaction improvements
+
+The chatbot now includes recovery actions, keyboard-accessible suggestions, contextual refinements, optional cards/sources, Markdown export, visible voice states, and explicit attachment capability gating. See the [interaction guide](docs/INTERACTION-GUIDE.md) for configuration, contracts, and compatibility details, and [implementation results](docs/INTERACTION-RESULTS.md) for validation limits.
 
 ## Installation
 
@@ -60,9 +64,8 @@ function App() {
           "Tell me a joke"
         ]
       }}
-      showHeader={true}
+      header={{ show: true }}
       stream={true}
-      storageKey="my-chat-session"
     />
   );
 }
@@ -81,7 +84,7 @@ function ChatPage() {
       <FullChatbot
         url="http://localhost:8080"
         agent="support-agent"
-        showHeader={true}
+        header={{ show: true }}
         starter={{
           message: "How can I help you today?"
         }}
@@ -123,7 +126,6 @@ function EmbeddedChat() {
 | `starter` | `ChatbotStarterProps` | `{}` | Configuration for initial messages and suggestions. |
 | `placeholder` | `string` | `"Ask AI..."` | Placeholder text for the input field. |
 | `stream` | `boolean` | `true` | Enable/disable real-time response streaming. |
-| `storageKey` | `string` | `undefined` | Key for persisting session/thread ID in local storage. |
 | `threadId` | `string` | `undefined` | Explicit thread ID for the conversation. |
 | `userId` | `string` | `undefined` | Explicit user ID. |
 | `className` | `string` | `undefined` | Extra CSS classes for the main container. |
@@ -177,8 +179,10 @@ This library is designed to work with a backend that supports the following API 
 Returns available agents and models.
 ```json
 {
-  "agents": [{"id": "agent-1", "name": "Support Bot"}],
-  "models": [{"id": "gpt-4", "name": "GPT-4"}]
+  "agents": [{"key": "support-agent", "description": "Support assistant", "prompts": ["Help me get started"]}],
+  "models": ["configured-model"],
+  "default_agent": "support-agent",
+  "default_model": "configured-model"
 }
 ```
 
@@ -199,9 +203,9 @@ Submits user feedback (thumbs up/down).
 ```json
 {
   "run_id": "...",
-  "bot_id": "...",
-  "score": 1, 
-  "text": "Optional comment"
+  "key": "human-feedback-stars",
+  "score": 1,
+  "kwargs": {"comment": "Optional comment"}
 }
 ```
 
@@ -226,8 +230,11 @@ npm install
 # Start development server
 npm run dev
 
-# Build the library
+# Build the demo
 npm run build
+
+# Build the library
+npm run build:lib
 ```
 
 ## License

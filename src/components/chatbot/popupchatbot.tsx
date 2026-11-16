@@ -1,8 +1,9 @@
-import React, { useState, useRef, useCallback } from "react"
+import React, { useState, useRef, useCallback, useEffect, lazy, Suspense } from "react"
 import { MessageCircle } from "lucide-react"
-import { Chatbot, type ChatbotProps } from "./chatbot"
+import type { ChatbotProps } from "./chatbot"
+const Chatbot = lazy(() => import("./chatbot").then(m => ({ default: m.Chatbot })))
 import { cn } from "@/lib/utils"
-import { m as motion, AnimatePresence, LazyMotion, domAnimation } from "motion/react"
+import { m as motion, AnimatePresence, LazyMotion, domAnimation, MotionConfig } from "motion/react"
 import {
   Tooltip,
   TooltipContent,
@@ -10,8 +11,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useIsMobile } from "@/hooks/use-is-mobile"
+import { useFocusScope } from "@/hooks/use-focus-scope"
+
+import { emitChatEvent } from "@/core/services/interaction-types"
 
 export interface PopupChatbotProps extends ChatbotProps {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   buttonClassName?: string
   buttonStyle?: React.CSSProperties
   popupClassName?: string
@@ -42,12 +48,21 @@ export function PopupChatbot({
   tooltip,
   tooltipDelay = 0,
   defaultOpen = false,
+  open: controlledOpen,
+  onOpenChange,
   ...chatbotProps
 }: PopupChatbotProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen)
+  const [localOpen, setLocalOpen] = useState(defaultOpen)
+  const isOpen = controlledOpen ?? localOpen
+  const setIsOpen = useCallback((next: boolean) => { setLocalOpen(next); onOpenChange?.(next) }, [onOpenChange])
+  const onEventRef = useRef(chatbotProps.onEvent)
+  useEffect(() => { onEventRef.current = chatbotProps.onEvent }, [chatbotProps.onEvent])
+  useEffect(() => { if (isOpen) emitChatEvent(onEventRef.current, { type: "chat_opened" }) }, [isOpen])
   const [isMaximized, setIsMaximized] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const isMobile = useIsMobile(Number(width))
+  const close = useCallback(() => setIsOpen(false), [setIsOpen])
+  useFocusScope(containerRef, isOpen, close)
 
   const isFullScreen = isMobile || isMaximized
 
@@ -62,13 +77,14 @@ export function PopupChatbot({
   }, [isMobile])
 
   return (
-    <LazyMotion features={domAnimation}>
+    <MotionConfig reducedMotion="user"><LazyMotion features={domAnimation}>
       {/* Toggle Button */}
       {tooltip && !isOpen ? (
         <TooltipProvider delayDuration={tooltipDelay}>
           <Tooltip>
             <TooltipTrigger asChild>
               <motion.button
+                aria-label="Open chat"
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
                   "chatbot-theme fixed z-50 flex items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors",
@@ -89,6 +105,7 @@ export function PopupChatbot({
         </TooltipProvider>
       ) : (
         <motion.button
+          aria-label="Open chat"
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
             "chatbot-theme fixed z-50 flex items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors",
@@ -108,6 +125,8 @@ export function PopupChatbot({
       <AnimatePresence>
         {isOpen && (
           <motion.div
+            role="dialog"
+            aria-label={chatbotProps.header?.title ?? "Chat assistant"}
             ref={containerRef}
             initial={{ opacity: 0, scale: 0.8, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -120,9 +139,9 @@ export function PopupChatbot({
                 : cn("rounded-lg", positionClasses[position]),
               popupClassName
             )}
-            style={isFullScreen ? {} : { width: w, height: h }}
+            style={isFullScreen ? {} : { width: w, height: h, maxWidth: "calc(100vw - 2rem)", maxHeight: "calc(100dvh - 2rem)" }}
           >
-            <Chatbot
+            <Suspense fallback={<div role="status" className="p-4">Loading chat…</div>}><Chatbot
               {...chatbotProps}
               header={{
                 ...chatbotProps.header,
@@ -132,11 +151,11 @@ export function PopupChatbot({
               }}
               className="h-full"
               isMaximized={isFullScreen}
-            />
+            /></Suspense>
           </motion.div>
         )}
       </AnimatePresence>
-    </LazyMotion>
+    </LazyMotion></MotionConfig>
   )
 }
 

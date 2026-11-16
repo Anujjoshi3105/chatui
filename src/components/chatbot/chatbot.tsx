@@ -1,15 +1,21 @@
-import { useCallback, useEffect, useMemo, memo } from "react"
+import { useCallback, useEffect, useMemo, memo, useState, lazy, Suspense } from "react"
 import { useShallow } from "zustand/react/shallow"
+import { ChatStatus } from "@/components/chat/chat-status"
+import { ConversationExport } from "@/components/chat/conversation-export"
+import type { ChatEvent, AttachmentAdapter } from "@/core/services/interaction-types"
 import { Header } from "./header"
 import { AgentSelector } from "./agent-selector"
-import { Chat, useChatContext } from "@/components/chat"
-import { ChatHistorySheet } from "./chat-history-sheet"
+import { Chat } from "@/components/chat"
+import { useChatSelector } from "@/components/chat/context"
+const ChatHistorySheet = lazy(() => import("./chat-history-sheet").then(m => ({ default: m.ChatHistorySheet })))
+import { preferences } from "@/core/persistence/storage-adapter"
+import { useSpeechStore } from "@/store/speech-store"
 import { cn } from "@/lib/utils"
-import { useChatSessionStore, useChatUIStore } from "@/store/chatbot-store"
+import { useChatUIStore } from "@/store/chatbot-store"
 import Footer from "./footer"
 import { useChatVoice } from "@/hooks/use-chat-voice"
 import { Disclaimer } from "./disclaimer"
-import { SpeechControlBar } from "@/components/chat/speech-control-bar"
+const SpeechControlBar = lazy(() => import("@/components/chat/speech-control-bar").then(m => ({ default: m.SpeechControlBar })))
 import type { ChatRuntimeConfig } from "@/core/runtime/chat-state"
 import type { ServiceMetadata } from "@/core/services/types"
 export interface ChatbotHeaderProps {
@@ -34,9 +40,13 @@ export interface ChatbotFooterProps {
 export interface ChatbotStarterProps {
   message?: string
   suggestions?: string[]
+  suggestionMode?: "send" | "prefill"
 }
 
 export interface ChatbotProps {
+  onEvent?: (event: ChatEvent) => void
+  attachments?: AttachmentAdapter
+  transcribeAudio?: (blob: Blob) => Promise<string>
   url: string
   agent?: string
   model?: string
@@ -58,6 +68,9 @@ const MemoizedChatSuggestions = memo(Chat.Suggestions)
 
 
 function ChatbotLayout({
+  suggestionMode,
+  attachments,
+  transcribeAudio,
   effectiveAgent,
   selectedAgent,
   selectedModel,
@@ -86,7 +99,19 @@ function ChatbotLayout({
   deleteThread,
   onMaximizeToggle,
   isMaximized: propsIsMaximized,
+  setCurrentThreadId,
+  threadList,
+  setThreadList,
+  totalThreads,
+  setTotalThreads,
+  threadsLoading,
+  setThreadsLoading,
+  setSelectedAgent,
+  setSelectedModel,
 }: {
+  suggestionMode?: "send" | "prefill"
+  attachments?: AttachmentAdapter
+  transcribeAudio?: (blob: Blob) => Promise<string>
   effectiveAgent: string
   selectedAgent: string
   selectedModel: string
@@ -113,35 +138,19 @@ function ChatbotLayout({
   autoSpeak?: boolean
   onAutoSpeakChange?: (enabled: boolean) => void
   deleteThread?: (threadId: string) => Promise<void>
+  currentThreadId: string | undefined
+  setCurrentThreadId: (threadId: string | undefined) => void
+  threadList: import("@/core/services/types").ThreadSummary[]
+  setThreadList: (value: import("@/core/services/types").ThreadSummary[] | ((prev: import("@/core/services/types").ThreadSummary[]) => import("@/core/services/types").ThreadSummary[])) => void
+  totalThreads: number
+  setTotalThreads: (value: number) => void
+  threadsLoading: boolean
+  setThreadsLoading: (value: boolean) => void
+  setSelectedAgent: (value: string) => void
+  setSelectedModel: (value: string) => void
   onMaximizeToggle?: (isMaximized: boolean) => void
   isMaximized?: boolean
 }) {
-  const {
-    setSelectedAgent,
-    setSelectedModel,
-    currentThreadId,
-    setCurrentThreadId,
-    threadList,
-    setThreadList,
-    totalThreads,
-    setTotalThreads,
-    threadsLoading,
-    setThreadsLoading,
-  } = useChatSessionStore(
-    useShallow((s) => ({
-      setSelectedAgent: s.setSelectedAgent,
-      setSelectedModel: s.setSelectedModel,
-      currentThreadId: s.currentThreadId,
-      setCurrentThreadId: s.setCurrentThreadId,
-      threadList: s.threadList,
-      setThreadList: s.setThreadList,
-      totalThreads: s.totalThreads,
-      setTotalThreads: s.setTotalThreads,
-      threadsLoading: s.threadsLoading,
-      setThreadsLoading: s.setThreadsLoading,
-    }))
-  )
-
   const {
     historySheetOpen,
     setHistorySheetOpen,
@@ -156,9 +165,14 @@ function ChatbotLayout({
     }))
   )
 
+  const speakingMessageId = useSpeechStore(s => s.speakingMessageId)
   const isMaximized = propsIsMaximized ?? storeIsMaximized
-  const { metadata, metadataLoading, backendStatus, clearChat, loadThread, getThreads, setThreadId, deleteThread: contextDeleteThread } =
-    useChatContext()
+  const { currentThreadId: runtimeThreadId, metadata, metadataLoading, backendStatus, clearChat, loadThread, getThreads, setThreadId, deleteThread: contextDeleteThread } =
+    useChatSelector(useShallow(s => ({
+      currentThreadId: s.currentThreadId, metadata: s.metadata, metadataLoading: s.metadataLoading, backendStatus: s.backendStatus,
+      clearChat: s.clearChat, loadThread: s.loadThread, getThreads: s.getThreads,
+      setThreadId: s.setThreadId, deleteThread: s.deleteThread,
+    })))
 
   const effectiveDeleteThread = deleteThread ?? contextDeleteThread
 
@@ -174,10 +188,7 @@ function ChatbotLayout({
 
   const handleRefresh = useCallback(() => {
     clearChat({ keepStarter: !!starterMessage, createNewThread: true })
-    setSelectedAgent("")
-    setCurrentThreadId(undefined)
-    setThreadId(undefined)
-  }, [clearChat, starterMessage, setSelectedAgent, setCurrentThreadId, setThreadId])
+  }, [clearChat, starterMessage])
 
   const effectiveOnRefresh = onRefresh ?? handleRefresh
 
@@ -189,11 +200,9 @@ function ChatbotLayout({
   const handleSelectThread = useCallback(
     (threadIdToLoad: string) => {
       setHistorySheetOpen(false)
-      loadThread(threadIdToLoad, userId)
-      setCurrentThreadId(threadIdToLoad)
-      setThreadId(threadIdToLoad)
+      void loadThread(threadIdToLoad, userId)
     },
-    [loadThread, setHistorySheetOpen, setCurrentThreadId, setThreadId, userId]
+    [loadThread, setHistorySheetOpen, userId]
   )
 
   const toggleMaximize = useCallback(() => {
@@ -231,7 +240,7 @@ function ChatbotLayout({
           backendStatus={backendStatus}
         />
       )}
-      <ChatHistorySheet
+      {historySheetOpen && <Suspense fallback={<div role="status">Loading history…</div>}><ChatHistorySheet
         open={historySheetOpen}
         onOpenChange={setHistorySheetOpen}
         userId={userId}
@@ -241,14 +250,15 @@ function ChatbotLayout({
         setTotalThreads={setTotalThreads}
         threadsLoading={threadsLoading}
         setThreadsLoading={setThreadsLoading}
-        currentThreadId={currentThreadId}
+        currentThreadId={runtimeThreadId}
         onSelectThread={handleSelectThread}
         onNewChat={effectiveOnRefresh}
         getThreads={getThreads}
         deleteThread={effectiveDeleteThread}
-      />
+      /></Suspense>}
+      <ChatStatus />
       <div className="flex-1 overflow-hidden flex flex-col relative">
-        <SpeechControlBar />
+        {speakingMessageId && <Suspense fallback={null}><SpeechControlBar /></Suspense>}
         {!effectiveAgent ? (
           <AgentSelector
             agents={metadata?.agents ?? []}
@@ -258,8 +268,9 @@ function ChatbotLayout({
         ) : (
           <>
             <MemoizedChatMessages className="flex-1 min-h-0" />
-            <MemoizedChatSuggestions />
-            <MemoizedChatInput placeholder={placeholder} />
+            <MemoizedChatSuggestions mode={suggestionMode} />
+            <MemoizedChatInput key={runtimeThreadId} placeholder={placeholder} transcribeAudio={transcribeAudio} attachments={attachments} />
+            <div className="px-3"><ConversationExport /></div>
           </>)}
       </div>
       {showFooter && (
@@ -270,6 +281,9 @@ function ChatbotLayout({
 }
 
 export function Chatbot({
+  onEvent,
+  attachments,
+  transcribeAudio,
   url,
   agent: initialAgent,
   model: initialModel,
@@ -303,7 +317,7 @@ export function Chatbot({
     subtitle: footerSubtitle,
   } = footer
 
-  const { message: starterMessage, suggestions: starterSuggestions } = starter
+  const { message: starterMessage, suggestions: starterSuggestions, suggestionMode } = starter
 
   // Derive directly at render time — no extra effect needed
   const {
@@ -323,30 +337,13 @@ export function Chatbot({
   )
   const isMaximized = propsIsMaximized ?? storeIsMaximized
 
-  const {
-    selectedAgent: storeSelectedAgent,
-    setSelectedAgent,
-    selectedModel: storeSelectedModel,
-    setSelectedModel,
-    currentThreadId,
-    setCurrentThreadId,
-    metadata,
-    setMetadata,
-  } = useChatSessionStore(
-    useShallow((s) => ({
-      selectedAgent: s.selectedAgent,
-      setSelectedAgent: s.setSelectedAgent,
-      selectedModel: s.selectedModel,
-      setSelectedModel: s.setSelectedModel,
-      currentThreadId: s.currentThreadId,
-      setCurrentThreadId: s.setCurrentThreadId,
-      metadata: s.metadata,
-      setMetadata: s.setMetadata,
-    }))
-  )
-
-  const selectedAgent = storeSelectedAgent || (initialAgent ?? "")
-  const selectedModel = storeSelectedModel || (initialModel ?? "")
+  const [selectedAgent, setSelectedAgent] = useState(initialAgent ?? "")
+  const [selectedModel, setSelectedModel] = useState(initialModel ?? "")
+  const [currentThreadId, setCurrentThreadId] = useState(threadId)
+  const [metadata, setMetadata] = useState<ServiceMetadata | null>(null)
+  const [threadList, setThreadList] = useState<import("@/core/services/types").ThreadSummary[]>([])
+  const [totalThreads, setTotalThreads] = useState(0)
+  const [threadsLoading, setThreadsLoading] = useState(false)
 
     const {
     speak,
@@ -359,7 +356,7 @@ export function Chatbot({
   } = useChatVoice()
 
   useEffect(() => {
-    const savedVoiceConfig = localStorage.getItem("voice-config")
+    const savedVoiceConfig = preferences.getItem("voice-config")
     if (savedVoiceConfig) {
       try {
         updateConfig(JSON.parse(savedVoiceConfig))
@@ -367,23 +364,23 @@ export function Chatbot({
         console.error("Failed to load voice config", e)
       }
     }
-    const savedAutoSpeak = localStorage.getItem("auto-speak")
+    const savedAutoSpeak = preferences.getItem("auto-speak")
     if (savedAutoSpeak) setAutoSpeak(savedAutoSpeak === "true")
-    if (!localStorage.getItem("chatbot-consent")) setShowDisclaimer(true)
+    if (!preferences.getItem("chatbot-consent")) setShowDisclaimer(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [updateConfig])
 
   const handleDisclaimerAccept = useCallback(() => {
-    localStorage.setItem("chatbot-consent", "true")
+    preferences.setItem("chatbot-consent", "true")
     setShowDisclaimer(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
-    localStorage.setItem("voice-config", JSON.stringify(voiceConfig))
+    preferences.setItem("voice-config", JSON.stringify(voiceConfig))
   }, [voiceConfig])
   useEffect(() => {
-    localStorage.setItem("auto-speak", String(autoSpeak))
+    preferences.setItem("auto-speak", String(autoSpeak))
   }, [autoSpeak])
 
   const onMetadataLoaded = useCallback((meta: ServiceMetadata) => {
@@ -412,13 +409,15 @@ export function Chatbot({
       starterMessage,
       starterSuggestions,
       apiKey,
+      onEvent,
+      attachments,
       onStreamEnd: (lastContent) => {
         if (autoSpeak && lastContent && speak) speak(lastContent)
       },
     }),
     [
       url,
-      selectedAgent,
+      effectiveAgent,
       selectedModel,
       currentThreadId,
       threadId,
@@ -428,19 +427,19 @@ export function Chatbot({
       starterSuggestions,
       autoSpeak,
       apiKey,
+      onEvent,
+      attachments,
       speak,
     ]
   )
 
   useEffect(() => {
     if (threadId != null) setCurrentThreadId(threadId)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId])
 
   useEffect(() => {
     if (currentThreadId && !selectedAgent && metadata?.default_agent)
       setSelectedAgent(metadata.default_agent)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentThreadId, selectedAgent, metadata?.default_agent])
 
   return (
@@ -461,6 +460,9 @@ export function Chatbot({
         onMetadata={onMetadataLoaded}
       >
         <ChatbotLayout
+          suggestionMode={suggestionMode}
+          attachments={attachments}
+          transcribeAudio={transcribeAudio}
           effectiveAgent={effectiveAgent}
           selectedAgent={selectedAgent}
           selectedModel={selectedModel}
@@ -488,6 +490,16 @@ export function Chatbot({
           onAutoSpeakChange={setAutoSpeak}
           onMaximizeToggle={onMaximizeToggle}
           isMaximized={isMaximized}
+          currentThreadId={currentThreadId}
+          setCurrentThreadId={setCurrentThreadId}
+          threadList={threadList}
+          setThreadList={setThreadList}
+          totalThreads={totalThreads}
+          setTotalThreads={setTotalThreads}
+          threadsLoading={threadsLoading}
+          setThreadsLoading={setThreadsLoading}
+          setSelectedAgent={setSelectedAgent}
+          setSelectedModel={setSelectedModel}
         />
       </Chat.Root>
     </div>

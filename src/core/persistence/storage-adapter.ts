@@ -6,8 +6,15 @@ export interface PersistedMessage {
   custom_data?: Record<string, unknown>
   toolInvocations?: unknown[]
   parts?: unknown[]
+  status?: import("@/core/runtime/chat-state").Message["status"]
+  error?: string
   runId?: string
+  rating?: number
+  comment?: string
 }
+
+const STORAGE_VERSION = 1
+type VersionedPayload = { version: number; messages: PersistedMessage[] }
 
 const DATE_KEYS = ["createdAt"]
 
@@ -25,8 +32,22 @@ export function loadMessages(storageKey: string): PersistedMessage[] | null {
     const raw = localStorage.getItem(storageKey)
     if (!raw) return null
     const parsed = JSON.parse(raw, reviver) as unknown
-    if (!Array.isArray(parsed) || parsed.length === 0) return null
-    return parsed as PersistedMessage[]
+    const messages = Array.isArray(parsed)
+      ? parsed
+      : (parsed as VersionedPayload | null)?.version === STORAGE_VERSION
+        ? (parsed as VersionedPayload).messages
+        : null
+    if (!Array.isArray(messages) || messages.length === 0) return null
+    if (!messages.every((m) => m && typeof m === "object" &&
+      typeof m.id === "string" && typeof m.content === "string" &&
+      (m.role === "user" || m.role === "assistant") &&
+      (!m.createdAt || !isNaN(new Date(m.createdAt).getTime())) &&
+      (!m.parts || Array.isArray(m.parts)) &&
+      (!m.toolInvocations || (Array.isArray(m.toolInvocations) && m.toolInvocations.every(
+        (tool: unknown) => tool && typeof tool === "object" && "state" in tool && "toolName" in tool &&
+          typeof tool.toolName === "string" && (tool.state === "call" || tool.state === "result")
+      ))))) return null
+    return messages as PersistedMessage[]
   } catch {
     return null
   }
@@ -39,10 +60,21 @@ export function saveMessages(
 ): void {
   if (!storageKey || messages.length === 0) return
   try {
-    localStorage.setItem(storageKey, JSON.stringify(messages))
+    const serialized = JSON.stringify({ version: STORAGE_VERSION, messages })
+    if (localStorage.getItem(storageKey) !== serialized) localStorage.setItem(storageKey, serialized)
   } catch (e) {
     console.error("Failed to save chat history:", e)
   }
+}
+
+/** Preferences are optional: blocked storage must never disable text chat. */
+export const preferences = {
+  getItem(key: string): string | null {
+    try { return localStorage.getItem(key) } catch { return null }
+  },
+  setItem(key: string, value: string): void {
+    try { localStorage.setItem(key, value) } catch { /* in-memory state remains authoritative */ }
+  },
 }
 
 export function clearMessages(storageKey: string): void {

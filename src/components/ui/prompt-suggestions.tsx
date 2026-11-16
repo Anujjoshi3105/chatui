@@ -3,6 +3,8 @@ import { Badge } from "./badge";
 interface PromptSuggestionsProps {
   append: (message: { role: "user"; content: string }) => void
   suggestions: string[]
+  disabled?: boolean
+  mode?: "send" | "prefill"
 }
 
 export function PromptSuggestions({

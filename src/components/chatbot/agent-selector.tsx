@@ -50,8 +50,8 @@ const AgentCard = memo(function AgentCard({
   onSelect: (key: string) => void
   selected?: boolean
 }) {
-  // eslint-disable-next-line react-hooks/static-components
-  const Icon = getAgentIcon(index)
+
+  const icon = getAgentIcon(index)
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -81,7 +81,7 @@ const AgentCard = memo(function AgentCard({
               "bg-primary/10 text-primary group-hover:bg-primary/15 group-hover:text-primary"
             )}
           >
-            <Icon className="size-5" />
+            {React.createElement(icon, { className: "size-5" })}
           </div>
           <div className="min-w-0 flex-1">
             <span className={cn("block font-semibold text-foreground transition-colors group-hover:text-primary capitalize")}>{agent.key.replace(/-/g, " ")}</span>

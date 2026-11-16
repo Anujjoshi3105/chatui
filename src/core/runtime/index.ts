@@ -1,4 +1,5 @@
 export { useChatRuntime } from "./use-chat-runtime"
+export { apiMessagesToUiMessages } from "./message-normalizer"
 export type { UseChatRuntimeReturn, ChatRuntimeActions } from "./use-chat-runtime"
 export {
   chatRuntimeReducer,

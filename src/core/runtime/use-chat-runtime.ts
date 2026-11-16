@@ -1,171 +1,20 @@
-import { useReducer, useCallback, useRef, useEffect, useMemo } from "react"
+import { useReducer, useCallback, useRef, useEffect, useMemo, useState } from "react"
 import { ChatService } from "@/core/services/chat-service"
-import type { ApiChatMessage } from "@/core/services/types"
-import {
-  loadMessages,
-  saveMessages,
-  clearMessages,
-  getThreadMessagesKey,
-  loadCurrentThreadId,
-  saveCurrentThreadId,
-} from "@/core/persistence"
-import type { PersistedMessage } from "@/core/persistence"
-import {
-  chatRuntimeReducer,
-  getInitialChatState,
-  type Message,
-  type ToolInvocation,
-  type ChatRuntimeState,
-  type ChatRuntimeConfig,
-} from "./chat-state"
+import { loadMessages, saveMessages, clearMessages, getThreadMessagesKey, loadCurrentThreadId, saveCurrentThreadId } from "@/core/persistence"
+import { chatRuntimeReducer, getInitialChatState, type Message, type ChatRuntimeState, type ChatRuntimeConfig } from "./chat-state"
+import { apiMessagesToUiMessages } from "./message-normalizer"
+import { emitChatEvent, type AttachmentReference } from "@/core/services/interaction-types"
+import { createTokenBatcher } from "./token-batcher"
 
-function generateThreadId(): string {
-  return typeof crypto !== "undefined" && crypto.randomUUID
-    ? crypto.randomUUID()
-    : `thread-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
-}
-
-function getStorageBaseKey(config: ChatRuntimeConfig): string {
-  const url = (config.url ?? "").replace(/\/$/, "")
-  const userId = config.userId?.trim() ?? "anon"
-  const agent = config.agent?.trim() ?? "default"
-  return `${url}:${userId}:${agent}`
-}
-
-function persistedToMessages(parsed: PersistedMessage[] | null): Message[] | null {
-  if (!parsed || !Array.isArray(parsed) || parsed.length === 0) return null
-  return parsed.map((p) => ({
-    id: p.id,
-    role: p.role === "user" || p.role === "assistant" ? p.role : "user",
-    content: p.content,
-    createdAt: p.createdAt ? new Date(p.createdAt) : undefined,
-    custom_data: p.custom_data,
-    parts: p.parts,
-    runId: p.runId,
-  }))
-}
-
-/**
- * Converts API history into UI messages. Merges consecutive AI + tool messages
- * into a single assistant message with toolInvocations and final content, so
- * history matches the structure used during streaming (user/assistant turns).
- */
-function apiMessagesToUiMessages(apiMessages: ApiChatMessage[]): Message[] {
-  const ui: Message[] = []
-  let i = 0
-  const ts = Date.now()
-
-  while (i < apiMessages.length) {
-    const m = apiMessages[i]!
-    if (m.type === "human") {
-      ui.push({
-        id: m.run_id ?? `user-${ui.length}-${ts}`,
-        role: "user",
-        content: m.content ?? "",
-        createdAt: new Date(),
-        runId: m.run_id,
-        custom_data: m.custom_data,
-      })
-      i += 1
-      continue
-    }
-
-    if (m.type === "ai" || m.type === "tool") {
-      const startIndex = i
-      let content = ""
-      const toolInvocations: ToolInvocation[] = []
-      let firstRunId: string | undefined
-      let lastCustomData: Record<string, unknown> | undefined
-
-      while (i < apiMessages.length) {
-        const msg = apiMessages[i]!
-        if (msg.type === "human") break
-        if (msg.type !== "ai" && msg.type !== "tool") {
-          i += 1
-          continue
-        }
-        if (msg.type === "ai") {
-          if (msg.run_id && firstRunId === undefined) firstRunId = msg.run_id
-          lastCustomData = msg.custom_data
-          const text = msg.content ?? ""
-          if (text) content = text
-          if (msg.tool_calls?.length) {
-            for (const tc of msg.tool_calls) {
-              toolInvocations.push({
-                state: "call",
-                toolName: tc.name,
-                toolCallId: tc.id,
-                args: tc.args,
-              })
-            }
-          }
-        } else {
-          // tool
-          const toolName =
-            msg.name ??
-            (msg.response_metadata as { name?: string })?.name ??
-            (msg.custom_data as { name?: string })?.name ??
-            "Tool"
-          const rawResult = msg.content
-          const result =
-            typeof rawResult === "string"
-              ? rawResult.replace(/\\n/g, "\n")
-              : rawResult
-          const toolCallId = msg.tool_call_id ?? undefined
-          // Replace matching "call" with "result" if we have toolCallId
-          const existingCallIndex = toolCallId
-            ? toolInvocations.findIndex(
-              (inv) =>
-                inv.state === "call" &&
-                (inv as { toolCallId?: string }).toolCallId === toolCallId
-            )
-            : -1
-          const existingCall = existingCallIndex >= 0 ? toolInvocations[existingCallIndex] as { toolName?: string } : undefined
-          const resolvedToolName =
-            (toolName && toolName !== "Tool") ? toolName : (existingCall?.toolName ?? toolName)
-          const resultInv = {
-            state: "result" as const,
-            toolName: resolvedToolName,
-            toolCallId,
-            result,
-          }
-          if (existingCallIndex >= 0) {
-            toolInvocations[existingCallIndex] = resultInv
-          } else {
-            toolInvocations.push(resultInv)
-          }
-        }
-        i += 1
-      }
-
-      ui.push({
-        id: firstRunId ?? `assistant-${startIndex}-${ts}`,
-        role: "assistant",
-        content,
-        createdAt: new Date(),
-        runId: firstRunId,
-        custom_data: lastCustomData,
-        // Since backend doesn't currently return feedback with history from the LangGraph checkpointer out-of-the-box,
-        // we might not get it from `apiMessages`. But if it ever does come through (e.g. injected into `custom_data`),
-        // we can attempt to parse it here. For now, history feedback will rely on `storage-adapter.ts` for local persistence.
-        toolInvocations:
-          toolInvocations.length > 0 ? toolInvocations : undefined,
-      })
-      continue
-    }
-
-    // custom or other: skip or treat as assistant with content
-    if (m.type === "custom") {
-      i += 1
-      continue
-    }
-    i += 1
-  }
-
-  return ui
-}
+const generateThreadId = () => globalThis.crypto?.randomUUID?.() ?? `thread-${Date.now()}-${Math.random().toString(36).slice(2)}`
+const storageKey = (config: ChatRuntimeConfig) => JSON.stringify([config.url.replace(/\/$/, ""), config.userId?.trim() || "anon", config.agent?.trim() || "default"])
+const legacyStorageKey = (config: ChatRuntimeConfig) => `${config.url.replace(/\/$/, "")}:${config.userId?.trim() || "anon"}:${config.agent?.trim() || "default"}`
+const safeError = "Unable to complete the request. Please check your connection and try again."
 
 export interface ChatRuntimeActions {
+  submitMessage: (text: string, attachments?: AttachmentReference[]) => { accepted: boolean; reason?: string }
+  retryError: () => Promise<void>
+  dismissError: () => void
   setInput: (value: string) => void
   sendMessage: (text: string) => Promise<void>
   stopGeneration: () => void
@@ -194,567 +43,302 @@ export interface ChatRuntimeActions {
 
 export type UseChatRuntimeReturn = ChatRuntimeState & ChatRuntimeActions
 
+
 export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn {
-  const [state, dispatch] = useReducer(
-    chatRuntimeReducer,
-    getInitialChatState(config, null)
-  )
-
+  const [selection, setSelection] = useState<{ agent?: string; model?: string; sourceAgent?: string; sourceModel?: string }>({})
+  const selectedAgent = selection.sourceAgent === config.agent ? selection.agent ?? config.agent : config.agent
+  const selectedModel = selection.sourceModel === config.model ? selection.model ?? config.model : config.model
+  const [state, dispatch] = useReducer(chatRuntimeReducer, config, value => getInitialChatState(value, null))
+  const stateRef = useRef(state)
+  stateRef.current = state
   const configRef = useRef(config)
-  configRef.current = config
-
-  const chatServiceRef = useRef<ChatService | null>(null)
-  const getService = useCallback((): ChatService => {
-    if (!chatServiceRef.current) {
-      const meta = state.metadata
-      chatServiceRef.current = new ChatService({
-        baseUrl: configRef.current.url,
-        defaultAgent: configRef.current.agent ?? meta?.default_agent ?? "",
-        defaultModel: configRef.current.model ?? meta?.default_model ?? "",
-        apiKey: configRef.current.apiKey,
-      })
-    }
-    return chatServiceRef.current
-  }, [state.metadata])
-
-  const streamTokensRef = useRef("")
-  const pendingFollowUpRef = useRef<string[]>([])
-
-  // Load metadata on mount / url change
-  useEffect(() => {
-    let cancelled = false
-    const svc = new ChatService({
-      baseUrl: config.url,
-      defaultAgent: config.agent ?? "",
-      defaultModel: config.model ?? "",
-      apiKey: config.apiKey,
-    })
-    const cached = svc.getMetadataFromCache()
-    if (cached) {
-      dispatch({ type: "SET_METADATA", payload: cached })
-      dispatch({ type: "SET_METADATA_LOADING", payload: false })
-      return
-    }
-    dispatch({ type: "SET_METADATA_LOADING", payload: true })
-    svc
-      .getMetadata(false)
-      .then((data) => {
-        if (!cancelled) {
-          dispatch({ type: "SET_METADATA", payload: data })
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          dispatch({
-            type: "SET_ERROR",
-            payload: err instanceof Error ? err.message : "Failed to fetch metadata",
-          })
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          dispatch({ type: "SET_METADATA_LOADING", payload: false })
-        }
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [config.url, config.agent, config.model, config.apiKey])
-
-  // Periodic health check
-  useEffect(() => {
-    let cancelled = false
-    let timer: ReturnType<typeof setTimeout>
-
-    const check = async () => {
-      const svc = getService()
-      const status = await svc.healthCheck()
-      if (!cancelled) {
-        dispatch({ type: "SET_BACKEND_STATUS", payload: status })
-      }
-      timer = setTimeout(check, 120000) // check every 2 minutes
-    }
-
-    check()
-    return () => {
-      cancelled = true
-      clearTimeout(timer)
-    }
-  }, [getService])
-
-  const storageBaseKey = useMemo(
-    () => getStorageBaseKey(config),
-    [config.url, config.userId, config.agent]
-  )
-  const initialThreadDoneRef = useRef<string | null>(null)
-
-  // Thread init: when threadId is provided, load history; when not, restore from storage or create new thread
-  useEffect(() => {
-    const key = `${storageBaseKey}:${config.threadId ?? "none"}`
-    if (initialThreadDoneRef.current === key) return
-    initialThreadDoneRef.current = key
-
-    const baseKey = storageBaseKey
-    const threadIdFromConfig = config.threadId
-
-    if (threadIdFromConfig !== undefined && threadIdFromConfig !== null && threadIdFromConfig !== "") {
-      dispatch({ type: "SET_THREAD_ID", payload: threadIdFromConfig })
-      const loadForThread = async (tid: string) => {
-        const uid = configRef.current.userId?.trim()
-        if (uid) {
-          try {
-            const svc = getService()
-            const { messages } = await svc.getHistory(tid, uid)
-            if (messages.length > 0) {
-              dispatch({ type: "SET_MESSAGES", payload: apiMessagesToUiMessages(messages) })
-            }
-          } catch {
-            const msgKey = getThreadMessagesKey(baseKey, tid)
-            const local = loadMessages(msgKey)
-            const ui = persistedToMessages(local as PersistedMessage[] | null)
-            if (ui && ui.length > 0) dispatch({ type: "SET_MESSAGES", payload: ui })
-          }
-        } else {
-          const msgKey = getThreadMessagesKey(baseKey, tid)
-          const local = loadMessages(msgKey)
-          const ui = persistedToMessages(local as PersistedMessage[] | null)
-          if (ui && ui.length > 0) dispatch({ type: "SET_MESSAGES", payload: ui })
-        }
-      }
-      loadForThread(threadIdFromConfig)
-      return
-    }
-
-    const savedThreadId = loadCurrentThreadId(baseKey)
-    if (savedThreadId) {
-      dispatch({ type: "SET_THREAD_ID", payload: savedThreadId })
-      const loadForThread = async (tid: string) => {
-        const uid = configRef.current.userId?.trim()
-        if (uid) {
-          try {
-            const svc = getService()
-            const { messages } = await svc.getHistory(tid, uid)
-            if (messages.length > 0) {
-              dispatch({ type: "SET_MESSAGES", payload: apiMessagesToUiMessages(messages) })
-            }
-          } catch {
-            const msgKey = getThreadMessagesKey(baseKey, tid)
-            const local = loadMessages(msgKey)
-            const ui = persistedToMessages(local as PersistedMessage[] | null)
-            if (ui && ui.length > 0) dispatch({ type: "SET_MESSAGES", payload: ui })
-          }
-        } else {
-          const msgKey = getThreadMessagesKey(baseKey, tid)
-          const local = loadMessages(msgKey)
-          const ui = persistedToMessages(local as PersistedMessage[] | null)
-          if (ui && ui.length > 0) dispatch({ type: "SET_MESSAGES", payload: ui })
-        }
-      }
-      loadForThread(savedThreadId)
-    } else {
-      const newId = generateThreadId()
-      saveCurrentThreadId(baseKey, newId)
-      dispatch({ type: "SET_THREAD_ID", payload: newId })
-    }
-  }, [storageBaseKey, config.threadId, config.userId, getService])
-
-  // Persist current thread id when it changes
-  useEffect(() => {
-    if (!storageBaseKey) return
-    const tid = state.currentThreadId
-    saveCurrentThreadId(storageBaseKey, tid ?? null)
-  }, [storageBaseKey, state.currentThreadId])
-
-  // Persist messages for the current thread (do not merge threads)
-  useEffect(() => {
-    if (!storageBaseKey || !state.currentThreadId) return
-    if (state.messages.length === 0) {
-      clearMessages(getThreadMessagesKey(storageBaseKey, state.currentThreadId))
-      return
-    }
-    saveMessages(
-      getThreadMessagesKey(storageBaseKey, state.currentThreadId),
-      state.messages
-    )
-  }, [storageBaseKey, state.currentThreadId, state.messages])
-
-  // When agent changes: create new thread and clear messages (do not merge)
-  const prevAgentRef = useRef<string | undefined>(undefined)
-  useEffect(() => {
-    const nextAgent = config.agent ?? ""
-    const prevAgent = prevAgentRef.current
-    const isSwitch = prevAgent !== undefined && prevAgent !== nextAgent
-    prevAgentRef.current = nextAgent
-    if (isSwitch) {
-      const newId = generateThreadId()
-      saveCurrentThreadId(storageBaseKey, newId)
-      dispatch({ type: "SET_THREAD_ID", payload: newId })
-      if (config.starterMessage) {
-        dispatch({
-          type: "CLEAR_CHAT",
-          payload: {
-            keepStarter: {
-              id: `greeting-${Date.now()}`,
-              role: "assistant",
-              content: config.starterMessage,
-              createdAt: new Date(),
-            },
-          },
-        })
-      } else {
-        dispatch({ type: "CLEAR_CHAT" })
-      }
-    }
-  }, [config.agent, config.starterMessage, storageBaseKey])
-
-  const sendMessage = useCallback(
-    async (text: string) => {
-      if (state.isGenerating) return
-      const meta = state.metadata
-      const agent = configRef.current.agent ?? meta?.default_agent
-      const model = configRef.current.model ?? meta?.default_model
-      if (!agent) return
-
-      let threadIdToUse = state.currentThreadId
-      if (!threadIdToUse) {
-        threadIdToUse = generateThreadId()
-        dispatch({ type: "SET_THREAD_ID", payload: threadIdToUse })
-        saveCurrentThreadId(getStorageBaseKey(configRef.current), threadIdToUse)
-      }
-
-      const userMessage: Message = {
-        id: `user-${Date.now()}`,
-        role: "user",
-        content: text,
-        createdAt: new Date(),
-      }
-      const aiMessageId = `ai-${Date.now()}`
-      const assistantMessage: Message = {
-        id: aiMessageId,
-        role: "assistant",
-        content: "",
-        createdAt: new Date(),
-      }
-      dispatch({
-        type: "START_SEND",
-        payload: { userMessage, assistantMessage },
-      })
-      streamTokensRef.current = ""
-      pendingFollowUpRef.current = []
-
-      const svc = getService()
-      try {
-        for await (const event of svc.stream(text, {
-          agent,
-          model,
-          threadId: threadIdToUse,
-          userId: configRef.current.userId,
-          streamTokens: configRef.current.stream !== false,
-        })) {
-          if (event.type === "token" && typeof event.content === "string") {
-            streamTokensRef.current += event.content
-            dispatch({
-              type: "STREAM_TOKEN",
-              payload: { messageId: aiMessageId, content: streamTokensRef.current },
-            })
-          } else if (event.type === "message" && event.content) {
-            dispatch({
-              type: "STREAM_MESSAGE",
-              payload: { messageId: aiMessageId, event },
-            })
-            const msg = event.content as ApiChatMessage
-            if (msg.type === "custom" && Array.isArray(msg.custom_data?.follow_up)) {
-              pendingFollowUpRef.current = msg.custom_data.follow_up as string[]
-            } else if (typeof msg.content === "string") {
-              streamTokensRef.current = msg.content
-              if (pendingFollowUpRef.current.length > 0) {
-                const content =
-                  streamTokensRef.current +
-                  "\n\n**Follow-up suggestions:**\n" +
-                  pendingFollowUpRef.current.map((s) => `- ${s}`).join("\n")
-                pendingFollowUpRef.current = []
-                dispatch({
-                  type: "STREAM_TOKEN",
-                  payload: { messageId: aiMessageId, content },
-                })
-              }
-            }
-          } else if (event.type === "update" && event.updates?.follow_up) {
-            const followUp = event.updates.follow_up as string[]
-            if (Array.isArray(followUp)) {
-              dispatch({ type: "SET_FOLLOW_UP", payload: followUp })
-              pendingFollowUpRef.current = followUp
-            }
-          } else if (event.type === "error") {
-            dispatch({
-              type: "STREAM_ERROR",
-              payload: {
-                messageId: aiMessageId,
-                error: typeof event.content === "string" ? event.content : "Unknown error",
-              },
-            })
-          }
-        }
-      } catch (err) {
-        dispatch({
-          type: "STREAM_ERROR",
-          payload: {
-            messageId: aiMessageId,
-            error: err instanceof Error ? err.message : "Unknown error",
-          },
-        })
-      } finally {
-        const lastContent = streamTokensRef.current
-        dispatch({ type: "STREAM_END" })
-        configRef.current.onStreamEnd?.(lastContent)
-      }
-    },
-    [state.isGenerating, state.metadata, state.currentThreadId, getService]
-  )
-
-  const invoke = useCallback(
-    async (text: string) => {
-      if (state.isGenerating) return
-      const meta = state.metadata
-      const agent = configRef.current.agent ?? meta?.default_agent
-      const model = configRef.current.model ?? meta?.default_model
-      if (!agent) return
-
-      let threadIdToUse = state.currentThreadId
-      if (!threadIdToUse) {
-        threadIdToUse = generateThreadId()
-        dispatch({ type: "SET_THREAD_ID", payload: threadIdToUse })
-        saveCurrentThreadId(getStorageBaseKey(configRef.current), threadIdToUse)
-      }
-
-      const userMessage: Message = {
-        id: `user-${Date.now()}`,
-        role: "user",
-        content: text,
-        createdAt: new Date(),
-      }
-      const aiMessageId = `ai-${Date.now()}`
-      const assistantMessage: Message = {
-        id: aiMessageId,
-        role: "assistant",
-        content: "",
-        createdAt: new Date(),
-      }
-      dispatch({
-        type: "START_SEND",
-        payload: { userMessage, assistantMessage },
-      })
-
-      const svc = getService()
-      try {
-        const response = await svc.invoke(text, {
-          agent,
-          model,
-          threadId: threadIdToUse,
-          userId: configRef.current.userId,
-        })
-        dispatch({
-          type: "STREAM_TOKEN",
-          payload: { messageId: aiMessageId, content: response.content },
-        })
-      } catch (err) {
-        dispatch({
-          type: "STREAM_ERROR",
-          payload: {
-            messageId: aiMessageId,
-            error: err instanceof Error ? err.message : "Unknown error",
-          },
-        })
-      } finally {
-        dispatch({ type: "STREAM_END" })
-      }
-    },
-    [state.isGenerating, state.metadata, state.currentThreadId, getService]
-  )
+  configRef.current = { ...config, agent: selectedAgent, model: selectedModel }
+  const service = useMemo(() => new ChatService({ baseUrl: config.url, apiKey: config.apiKey, defaultAgent: "", defaultModel: "" }), [config.url, config.apiKey])
+  const failedHistory = useRef<{ threadId: string; userId?: string } | null>(null)
+  const revision = useRef(0)
+  const busy = useRef(false)
+  const restored = useRef(false)
+  const [restoring, setRestoring] = useState(true)
+  const persistSnapshot = useRef<(() => void) | null>(null)
+  const flushTokens = useRef<(() => void) | null>(null)
+  const baseKey = storageKey({ ...config, agent: selectedAgent })
+  const cancel = useCallback(() => {
+    persistSnapshot.current?.()
+    flushTokens.current?.()
+    flushTokens.current = null
+    revision.current++
+    busy.current = false
+    service.abortStream()
+    service.abortHistory()
+    dispatch({ type: "CANCEL" })
+  }, [service])
 
   const stopGeneration = useCallback(() => {
-    getService().abortStream()
-    dispatch({ type: "STREAM_END" })
-  }, [getService])
+    if (busy.current) emitChatEvent(configRef.current.onEvent, { type: "response_stopped" })
+    cancel()
+    restored.current = true
+    setRestoring(false)
+  }, [cancel])
 
-  const setInput = useCallback((value: string) => {
-    dispatch({ type: "SET_INPUT", payload: value })
-  }, [])
+  useEffect(() => {
+    let active = true
+    dispatch({ type: "SET_METADATA_LOADING", payload: true })
+    service.getMetadata().then(metadata => {
+      if (active) dispatch({ type: "SET_METADATA", payload: metadata })
+    }).catch(() => {
+      if (active) dispatch({ type: "SET_ERROR", payload: "Could not connect to the assistant. Try connecting again.", kind: "metadata" })
+    }).finally(() => {
+      if (active) dispatch({ type: "SET_METADATA_LOADING", payload: false })
+    })
+    let timer: ReturnType<typeof setTimeout>
+    const check = async () => {
+      const status = await service.healthCheck()
+      if (!active) return
+      dispatch({ type: "SET_BACKEND_STATUS", payload: status })
+      timer = setTimeout(check, 120000)
+    }
+    void check()
+    return () => {
+      active = false
+      persistSnapshot.current?.()
+      clearTimeout(timer)
+      // Invalidate the latest request, rather than the revision at effect setup.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      revision.current++
+      busy.current = false
+      service.abortAll()
+    }
+  }, [service])
 
-  const setMessages = useCallback(
-    (payload: Message[] | ((prev: Message[]) => Message[])) => {
-      if (typeof payload === "function") {
-        dispatch({ type: "SET_MESSAGES", payload: payload(state.messages) })
-      } else {
-        dispatch({ type: "SET_MESSAGES", payload })
+  const restoreThread = useCallback(async (threadId: string, userId?: string) => {
+    cancel()
+    const current = revision.current
+    restored.current = false
+    setRestoring(true)
+    dispatch({ type: "SET_ERROR", payload: null })
+    const local = loadMessages(getThreadMessagesKey(baseKey, threadId))
+      ?? loadMessages(getThreadMessagesKey(legacyStorageKey(configRef.current), threadId))
+    let messages: Message[] = (local ?? []).map(message => ({
+      ...message, role: message.role as Message["role"],
+      status: message.status === "streaming" || message.status === "submitting" ? "stopped" : message.status,
+      createdAt: message.createdAt ? new Date(message.createdAt) : undefined,
+      toolInvocations: message.toolInvocations as Message["toolInvocations"],
+    }))
+    try {
+      if (userId?.trim()) {
+        const history = await service.getHistory(threadId, userId)
+        messages = apiMessagesToUiMessages(history.messages)
       }
-    },
-    [state.messages]
-  )
-
-  const clearChat = useCallback(
-    (options?: { keepStarter?: boolean; createNewThread?: boolean }) => {
-      const baseKey = getStorageBaseKey(configRef.current)
-      if (options?.createNewThread) {
-        const newId = generateThreadId()
-        saveCurrentThreadId(baseKey, newId)
-        dispatch({ type: "SET_THREAD_ID", payload: newId })
+    } catch {
+      if (current === revision.current) {
+        failedHistory.current = { threadId, userId }
+        dispatch({ type: "SET_ERROR", kind: "history", payload: local?.length
+          ? "Could not refresh history. Showing the saved copy."
+          : "Could not load that conversation. Your current conversation is still here." })
+        if (!local?.length) {
+          restored.current = true
+          setRestoring(false)
+          return
+        }
       }
-      const keepStarter = options?.keepStarter
-      if (keepStarter && configRef.current.starterMessage) {
-        dispatch({
-          type: "CLEAR_CHAT",
-          payload: {
-            keepStarter: {
-              id: `greeting-${Date.now()}`,
-              role: "assistant",
-              content: configRef.current.starterMessage,
-              createdAt: new Date(),
-            },
-          },
-        })
-      } else {
-        dispatch({ type: "CLEAR_CHAT" })
-      }
-    },
-    []
-  )
-
-  const setAgent = useCallback((_agent: string) => {
-    chatServiceRef.current = null
-    dispatch({ type: "SET_METADATA", payload: state.metadata })
-  }, [state.metadata])
-
-  const setModel = useCallback((_model: string) => {
-    // No dedicated model state in reducer; model is passed per request from config.
-    // Caller can store model in config; we just allow API to not change reducer.
-  }, [])
-
-  const setThreadId = useCallback((threadId: string | undefined) => {
+    }
+    if (current !== revision.current) return
+    if (!messages.length && configRef.current.starterMessage) messages = [{ id: "greeting", role: "assistant", content: configRef.current.starterMessage }]
+    restored.current = true
+    setRestoring(false)
+    dispatch({ type: "SET_FOLLOW_UP", payload: [] })
+    dispatch({ type: "SET_INPUT", payload: "" })
     dispatch({ type: "SET_THREAD_ID", payload: threadId })
+    dispatch({ type: "SET_MESSAGES", payload: messages })
+  }, [baseKey, cancel, service])
+
+  useEffect(() => {
+    const tid = config.threadId || loadCurrentThreadId(baseKey) || loadCurrentThreadId(legacyStorageKey(configRef.current)) || generateThreadId()
+    void restoreThread(tid, config.userId)
+    return () => {
+      restored.current = false
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      revision.current++
+      busy.current = false
+      service.abortStream()
+    }
+  }, [baseKey, config.threadId, config.userId, restoreThread, service])
+
+  useEffect(() => {
+    if (restoring || !restored.current || !state.currentThreadId) return
+    const tid = state.currentThreadId
+    const key = getThreadMessagesKey(baseKey, tid)
+    const persist = () => {
+      saveCurrentThreadId(baseKey, tid)
+      if (state.messages.length) saveMessages(key, state.messages)
+      else clearMessages(key)
+    }
+    persistSnapshot.current = persist
+    const timer = setTimeout(persist, 250)
+    window.addEventListener("pagehide", persist)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener("pagehide", persist)
+    }
+  }, [baseKey, state.currentThreadId, state.messages, state.isGenerating, restoring])
+
+  const run = useCallback(async (text: string, stream: boolean, attachments: AttachmentReference[] = [], agentConfig?: Record<string, unknown>) => {
+    if ((!text.trim() && !(attachments.length && configRef.current.attachments?.allowFileOnly)) || busy.current || !restored.current) return
+    const cfg = configRef.current
+    const meta = stateRef.current.metadata
+    const agent = cfg.agent || meta?.default_agent
+    if (!agent) return
+    const model = cfg.model || meta?.default_model
+    busy.current = true
+    const started = performance.now()
+    let receivedContent = false
+    const contentReceived = () => {
+      if (!receivedContent) { receivedContent = true; emitChatEvent(cfg.onEvent, { type: "first_content", elapsedMs: performance.now() - started }) }
+    }
+    emitChatEvent(cfg.onEvent, { type: "send_accepted" })
+    const current = ++revision.current
+    const tid = stateRef.current.currentThreadId || generateThreadId()
+    const id = generateThreadId()
+    dispatch({ type: "SET_THREAD_ID", payload: tid })
+    dispatch({ type: "START_SEND", payload: {
+      userMessage: { id: `user-${id}`, role: "user", content: text, createdAt: new Date(), custom_data: attachments.length ? { attachments } : undefined },
+      assistantMessage: { id, role: "assistant", content: "", createdAt: new Date(), status: "submitting" },
+    } })
+    let content = ""
+    let failed = false
+    const batcher = createTokenBatcher(value => {
+      if (current === revision.current) dispatch({ type: "STREAM_TOKEN", payload: { messageId: id, content: value } })
+    })
+    flushTokens.current = batcher.flush
+    const options = { agent, model, threadId: tid, userId: cfg.userId, agentConfig, streamTokens: cfg.stream !== false }
+    try {
+      if (!stream) {
+        const response = await service.invoke(text, options)
+        if (current !== revision.current) return
+        content = response.content
+        if (content) contentReceived()
+        batcher.push(content)
+      } else {
+        for await (const event of service.stream(text, options)) {
+          if (current !== revision.current) return
+          if (event.type === "token" && typeof event.content === "string") {
+            if (event.content) contentReceived()
+            content += event.content
+            batcher.push(content)
+          } else if (event.type === "message" && typeof event.content === "object" && event.content && "type" in event.content) {
+            batcher.flush()
+            dispatch({ type: "STREAM_MESSAGE", payload: { messageId: id, event } })
+            const msg = event.content
+            if (msg.type === "ai" && typeof msg.content === "string" && (!Array.isArray(msg.tool_calls) || !msg.tool_calls.length)) content = msg.content
+            if (content) contentReceived()
+          } else if (event.type === "update" && Array.isArray(event.updates?.follow_up)) {
+            dispatch({ type: "SET_FOLLOW_UP", payload: event.updates.follow_up.filter((v): v is string => typeof v === "string") })
+          } else if (event.type === "error") throw new Error(safeError)
+        }
+      }
+      if (!content.trim() && current === revision.current) throw new Error("Empty response")
+    } catch {
+      if (current === revision.current) {
+        emitChatEvent(cfg.onEvent, { type: "response_failed", elapsedMs: performance.now() - started })
+        batcher.flush()
+        failed = true
+        dispatch({ type: "STREAM_ERROR", payload: { messageId: id, error: safeError } })
+      }
+    } finally {
+      batcher.flush()
+      batcher.dispose()
+      if (current === revision.current) {
+        flushTokens.current = null
+        busy.current = false
+        dispatch({ type: "STREAM_END" })
+        if (!failed) {
+          emitChatEvent(cfg.onEvent, { type: "response_completed", elapsedMs: performance.now() - started })
+          configRef.current.onStreamEnd?.(content)
+        }
+      }
+    }
+  }, [service])
+  const submitMessage = useCallback((text: string, attachments: AttachmentReference[] = []) => {
+    const cfg = configRef.current
+    if (busy.current || !restored.current) return { accepted: false, reason: "Wait for the current response or stop it first." }
+    if (!text.trim() && !(attachments.length && cfg.attachments?.allowFileOnly)) return { accepted: false, reason: "Write a message first." }
+    if (!(cfg.agent || stateRef.current.metadata?.default_agent)) return { accepted: false, reason: "Select an available assistant first." }
+    if (attachments.length && !cfg.attachments) return { accepted: false, reason: "Attachments are unavailable." }
+    let agentConfig: Record<string, unknown> | undefined
+    try { agentConfig = attachments.length ? cfg.attachments?.toAgentConfig(attachments) : undefined }
+    catch { return { accepted: false, reason: "Could not prepare the attachments. Your draft and files have been kept." } }
+    void run(text, true, attachments, agentConfig).catch(() => dispatch({ type: "SET_ERROR", payload: "Could not prepare the request. Your draft has been kept." }))
+    return { accepted: true }
+  }, [run])
+  const sendMessage = useCallback((text: string) => run(text, true), [run])
+  const invoke = useCallback((text: string) => run(text, false), [run])
+  const setInput = useCallback((payload: string) => dispatch({ type: "SET_INPUT", payload }), [])
+  const setMessages = useCallback((payload: Message[] | ((prev: Message[]) => Message[])) => {
+    const messages = typeof payload === "function" ? payload(stateRef.current.messages) : payload
+    stateRef.current = { ...stateRef.current, messages }
+    dispatch({ type: "SET_MESSAGES", payload: messages })
   }, [])
-
-  const loadThread = useCallback(
-    async (threadId: string, explicitUserId?: string) => {
-      const uid = (explicitUserId ?? configRef.current.userId)?.trim()
-      if (!uid) return
-      const svc = getService()
-      try {
-        const { messages } = await svc.getHistory(threadId, uid)
-        dispatch({ type: "SET_MESSAGES", payload: apiMessagesToUiMessages(messages) })
-        dispatch({ type: "SET_THREAD_ID", payload: threadId })
-        dispatch({ type: "SET_ERROR", payload: null })
-      } catch (err) {
-        console.error("Failed to load thread history:", err)
-        dispatch({
-          type: "SET_ERROR",
-          payload: err instanceof Error ? err.message : "Failed to load conversation",
-        })
-      }
-    },
-    [getService]
-  )
-
-  const rateResponse = useCallback(
-    async (messageId: string, rating: number, comment?: string) => {
-      const message = state.messages.find((m) => m.id === messageId)
-      if (!message) return
-
-      // Optimistic update
-      dispatch({ type: "SET_MESSAGE_RATING", payload: { messageId, rating, comment } })
-
-      const runId = (message.runId ?? message.custom_data?.run_id ?? messageId) as string
-      if (!runId || runId.startsWith("ai-") || runId.startsWith("user-") || runId.startsWith("assistant-")) {
-        console.warn("Cannot send feedback: no valid runId found for message", messageId, runId)
-        return
-      }
-
-      const svc = getService()
-      try {
-        await svc.sendFeedback(runId, "human-feedback-stars", rating, comment ? { comment } : undefined)
-      } catch (err) {
-        console.error("Failed to send feedback:", err)
-        // Rollback optimistic update on failure? Or just log?
-        // Let's at least keep the UI state for now, but log the error.
-      }
-    },
-    [state.messages, getService]
-  )
-
+  const clearChat = useCallback((options?: { keepStarter?: boolean; createNewThread?: boolean }) => {
+    cancel()
+    restored.current = true
+    setRestoring(false)
+    const cfg = configRef.current
+    const tid = options?.createNewThread ? generateThreadId() : stateRef.current.currentThreadId
+    dispatch({ type: "SET_THREAD_ID", payload: tid })
+    const draft = stateRef.current.input
+    dispatch({ type: "CLEAR_CHAT", payload: { keepStarter: options?.keepStarter && cfg.starterMessage ? { id: "greeting", role: "assistant", content: cfg.starterMessage } : undefined } })
+    if (options?.createNewThread) dispatch({ type: "SET_INPUT", payload: draft })
+  }, [cancel])
+  const setThreadId = useCallback((tid: string | undefined) => {
+    if (tid === stateRef.current.currentThreadId) return
+    void restoreThread(tid || generateThreadId(), configRef.current.userId)
+  }, [restoreThread])
+  const loadThread = useCallback((tid: string, uid?: string) => restoreThread(tid, uid ?? configRef.current.userId), [restoreThread])
+  const setAgent = useCallback((agent: string) => {
+    cancel()
+    setSelection(previous => ({ ...previous, agent, sourceAgent: config.agent }))
+    configRef.current = { ...configRef.current, agent }
+  }, [cancel, config.agent])
+  const setModel = useCallback((model: string) => {
+    setSelection(previous => ({ ...previous, model, sourceModel: config.model }))
+    configRef.current = { ...configRef.current, model }
+  }, [config.model])
+  const rateResponse = useCallback(async (messageId: string, rating: number, comment?: string) => {
+    const message = stateRef.current.messages.find(m => m.id === messageId)
+    const feedbackThread = stateRef.current.currentThreadId
+    if (!message) return
+    dispatch({ type: "SET_MESSAGE_RATING", payload: { messageId, rating, comment } })
+    const runId = message.runId ?? message.custom_data?.run_id
+    if (typeof runId !== "string") return
+    try {
+      await service.sendFeedback(runId, "human-feedback-stars", rating, comment ? { comment } : undefined)
+      emitChatEvent(configRef.current.onEvent, { type: "feedback_saved" })
+    }
+    catch {
+      if (stateRef.current.currentThreadId === feedbackThread) dispatch({ type: "SET_MESSAGE_RATING", payload: { messageId, rating: message.rating, comment: message.comment } })
+      emitChatEvent(configRef.current.onEvent, { type: "feedback_failed" })
+      throw new Error("Could not save feedback. Please try again.")
+    }
+  }, [service])
   const refetchMetadata = useCallback(async () => {
-    const svc = getService()
-    const data = await svc.getMetadata(true)
-    dispatch({ type: "SET_METADATA", payload: data })
-  }, [getService])
-
-  const getThreads = useCallback(
-    async (options?: import("@/core/services/types").GetThreadsOptions) => {
-      const uid = configRef.current.userId?.trim()
-      const svc = getService()
-      return svc.getThreads(uid, options)
-    },
-    [getService]
-  )
-
-  const getHistory = useCallback(
-    async (
-      threadId: string,
-      options?: import("@/core/services/types").GetHistoryOptions
-    ) => {
-      const svc = getService()
-      return svc.getHistory(threadId, configRef.current.userId, options)
-    },
-    [getService]
-  )
-
-  const deleteThread = useCallback(
-    async (threadId: string, explicitUserId?: string) => {
-      const uid = (explicitUserId ?? configRef.current.userId)?.trim()
-      if (!uid) {
-        throw new Error("User ID is required to delete a thread")
-      }
-      const svc = getService()
-      await svc.deleteThread(threadId, uid)
-    },
-    [getService]
-  )
-
-  const actions: ChatRuntimeActions = useMemo(
-    () => ({
-      setInput,
-      sendMessage,
-      invoke,
-      stopGeneration,
-      setMessages,
-      clearChat,
-      setAgent,
-      setModel,
-      setThreadId,
-      loadThread,
-      rateResponse,
-      refetchMetadata,
-      getThreads,
-      getHistory,
-      deleteThread,
-    }),
-    [
-      setInput,
-      sendMessage,
-      invoke,
-      stopGeneration,
-      setMessages,
-      clearChat,
-      setAgent,
-      setModel,
-      setThreadId,
-      loadThread,
-      rateResponse,
-      refetchMetadata,
-      getThreads,
-      getHistory,
-      deleteThread,
-    ]
-  )
-
-  return { ...state, ...actions }
+    dispatch({ type: "SET_METADATA_LOADING", payload: true })
+    dispatch({ type: "SET_ERROR", payload: null })
+    try { dispatch({ type: "SET_METADATA", payload: await service.getMetadata(true) }) }
+    catch { dispatch({ type: "SET_ERROR", kind: "metadata", payload: "Could not connect to the assistant. Try connecting again." }) }
+    finally { dispatch({ type: "SET_METADATA_LOADING", payload: false }) }
+  }, [service])
+  const dismissError = useCallback(() => dispatch({ type: "SET_ERROR", payload: null }), [])
+  const retryError = useCallback(async () => {
+    if (stateRef.current.errorKind === "history" && failedHistory.current) {
+      await restoreThread(failedHistory.current.threadId, failedHistory.current.userId)
+    } else await refetchMetadata()
+  }, [restoreThread, refetchMetadata])
+  const getThreads = useCallback((options?: import("@/core/services/types").GetThreadsOptions) => service.getThreads(configRef.current.userId, options), [service])
+  const getHistory = useCallback((tid: string, options?: import("@/core/services/types").GetHistoryOptions) => service.getHistory(tid, configRef.current.userId, options), [service])
+  const deleteThread = useCallback(async (tid: string, uid?: string) => {
+    await service.deleteThread(tid, uid ?? configRef.current.userId)
+    clearMessages(getThreadMessagesKey(baseKey, tid))
+    if (tid === stateRef.current.currentThreadId) clearChat({ createNewThread: true, keepStarter: true })
+  }, [service, baseKey, clearChat])
+  return { ...state, submitMessage, retryError, dismissError, historyLoading: restoring, setInput, sendMessage, invoke, stopGeneration, setMessages, clearChat, setAgent, setModel, setThreadId, loadThread, rateResponse, refetchMetadata, getThreads, getHistory, deleteThread }
 }

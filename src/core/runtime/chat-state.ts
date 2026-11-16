@@ -31,9 +31,13 @@ export interface Message {
   rating?: number
   comment?: string
   runId?: string
+  status?: "submitting" | "streaming" | "complete" | "stopped" | "failed"
+  error?: string
 }
 
 export interface ChatRuntimeState {
+  /** True while switching or restoring a conversation. */
+  historyLoading?: boolean
   messages: Message[]
   input: string
   isGenerating: boolean
@@ -44,6 +48,7 @@ export interface ChatRuntimeState {
   metadataLoading: boolean
   backendStatus: import("@/core/services/types").HealthStatus
   error: string | null
+  errorKind?: "metadata" | "history" | "message"
 }
 
 export type ChatRuntimeConfig = {
@@ -58,6 +63,8 @@ export type ChatRuntimeConfig = {
   /** Called when stream ends with the final assistant message content (e.g. for TTS). */
   onStreamEnd?: (lastContent: string) => void
   apiKey?: string
+  attachments?: import("@/core/services/interaction-types").AttachmentAdapter
+  onEvent?: (event: import("@/core/services/interaction-types").ChatEvent) => void
 }
 
 // Reducer action types
@@ -67,13 +74,14 @@ export type ChatRuntimeAction =
   | { type: "SET_THREAD_ID"; payload: string | undefined }
   | { type: "SET_METADATA"; payload: ChatRuntimeState["metadata"] }
   | { type: "SET_METADATA_LOADING"; payload: boolean }
-  | { type: "SET_ERROR"; payload: string | null }
+  | { type: "SET_ERROR"; payload: string | null; kind?: ChatRuntimeState["errorKind"] }
   | { type: "START_SEND"; payload: { userMessage: Message; assistantMessage: Message } }
   | { type: "STREAM_TOKEN"; payload: { messageId: string; content: string } }
   | { type: "STREAM_MESSAGE"; payload: { messageId: string; event: StreamEvent } }
   | { type: "STREAM_UPDATE"; payload: { followUp?: string[] } }
   | { type: "STREAM_ERROR"; payload: { messageId: string; error: string } }
   | { type: "STREAM_END" }
+  | { type: "CANCEL" }
   | { type: "CLEAR_CHAT"; payload?: { keepStarter?: Message } }
   | { type: "SET_FOLLOW_UP"; payload: string[] }
   | { type: "SET_BACKEND_STATUS"; payload: import("@/core/services/types").HealthStatus }
@@ -131,7 +139,7 @@ function applyStreamMessage(
         result: cleanResult,
       }
       const filtered = existing.filter(
-        (inv) => !(inv.state === "call" && (inv as ToolInvocationCall).toolCallId === chatMessage.tool_call_id)
+        (inv) => !chatMessage.tool_call_id || inv.toolCallId !== chatMessage.tool_call_id
       )
       return {
         ...m,
@@ -155,7 +163,7 @@ function applyStreamMessage(
       )
       const existingResults = existing.filter((inv) => inv.state === "result")
       const existingCallIds = new Set(
-        existingCalls.map((inv) => inv.toolCallId).filter(Boolean)
+        existing.map((inv) => inv.toolCallId).filter(Boolean)
       )
       const mergedCalls = [...existingCalls]
       for (const call of newCalls) {
@@ -173,7 +181,7 @@ function applyStreamMessage(
   if (chatMessage.type === "custom") {
     const followUp = (chatMessage.custom_data?.follow_up as string[] | undefined)
     if (Array.isArray(followUp)) {
-      return { messages, followUp }
+      return { messages, followUp: followUp.filter((value): value is string => typeof value === "string") }
     }
     return { messages }
   }
@@ -183,6 +191,7 @@ function applyStreamMessage(
     ...m,
     content: text,
     runId: chatMessage.run_id ?? m.runId,
+    status: "streaming",
     custom_data: {
       ...(m.custom_data ?? {}),
       ...(chatMessage.custom_data ?? {}),
@@ -208,7 +217,7 @@ export function chatRuntimeReducer(
     case "SET_METADATA_LOADING":
       return { ...state, metadataLoading: action.payload }
     case "SET_ERROR":
-      return { ...state, error: action.payload }
+      return { ...state, error: action.payload, errorKind: action.kind }
     case "START_SEND": {
       const { userMessage, assistantMessage } = action.payload
       return {
@@ -218,6 +227,8 @@ export function chatRuntimeReducer(
         followUpPrompts: [],
         currentAssistantMessageId: assistantMessage.id,
         error: null,
+        errorKind: undefined,
+        input: "",
       }
     }
     case "STREAM_TOKEN": {
@@ -227,6 +238,7 @@ export function chatRuntimeReducer(
         messages: updateMessageById(state.messages, messageId, (m) => ({
           ...m,
           content,
+          status: "streaming",
         })),
       }
     }
@@ -248,23 +260,44 @@ export function chatRuntimeReducer(
       const { messageId, error } = action.payload
       return {
         ...state,
+        errorKind: "message",
+        error,
         messages: updateMessageById(state.messages, messageId, (m) => ({
           ...m,
-          content: `Error: ${error}`,
+          error,
+          status: "failed",
         })),
       }
     }
     case "STREAM_END":
       return {
         ...state,
+        messages: state.messages.map(m => m.id === state.currentAssistantMessageId && m.status !== "failed" ? { ...m, status: "complete" } : m),
         isGenerating: false,
         currentAssistantMessageId: null,
+      }
+    case "CANCEL":
+      return {
+        ...state,
+        isGenerating: false,
+        currentAssistantMessageId: null,
+        messages: state.messages.map((message) => message.id !== state.currentAssistantMessageId ? message : {
+          ...message,
+          status: "stopped",
+          toolInvocations: message.toolInvocations?.map((tool) => tool.state !== "call" ? tool : {
+            state: "result", toolName: tool.toolName, toolCallId: tool.toolCallId,
+            result: { content: "Tool execution was cancelled", __cancelled: true },
+          }),
+        }),
       }
     case "CLEAR_CHAT": {
       const keepStarter = action.payload?.keepStarter as Message | undefined
       return {
         ...state,
         messages: keepStarter ? [keepStarter] : [],
+        isGenerating: false,
+        error: null,
+        input: "",
         followUpPrompts: [],
         currentAssistantMessageId: null,
       }

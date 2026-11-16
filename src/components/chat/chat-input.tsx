@@ -1,147 +1,60 @@
 "use client"
 
-import { forwardRef, type ReactElement, useCallback, useState } from "react"
-import { useChatContext } from "./context"
+import { useCallback, useState, lazy, Suspense } from "react"
+import { useChatSelector } from "./context"
+import { useShallow } from "zustand/react/shallow"
 import { MessageInput } from "@/components/ui/message-input"
 import { cn } from "@/lib/utils"
 
+const AttachmentInput = lazy(() => import("./attachment-input"))
+
 export interface ChatInputProps {
+  attachments?: import("@/core/services/interaction-types").AttachmentAdapter
   placeholder?: string
   className?: string
   transcribeAudio?: (blob: Blob) => Promise<string>
 }
 
-interface ChatFormProps {
-  className?: string
-  isPending: boolean
-  handleSubmit: (
-    event?: { preventDefault?: () => void },
-    options?: { experimental_attachments?: FileList }
-  ) => void
-  children: (props: {
-    files: File[] | null
-    setFiles: React.Dispatch<React.SetStateAction<File[] | null>>
-  }) => ReactElement
-}
-
-function createFileList(files: File[] | FileList): FileList {
-  const dataTransfer = new DataTransfer()
-  for (const file of Array.from(files)) {
-    dataTransfer.items.add(file)
-  }
-  return dataTransfer.files
-}
-
-const ChatForm = forwardRef<HTMLFormElement, ChatFormProps>(
-  ({ children, handleSubmit, className }, ref) => {
-    const [files, setFiles] = useState<File[] | null>(null)
-
-    const onSubmit = (event: React.FormEvent) => {
-      if (!files) {
-        handleSubmit(event)
-        return
-      }
-
-      const fileList = createFileList(files)
-      handleSubmit(event, { experimental_attachments: fileList })
-      setFiles(null)
-    }
-
-    return (
-      <form ref={ref} onSubmit={onSubmit} className={className}>
-        {children({ files, setFiles })}
-      </form>
-    )
-  }
-)
-ChatForm.displayName = "ChatForm"
-
 export function ChatInput({
   placeholder = "Hi, how can I help you?",
   className,
   transcribeAudio,
+  attachments,
 }: ChatInputProps) {
   const {
-    messages,
+    hasMessages,
+    historyLoading,
     input,
     setInput,
-    sendMessage,
+    submitMessage,
     stopGeneration,
-    setMessages,
     isGenerating,
     isListening,
     startListening,
     stopListening,
     isSpeechSupported,
-  } = useChatContext()
+  } = useChatSelector(useShallow(s => ({
+    hasMessages: s.messages.length > 0, input: s.input, setInput: s.setInput,
+    historyLoading: s.historyLoading,
+    submitMessage: s.submitMessage, stopGeneration: s.stopGeneration, isGenerating: s.isGenerating,
+    isListening: s.isListening, startListening: s.startListening,
+    stopListening: s.stopListening, isSpeechSupported: s.isSpeechSupported,
+  })))
 
+  const [error, setError] = useState<string | null>(null)
   const handleSubmit = useCallback(
     async (event?: { preventDefault?: () => void }) => {
       event?.preventDefault?.()
+      if (historyLoading) return
       const text = input.trim()
       if (!text) return
-      setInput("")
-      await sendMessage(text)
+      const result = submitMessage(text)
+      setError(result.accepted ? null : result.reason ?? "Could not send. Your draft has been kept.")
     },
-    [input, setInput, sendMessage]
+    [input, submitMessage, historyLoading]
   )
 
-  const handleStop = useCallback(() => {
-    stopGeneration()
-    if (!setMessages) return
-    const latestMessages = [...messages]
-    const lastAssistantMessage = latestMessages
-      .slice()
-      .reverse()
-      .find((m) => m.role === "assistant")
-    if (!lastAssistantMessage) return
-    let needsUpdate = false
-    let updatedMessage = { ...lastAssistantMessage }
-    if (lastAssistantMessage.toolInvocations) {
-      const updatedToolInvocations = lastAssistantMessage.toolInvocations.map(
-        (inv: { state: string; toolName?: string; toolCallId?: string; result?: unknown }) => {
-          if (inv.state === "call") {
-            needsUpdate = true
-            return {
-              ...inv,
-              state: "result" as const,
-              result: { content: "Tool execution was cancelled", __cancelled: true },
-            }
-          }
-          return inv
-        }
-      ) as typeof lastAssistantMessage.toolInvocations
-      if (needsUpdate) {
-        updatedMessage = { ...updatedMessage, toolInvocations: updatedToolInvocations }
-      }
-    }
-    const parts = (lastAssistantMessage as { parts?: unknown[] }).parts
-    if (parts?.length) {
-      const updatedParts = parts.map((part: unknown) => {
-        const p = part as { type: string; toolInvocation?: { state: string } }
-        if (p.type === "tool-invocation" && p.toolInvocation?.state === "call") {
-          needsUpdate = true
-          return {
-            ...p,
-            toolInvocation: {
-              ...p.toolInvocation,
-              state: "result",
-              result: { content: "Tool execution was cancelled", __cancelled: true },
-            },
-          }
-        }
-        return part
-      })
-      if (needsUpdate) updatedMessage = { ...updatedMessage, parts: updatedParts as unknown[] }
-    }
-    if (needsUpdate) {
-      const idx = latestMessages.findIndex((m) => m.id === lastAssistantMessage.id)
-      if (idx !== -1) {
-        latestMessages[idx] = updatedMessage
-        setMessages(latestMessages)
-      }
-    }
-  }, [stopGeneration, setMessages, messages])
+  const handleStop = stopGeneration
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -150,23 +63,23 @@ export function ChatInput({
     [setInput]
   )
 
+  if (attachments) return <Suspense fallback={<p role="status">Loading composer…</p>}><AttachmentInput adapter={attachments} placeholder={placeholder} transcribeAudio={transcribeAudio} className={className} /></Suspense>
+
   return (
-    <ChatForm
+    <form
       className={cn(
         "chat-input-container",
-        messages.length > 0 ? "py-4" : "py-2",
+        hasMessages ? "py-4" : "py-2",
         className
       )}
-      isPending={isGenerating}
-      handleSubmit={handleSubmit}
+      onSubmit={handleSubmit}
     >
-      {({ files, setFiles }) => (
+
         <MessageInput
+          disabled={historyLoading}
           value={input}
           onChange={handleInputChange}
-          allowAttachments
-          files={files}
-          setFiles={setFiles}
+          allowAttachments={false}
           stop={handleStop}
           isGenerating={isGenerating}
           transcribeAudio={transcribeAudio}
@@ -174,10 +87,11 @@ export function ChatInput({
           isListening={isListening}
           startListening={startListening}
           stopListening={stopListening}
-          isSpeechSupported={isSpeechSupported}
+          isSpeechSupported={transcribeAudio ? undefined : isSpeechSupported}
         />
-      )}
-    </ChatForm>
+      {error && <p role="alert" className="px-4 text-sm text-destructive">{error}</p>}
+      <p className="px-4 pt-1 text-xs text-muted-foreground">Enter to send · Shift+Enter for a new line</p>
+    </form>
   )
 }
 

@@ -1,20 +1,18 @@
 "use client"
-
-import { useCallback } from "react"
-import { useChatContext } from "./context"
+import { useShallow } from "zustand/react/shallow"
+import { useChatSelector } from "./context"
 import { PromptSuggestions } from "@/components/ui/prompt-suggestions"
 
-export function ChatSuggestions() {
-  const { suggestions, sendMessage } = useChatContext()
-
-  const append = useCallback(
-    (message: { role: "user"; content: string }) => {
-      void sendMessage(message.content)
-    },
-    [sendMessage]
-  )
-
-  if (suggestions.length === 0) return null
-
-  return <PromptSuggestions append={append} suggestions={suggestions} />
+export function ChatSuggestions({ mode = "send" }: { mode?: "send" | "prefill" }) {
+  const { suggestions, submitMessage, input, setInput, busy, emitEvent } = useChatSelector(useShallow(s => ({
+    suggestions: s.suggestions, submitMessage: s.submitMessage, input: s.input, setInput: s.setInput,
+    busy: s.isGenerating || s.historyLoading, emitEvent: s.emitEvent,
+  })))
+  if (!suggestions.length || busy) return null
+  return <PromptSuggestions suggestions={suggestions} mode={mode} disabled={!!input.trim()} append={({ content }) => {
+    if (input.trim()) return
+    if (mode === "prefill") setInput(content)
+    else if (!submitMessage(content).accepted) return
+    emitEvent({ type: "suggestion_selected" })
+  }} />
 }

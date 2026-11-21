@@ -12,7 +12,22 @@ const legacyStorageKey = (config: ChatRuntimeConfig) => `${config.url.replace(/\
 const safeError = "Unable to complete the request. Please check your connection and try again."
 
 export interface ChatRuntimeActions {
-  submitMessage: (text: string, attachments?: AttachmentReference[]) => { accepted: boolean; reason?: string }
+  submitMessage: (
+    text: string,
+    attachments?: AttachmentReference[],
+    options?: { force?: boolean; queue?: boolean }
+  ) => { accepted: boolean; queued?: boolean; reason?: string }
+  queueMessage: (
+    text: string,
+    attachments?: AttachmentReference[]
+  ) => { accepted: boolean; queued?: boolean; reason?: string }
+  forcePass: (
+    text: string,
+    attachments?: AttachmentReference[]
+  ) => { accepted: boolean; reason?: string }
+  removeQueuedMessage: (id: string) => void
+  forcePassQueuedMessage: (id: string) => Promise<void>
+  clearQueue: () => void
   retryError: () => Promise<void>
   dismissError: () => void
   setInput: (value: string) => void
@@ -51,6 +66,8 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
   const [state, dispatch] = useReducer(chatRuntimeReducer, config, value => getInitialChatState(value, null))
   const stateRef = useRef(state)
   stateRef.current = state
+  const messageQueueRef = useRef(state.messageQueue)
+  messageQueueRef.current = state.messageQueue
   const configRef = useRef(config)
   configRef.current = { ...config, agent: selectedAgent, model: selectedModel }
   const service = useMemo(() => new ChatService({ baseUrl: config.url, apiKey: config.apiKey, defaultAgent: "", defaultModel: "" }), [config.url, config.apiKey])
@@ -182,7 +199,13 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
     }
   }, [baseKey, state.currentThreadId, state.messages, state.isGenerating, restoring])
 
-  const run = useCallback(async (text: string, stream: boolean, attachments: AttachmentReference[] = [], agentConfig?: Record<string, unknown>) => {
+  const run = useCallback(async (
+    text: string,
+    stream: boolean,
+    attachments: AttachmentReference[] = [],
+    agentConfig?: Record<string, unknown>,
+    runOptions?: { force?: boolean }
+  ) => {
     if ((!text.trim() && !(attachments.length && configRef.current.attachments?.allowFileOnly)) || busy.current || !restored.current) return
     const cfg = configRef.current
     const meta = stateRef.current.metadata
@@ -210,7 +233,15 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
       if (current === revision.current) dispatch({ type: "STREAM_TOKEN", payload: { messageId: id, content: value } })
     })
     flushTokens.current = batcher.flush
-    const options = { agent, model, threadId: tid, userId: cfg.userId, agentConfig, streamTokens: cfg.stream !== false }
+    const options = {
+      agent,
+      model,
+      threadId: tid,
+      userId: cfg.userId,
+      agentConfig,
+      streamTokens: cfg.stream !== false,
+      force: runOptions?.force,
+    }
     try {
       if (!stream) {
         const response = await service.invoke(text, options)
@@ -255,21 +286,77 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
           emitChatEvent(cfg.onEvent, { type: "response_completed", elapsedMs: performance.now() - started })
           configRef.current.onStreamEnd?.(content)
         }
+        // Steering: auto-process next queued message in queue
+        const nextInQueue = messageQueueRef.current[0]
+        if (nextInQueue) {
+          dispatch({ type: "DEQUEUE_MESSAGE", payload: nextInQueue.id })
+          setTimeout(() => {
+            void run(nextInQueue.text, true, nextInQueue.attachments, nextInQueue.agentConfig)
+          }, 40)
+        }
       }
     }
   }, [service])
-  const submitMessage = useCallback((text: string, attachments: AttachmentReference[] = []) => {
+  const submitMessage = useCallback((
+    text: string,
+    attachments: AttachmentReference[] = [],
+    options?: { force?: boolean; queue?: boolean }
+  ) => {
     const cfg = configRef.current
-    if (busy.current || !restored.current) return { accepted: false, reason: "Wait for the current response or stop it first." }
+    if (!restored.current) return { accepted: false, reason: "Wait for the current response or stop it first." }
     if (!text.trim() && !(attachments.length && cfg.attachments?.allowFileOnly)) return { accepted: false, reason: "Write a message first." }
     if (!(cfg.agent || stateRef.current.metadata?.default_agent)) return { accepted: false, reason: "Select an available assistant first." }
     if (attachments.length && !cfg.attachments) return { accepted: false, reason: "Attachments are unavailable." }
     let agentConfig: Record<string, unknown> | undefined
     try { agentConfig = attachments.length ? cfg.attachments?.toAgentConfig(attachments) : undefined }
     catch { return { accepted: false, reason: "Could not prepare the attachments. Your draft and files have been kept." } }
+
+    if (options?.force) {
+      // Force pass: Interrupt current response and immediately send
+      cancel()
+      void run(text, true, attachments, agentConfig, { force: true })
+        .catch(() => dispatch({ type: "SET_ERROR", payload: "Could not prepare the request. Your draft has been kept." }))
+      return { accepted: true }
+    }
+
+    if (busy.current) {
+      if (options?.queue || cfg.steering) {
+        // Steering: When busy, enqueue the message so it is held in queue and executes next
+        const queuedItem = {
+          id: generateThreadId(),
+          text,
+          attachments: attachments.length ? attachments : undefined,
+          createdAt: new Date(),
+          agentConfig,
+        }
+        dispatch({ type: "ENQUEUE_MESSAGE", payload: queuedItem })
+        return { accepted: true, queued: true }
+      }
+      return { accepted: false, reason: "Wait for the current response or stop it first." }
+    }
+
     void run(text, true, attachments, agentConfig).catch(() => dispatch({ type: "SET_ERROR", payload: "Could not prepare the request. Your draft has been kept." }))
     return { accepted: true }
-  }, [run])
+  }, [run, cancel])
+  const queueMessage = useCallback((text: string, attachments: AttachmentReference[] = []) => {
+    return submitMessage(text, attachments, { queue: true })
+  }, [submitMessage])
+  const forcePass = useCallback((text: string, attachments: AttachmentReference[] = []) => {
+    return submitMessage(text, attachments, { force: true })
+  }, [submitMessage])
+  const removeQueuedMessage = useCallback((id: string) => {
+    dispatch({ type: "REMOVE_QUEUED_MESSAGE", payload: id })
+  }, [])
+  const forcePassQueuedMessage = useCallback(async (id: string) => {
+    const item = messageQueueRef.current.find(m => m.id === id)
+    if (!item) return
+    dispatch({ type: "DEQUEUE_MESSAGE", payload: id })
+    cancel()
+    await run(item.text, true, item.attachments, item.agentConfig, { force: true })
+  }, [cancel, run])
+  const clearQueue = useCallback(() => {
+    dispatch({ type: "CLEAR_MESSAGE_QUEUE" })
+  }, [])
   const sendMessage = useCallback((text: string) => run(text, true), [run])
   const invoke = useCallback((text: string) => run(text, false), [run])
   const setInput = useCallback((payload: string) => dispatch({ type: "SET_INPUT", payload }), [])
@@ -280,6 +367,7 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
   }, [])
   const clearChat = useCallback((options?: { keepStarter?: boolean; createNewThread?: boolean }) => {
     cancel()
+    dispatch({ type: "CLEAR_MESSAGE_QUEUE" })
     restored.current = true
     setRestoring(false)
     const cfg = configRef.current
@@ -340,5 +428,31 @@ export function useChatRuntime(config: ChatRuntimeConfig): UseChatRuntimeReturn 
     clearMessages(getThreadMessagesKey(baseKey, tid))
     if (tid === stateRef.current.currentThreadId) clearChat({ createNewThread: true, keepStarter: true })
   }, [service, baseKey, clearChat])
-  return { ...state, submitMessage, retryError, dismissError, historyLoading: restoring, setInput, sendMessage, invoke, stopGeneration, setMessages, clearChat, setAgent, setModel, setThreadId, loadThread, rateResponse, refetchMetadata, getThreads, getHistory, deleteThread }
+  return {
+    ...state,
+    submitMessage,
+    queueMessage,
+    forcePass,
+    removeQueuedMessage,
+    forcePassQueuedMessage,
+    clearQueue,
+    retryError,
+    dismissError,
+    historyLoading: restoring,
+    setInput,
+    sendMessage,
+    invoke,
+    stopGeneration,
+    setMessages,
+    clearChat,
+    setAgent,
+    setModel,
+    setThreadId,
+    loadThread,
+    rateResponse,
+    refetchMetadata,
+    getThreads,
+    getHistory,
+    deleteThread,
+  }
 }

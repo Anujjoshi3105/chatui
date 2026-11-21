@@ -153,3 +153,76 @@ it("isolates analytics exceptions and emits no conversation content or identity"
   expect(onEvent.mock.calls.map(call => call[0])).toHaveLength(3)
   expect(JSON.stringify(onEvent.mock.calls)).not.toContain("Private")
 })
+
+it("queues messages when steering is requested and processes them sequentially upon completion", async () => {
+  let releaseFirst!: () => void
+  const firstPending = new Promise<void>(resolve => { releaseFirst = resolve })
+  const executedPrompts: string[] = []
+
+  vi.spyOn(ChatService.prototype, "stream").mockImplementation(async function* (_message, options): AsyncGenerator<StreamEvent> {
+    executedPrompts.push(_message)
+    if (_message === "Turn 1") {
+      yield { type: "token", content: "Answer 1" }
+      await firstPending
+    } else {
+      yield { type: "token", content: "Answer 2" }
+    }
+  })
+
+  const { result } = renderHook(() => useChatRuntime({ url: "/api", agent: "test", steering: true }))
+  await waitFor(() => expect(result.current.historyLoading).toBe(false))
+
+  // Submit Turn 1
+  act(() => {
+    const res = result.current.submitMessage("Turn 1")
+    expect(res.accepted).toBe(true)
+    expect(res.queued).toBeUndefined()
+  })
+  expect(result.current.isGenerating).toBe(true)
+
+  // Submit Turn 2 while Turn 1 is active (steering queue)
+  act(() => {
+    const res = result.current.submitMessage("Turn 2")
+    expect(res.accepted).toBe(true)
+    expect(res.queued).toBe(true)
+  })
+  expect(result.current.messageQueue).toHaveLength(1)
+  expect(result.current.messageQueue[0].text).toBe("Turn 2")
+
+  // Release Turn 1
+  await act(async () => { releaseFirst() })
+  await waitFor(() => expect(result.current.messageQueue).toHaveLength(0))
+  await waitFor(() => expect(executedPrompts).toEqual(["Turn 1", "Turn 2"]))
+})
+
+it("force pass interrupts the active stream and sends the new message immediately", async () => {
+  let releaseStale!: () => void
+  const stalePending = new Promise<void>(resolve => { releaseStale = resolve })
+  const executed: string[] = []
+
+  vi.spyOn(ChatService.prototype, "stream").mockImplementation(async function* (msg, opts): AsyncGenerator<StreamEvent> {
+    executed.push(msg)
+    if (msg === "Slow prompt") {
+      yield { type: "token", content: "Partial..." }
+      await stalePending
+    } else {
+      yield { type: "token", content: "Urgent steer" }
+    }
+  })
+
+  const { result } = renderHook(() => useChatRuntime({ url: "/api", agent: "test" }))
+  await waitFor(() => expect(result.current.historyLoading).toBe(false))
+
+  // Start slow prompt
+  act(() => { result.current.submitMessage("Slow prompt") })
+  expect(result.current.isGenerating).toBe(true)
+
+  // Force pass
+  act(() => {
+    const res = result.current.forcePass("Urgent steer")
+    expect(res.accepted).toBe(true)
+  })
+
+  await waitFor(() => expect(executed).toContain("Urgent steer"))
+  releaseStale()
+})

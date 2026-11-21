@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { useShallow } from "zustand/react/shallow"
 import { useChatSelector } from "./context"
 import { MessageInput } from "@/components/ui/message-input"
+import { QueuedMessages } from "./queued-messages"
 import { Button } from "@/components/ui/button"
 import { readAttachments, type AttachmentAdapter, type AttachmentReference } from "@/core/services/interaction-types"
 
@@ -16,8 +17,8 @@ function accepts(file: File, accept: string) {
 export default function AttachmentInput({ adapter, placeholder, transcribeAudio, className }: {
   adapter: AttachmentAdapter; placeholder?: string; transcribeAudio?: (blob: Blob) => Promise<string>; className?: string
 }) {
-  const { input, setInput, submitMessage, stopGeneration, isGenerating, historyLoading } = useChatSelector(useShallow(s => ({
-    input: s.input, setInput: s.setInput, submitMessage: s.submitMessage, stopGeneration: s.stopGeneration,
+  const { input, setInput, submitMessage, forcePass, stopGeneration, isGenerating, historyLoading } = useChatSelector(useShallow(s => ({
+    input: s.input, setInput: s.setInput, submitMessage: s.submitMessage, forcePass: s.forcePass, stopGeneration: s.stopGeneration,
     isGenerating: s.isGenerating, historyLoading: s.historyLoading,
   })))
   const [files, setFiles] = useState<File[] | null>(null)
@@ -44,9 +45,8 @@ export default function AttachmentInput({ adapter, placeholder, transcribeAudio,
     }
   }, [files, adapter])
 
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault()
-    if (pending.current || historyLoading || isGenerating) return
+  const processAndSend = async (options?: { force?: boolean }) => {
+    if (pending.current || historyLoading) return
     setError(null)
     if (!input.trim() && !(files?.length && adapter.allowFileOnly)) { setError("Write a message first."); return }
     const controller = new AbortController()
@@ -69,10 +69,13 @@ export default function AttachmentInput({ adapter, placeholder, transcribeAudio,
         uploaded.current.set(file, reference)
       }
       if (controller.signal.aborted) return
-      const result = submitMessage(input.trim(), selected.map(file => uploaded.current.get(file)!).filter(Boolean))
+      const text = input.trim()
+      const refs = selected.map(file => uploaded.current.get(file)!).filter(Boolean)
+      const result = submitMessage(text, refs, options)
       if (!result.accepted) { setError(result.reason ?? "Could not send. Please try again."); return }
       for (const file of selected) uploaded.current.delete(file)
       setFiles(null)
+      if (result.queued || options?.force) setInput("")
     } catch (cause) {
       if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Upload failed. Your files are still selected; try sending again.")
     } finally {
@@ -80,16 +83,30 @@ export default function AttachmentInput({ adapter, placeholder, transcribeAudio,
     }
   }
 
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    await processAndSend()
+  }
+
+  const handleForcePass = () => {
+    void processAndSend({ force: true })
+  }
+
   return <form onSubmit={submit} className={`chat-input-container px-3 py-3 space-y-2 ${className ?? ""}`}>
+    <QueuedMessages />
     <MessageInput disabled={historyLoading || !!progress} value={input} onChange={event => setInput(event.target.value)}
       allowAttachments files={files} setFiles={setFiles} allowFileOnly={adapter.allowFileOnly}
-      stop={stopGeneration} isGenerating={isGenerating} transcribeAudio={transcribeAudio} placeholder={placeholder} />
+      stop={stopGeneration} forcePass={handleForcePass} isGenerating={isGenerating} transcribeAudio={transcribeAudio} placeholder={placeholder} />
     <p className="text-xs text-muted-foreground">{adapter.accept} · Up to {adapter.maxFiles} files, {Math.round(adapter.maxBytes / 1024)} KB each</p>
     {progress && <div className="flex items-center justify-between gap-2"><span role="status" className="text-sm">{progress}</span>
       <Button type="button" variant="ghost" onClick={() => {
         pending.current?.abort(); pending.current = null; setProgress(null)
       }}>Cancel upload</Button></div>}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-    <p className="text-xs text-muted-foreground">Enter to send · Shift+Enter for a new line</p>
+    <p className="text-xs text-muted-foreground">
+      {isGenerating
+        ? "Enter to queue · Ctrl+Enter to force pass"
+        : "Enter to send · Shift+Enter for a new line"}
+    </p>
   </form>
 }

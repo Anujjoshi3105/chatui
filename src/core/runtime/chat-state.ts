@@ -35,6 +35,14 @@ export interface Message {
   error?: string
 }
 
+export interface QueuedMessage {
+  id: string
+  text: string
+  attachments?: import("@/core/services/interaction-types").AttachmentReference[]
+  createdAt: Date
+  agentConfig?: Record<string, unknown>
+}
+
 export interface ChatRuntimeState {
   /** True while switching or restoring a conversation. */
   historyLoading?: boolean
@@ -49,6 +57,7 @@ export interface ChatRuntimeState {
   backendStatus: import("@/core/services/types").HealthStatus
   error: string | null
   errorKind?: "metadata" | "history" | "message"
+  messageQueue: QueuedMessage[]
 }
 
 export type ChatRuntimeConfig = {
@@ -58,6 +67,7 @@ export type ChatRuntimeConfig = {
   threadId?: string
   userId?: string
   stream?: boolean
+  steering?: boolean
   starterMessage?: string
   starterSuggestions?: string[]
   /** Called when stream ends with the final assistant message content (e.g. for TTS). */
@@ -86,6 +96,10 @@ export type ChatRuntimeAction =
   | { type: "SET_FOLLOW_UP"; payload: string[] }
   | { type: "SET_BACKEND_STATUS"; payload: import("@/core/services/types").HealthStatus }
   | { type: "SET_MESSAGE_RATING"; payload: { messageId: string; rating: number | undefined; comment?: string } }
+  | { type: "ENQUEUE_MESSAGE"; payload: QueuedMessage }
+  | { type: "DEQUEUE_MESSAGE"; payload?: string }
+  | { type: "REMOVE_QUEUED_MESSAGE"; payload: string }
+  | { type: "CLEAR_MESSAGE_QUEUE" }
 
 function updateMessageById(
   messages: Message[],
@@ -211,7 +225,7 @@ export function chatRuntimeReducer(
     case "SET_MESSAGES":
       return { ...state, messages: action.payload }
     case "SET_THREAD_ID":
-      return { ...state, currentThreadId: action.payload }
+      return { ...state, currentThreadId: action.payload, messageQueue: [] }
     case "SET_METADATA":
       return { ...state, metadata: action.payload }
     case "SET_METADATA_LOADING":
@@ -300,8 +314,34 @@ export function chatRuntimeReducer(
         input: "",
         followUpPrompts: [],
         currentAssistantMessageId: null,
+        messageQueue: [],
       }
     }
+    case "ENQUEUE_MESSAGE":
+      return {
+        ...state,
+        messageQueue: [...state.messageQueue, action.payload],
+        input: "",
+      }
+    case "DEQUEUE_MESSAGE": {
+      const targetId = action.payload
+      return {
+        ...state,
+        messageQueue: targetId
+          ? state.messageQueue.filter((m) => m.id !== targetId)
+          : state.messageQueue.slice(1),
+      }
+    }
+    case "REMOVE_QUEUED_MESSAGE":
+      return {
+        ...state,
+        messageQueue: state.messageQueue.filter((m) => m.id !== action.payload),
+      }
+    case "CLEAR_MESSAGE_QUEUE":
+      return {
+        ...state,
+        messageQueue: [],
+      }
     case "SET_FOLLOW_UP":
       return { ...state, followUpPrompts: action.payload }
     case "SET_BACKEND_STATUS":
@@ -345,5 +385,6 @@ export function getInitialChatState(
     metadataLoading: !metadata,
     backendStatus: { status: "loading" },
     error: null,
+    messageQueue: [],
   }
 }

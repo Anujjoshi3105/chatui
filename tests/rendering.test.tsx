@@ -4,7 +4,7 @@ import MarkdownRenderer from "../src/components/ui/markdown-renderer"
 import { MessageList } from "../src/components/ui/message-list"
 import { LazyMotion, domAnimation } from "motion/react"
 import { PromptSuggestions } from "../src/components/ui/prompt-suggestions"
-import { ResponseContent } from "../src/components/ui/response-content"
+import { OpenUIBlock } from "../src/components/openui"
 import Feedback from "../src/components/ui/feedback"
 const renders = vi.hoisted(() => new Map<string, number>())
 vi.mock("../src/components/ui/chat-message", async importOriginal => {
@@ -28,16 +28,27 @@ it("deduplicates suggestions, limits choices and prevents disabled sends", () =>
   expect(append).toHaveBeenCalledTimes(1)
 })
 
-it("renders source-backed cards, filters unsafe actions, and tolerates unknown metadata", () => {
-  const { container } = render(<ResponseContent data={{ cards: [
-    { type: "project", title: "Project", description: "A real project", action: { label: "Open", url: "https://example.com/project" } },
-    { type: "resource", title: "Unsafe", description: "No executable link", action: { label: "Bad", url: "javascript:alert(1)" } },
-    { type: "unknown", title: "Unsupported" }, null,
-  ], sources: [{ title: "Documentation", url: "https://example.com/docs" }, { title: "Bad", url: "data:text/html,bad" }] }} />)
-  expect(screen.getByRole("link", { name: "Open" }).getAttribute("href")).toBe("https://example.com/project")
-  expect(container.querySelector('[href^="javascript:"]')).toBeNull()
-  expect(screen.queryByText("Unsupported")).toBeNull()
-  expect(screen.getByText("Sources for this answer (1)")).toBeTruthy()
+it("renders OpenUI components, parses attributes and tolerates malformed lines", () => {
+  const code = `
+ProjectCard title="ChatUI Library" description="React chatbot library" tags="React,Tailwind" demo="https://demo.example.com" repo="https://github.com/anuj/chatui"
+SkillGroup category="Backend" skills="Python,LangGraph,PostgreSQL"
+Experience role="Full Stack Engineer" company="Tech Corp" period="2023-Present"
+ContactAction type="email" label="Reach out" address="anuj@example.com"
+UnknownComponent title="Should safely be ignored"
+  `
+  render(<OpenUIBlock code={code} />)
+  expect(screen.getByText("ChatUI Library")).toBeTruthy()
+  expect(screen.getByText("React chatbot library")).toBeTruthy()
+  expect(screen.getByText("React")).toBeTruthy()
+  expect(screen.getByText("Tailwind")).toBeTruthy()
+  expect(screen.getByLabelText("Open ChatUI Library live demo").getAttribute("href")).toBe("https://demo.example.com")
+  expect(screen.getByLabelText("View ChatUI Library repository").getAttribute("href")).toBe("https://github.com/anuj/chatui")
+  expect(screen.getByText("Backend")).toBeTruthy()
+  expect(screen.getByText("Python")).toBeTruthy()
+  expect(screen.getByText("Full Stack Engineer")).toBeTruthy()
+  expect(screen.getByText("Tech Corp")).toBeTruthy()
+  expect(screen.getByText("Reach out")).toBeTruthy()
+  expect(screen.queryByText("Should safely be ignored")).toBeNull()
 })
 
 it("retains feedback comment on a failed save and announces a successful retry", async () => {

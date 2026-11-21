@@ -43,6 +43,7 @@ export interface StreamOptions {
   userId?: string
   agentConfig?: Record<string, unknown>
   streamTokens?: boolean
+  force?: boolean
 }
 
 export interface ThreadSummary {

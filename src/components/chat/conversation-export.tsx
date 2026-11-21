@@ -1,15 +1,14 @@
 import { useChatSelector } from "./context"
 import { Button } from "@/components/ui/button"
-import { readAttachments, readCards, readSources } from "@/core/services/interaction-types"
+import { readAttachments, readSources } from "@/core/services/interaction-types"
 import type { Message } from "@/core/runtime/chat-state"
 
 function conversationMarkdown(messages: Message[]) {
   return messages.map(message => {
     const data = message.custom_data
-    const cards = readCards(data?.cards).map(card => `${card.title}\n${card.description}`).join("\n\n")
     const sources = readSources(data?.sources).map(source => `${source.title}: ${source.url}`).join("\n")
     const files = readAttachments(data?.attachments).map(file => `Attachment: ${file.name}`).join("\n")
-    return [`## ${message.role === "user" ? "You" : "Assistant"}`, message.content, cards, sources, files,
+    return [`## ${message.role === "user" ? "You" : "Assistant"}`, message.content, sources, files,
       message.status === "failed" ? "[Response interrupted]" : message.status === "stopped" ? "[Response stopped]" : ""].filter(Boolean).join("\n\n")
   }).join("\n\n---\n\n")
 }

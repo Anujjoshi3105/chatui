@@ -218,6 +218,7 @@ export class ChatService {
       ...(options.userId && { user_id: options.userId }),
       stream_tokens: options.streamTokens ?? true,
       ...(options.agentConfig && { agent_config: options.agentConfig }),
+      ...(options.force != null && { force: options.force }),
     }
 
     try {
@@ -444,6 +445,22 @@ export class ChatService {
       }
     } catch {
       throw new Error("Could not load conversations. Please try again.")
+    }
+  }
+
+  async cancelThread(threadId: string, userId?: string): Promise<boolean> {
+    try {
+      const url = new URL(`${this.config.baseUrl}/threads/${encodeURIComponent(threadId)}/cancel`)
+      if (userId?.trim()) url.searchParams.set("user_id", userId.trim())
+      const response = await this.request(url.toString(), {
+        method: "POST",
+        headers: this.getHeaders(),
+      })
+      if (!response.ok) return false
+      const data = (await response.json()) as { cancelled?: boolean }
+      return !!data.cancelled
+    } catch {
+      return false
     }
   }
 }

@@ -63,6 +63,29 @@ describe("runtime transitions", () => {
     batch.push("stale"); batch.dispose(); vi.runAllTimers()
     expect(commit).toHaveBeenCalledTimes(2)
   })
+  it("enqueues, dequeues, removes, and clears steering messages", () => {
+    const s0 = initial()
+    expect(s0.messageQueue).toEqual([])
+    const s1 = reduce(s0, {
+      type: "ENQUEUE_MESSAGE",
+      payload: { id: "q1", text: "Queued prompt 1", createdAt: new Date() },
+    })
+    expect(s1.messageQueue).toHaveLength(1)
+    expect(s1.messageQueue[0].text).toBe("Queued prompt 1")
+
+    const s2 = reduce(s1, {
+      type: "ENQUEUE_MESSAGE",
+      payload: { id: "q2", text: "Queued prompt 2", createdAt: new Date() },
+    })
+    expect(s2.messageQueue).toHaveLength(2)
+
+    const s3 = reduce(s2, { type: "REMOVE_QUEUED_MESSAGE", payload: "q1" })
+    expect(s3.messageQueue).toHaveLength(1)
+    expect(s3.messageQueue[0].id).toBe("q2")
+
+    const s4 = reduce(s3, { type: "CLEAR_MESSAGE_QUEUE" })
+    expect(s4.messageQueue).toEqual([])
+  })
 })
 
 describe("persistence", () => {

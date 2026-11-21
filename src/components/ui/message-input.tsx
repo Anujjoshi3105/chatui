@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, lazy, Suspense } from "react"
 import { AnimatePresence, m as motion } from "motion/react"
-import { ChevronRight, Info, Loader2, Mic, Paperclip, Square } from "lucide-react"
+import { ChevronRight, Info, Loader2, Mic, Paperclip, Square, Zap, Plus } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { useChatVoice } from "@/hooks/use-chat-voice"
@@ -23,6 +23,7 @@ interface MessageInputBaseProps
   value: string
   submitOnEnter?: boolean
   stop?: () => void
+  forcePass?: () => void
   isGenerating: boolean
   enableInterrupt?: boolean
   transcribeAudio?: (blob: Blob) => Promise<string>
@@ -69,6 +70,7 @@ export function MessageInput({
   ...props
 }: MessageInputProps) {
   const textareaProps = props as MessageInputBaseProps
+  const forcePass = textareaProps.forcePass
   const [isDragging, setIsDragging] = useState(false)
   const draftBeforeVoice = useRef("")
   const ignoreVoice = useRef(false)
@@ -184,19 +186,36 @@ export function MessageInput({
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if ((isListening || isTranscribing) && event.key === "Enter" && !event.shiftKey) { event.preventDefault(); return }
+
+    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault()
+      if (forcePass) {
+        setShowInterruptPrompt(false)
+        forcePass()
+        return
+      }
+    }
+
     if (submitOnEnter && event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault()
 
-      if (isGenerating && stop && enableInterrupt) {
+      if (isGenerating && enableInterrupt) {
         if (interruptPromptOpen) {
-          stop()
           setShowInterruptPrompt(false)
-          event.currentTarget.form?.requestSubmit()
+          if (forcePass) {
+            forcePass()
+            return
+          } else if (stop) {
+            stop()
+            event.currentTarget.form?.requestSubmit()
+            return
+          }
         } else if (
           props.value ||
           (props.allowAttachments && props.files?.length)
         ) {
           setShowInterruptPrompt(true)
+          event.currentTarget.form?.requestSubmit()
           return
         }
       }
@@ -240,6 +259,14 @@ export function MessageInput({
         <InterruptPrompt
           isOpen={interruptPromptOpen}
           close={() => setShowInterruptPrompt(false)}
+          onForcePass={() => {
+            setShowInterruptPrompt(false)
+            forcePass?.()
+          }}
+          onQueue={() => {
+            setShowInterruptPrompt(false)
+            textAreaRef.current?.form?.requestSubmit()
+          }}
         />
       )}
 
@@ -327,7 +354,9 @@ export function MessageInput({
           <SubmitActionButton
             isGenerating={isGenerating}
             stop={stop}
-            disabled={props.disabled || (!props.value.trim() && !(props.allowFileOnly && props.allowAttachments && props.files?.length)) || isGenerating || !!isListening || isTranscribing}
+            hasContent={Boolean(props.value?.trim() || (props.allowAttachments && props.files?.length))}
+            onForcePass={forcePass}
+            disabled={props.disabled || (!props.value.trim() && !(props.allowFileOnly && props.allowAttachments && props.files?.length)) || !!isListening || isTranscribing}
           />
         </TooltipProvider>
       </div>
@@ -584,30 +613,90 @@ function VoiceInputButton({
 function SubmitActionButton({
   isGenerating,
   stop,
+  hasContent,
+  onForcePass,
   disabled,
 }: {
   isGenerating: boolean
   stop?: () => void
+  hasContent?: boolean
+  onForcePass?: () => void
   disabled: boolean
 }) {
-  if (isGenerating && stop) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="h-11 w-11 text-muted-foreground hover:text-foreground"
-            aria-label="Stop generating"
-            onClick={stop}
-          >
-            <Square className="h-3 w-3 animate-pulse fill-current" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Stop generating</TooltipContent>
-      </Tooltip>
-    )
+  if (isGenerating) {
+    if (hasContent) {
+      return (
+        <div className="flex items-center gap-1">
+          {stop && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-11 w-11 text-muted-foreground hover:text-foreground cursor-pointer"
+                  aria-label="Stop generating"
+                  onClick={stop}
+                >
+                  <Square className="h-3.5 w-3.5 animate-pulse fill-current" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Stop current generation</TooltipContent>
+            </Tooltip>
+          )}
+          {onForcePass && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-11 w-11 text-amber-500 hover:text-amber-600 hover:bg-amber-500/10 cursor-pointer"
+                  aria-label="Force pass (send immediately)"
+                  onClick={onForcePass}
+                >
+                  <Zap className="h-4 w-4 fill-current" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Force pass (interrupt & send immediately)</TooltipContent>
+            </Tooltip>
+          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="submit"
+                size="icon"
+                className="h-11 w-11 rounded-full bg-primary text-primary-foreground shadow-sm cursor-pointer"
+                aria-label="Add to queue"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Queue message (runs next)</TooltipContent>
+          </Tooltip>
+        </div>
+      )
+    }
+
+    if (stop) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-11 w-11 text-muted-foreground hover:text-foreground"
+              aria-label="Stop generating"
+              onClick={stop}
+            >
+              <Square className="h-3 w-3 animate-pulse fill-current" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Stop generating</TooltipContent>
+        </Tooltip>
+      )
+    }
   }
 
   return (

@@ -12,6 +12,7 @@ export function ChatStatus() {
   const status = historyLoading ? "Loading conversation…" : metadataLoading ? "Connecting to assistant…"
     : isGenerating ? tool ? /search/i.test(tool.toolName) ? "Searching sources…" : "Working on your request…"
       : active?.content ? "Writing response…" : "Preparing response…" : null
+  void status
   return <>
     {/*status && <p role="status" className="px-4 py-2 text-xs text-muted-foreground">{status}</p> */}
     {error && errorKind !== "message" && <div className="m-3 rounded-lg border border-destructive/40 p-3 text-sm">

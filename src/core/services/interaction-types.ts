@@ -18,13 +18,6 @@ export interface AttachmentAdapter {
   discard?: (file: AttachmentReference) => Promise<void>
 }
 
-export interface ResponseCard {
-  type: "project" | "resource" | "contact"
-  title: string
-  description: string
-  action?: { label: string; url: string }
-}
-
 export interface ResponseSource {
   title: string
   url: string
@@ -47,13 +40,6 @@ export function safeActionUrl(value: unknown): string | undefined {
     const url = new URL(value)
     return ["https:", "http:", "mailto:"].includes(url.protocol) ? url.href : undefined
   } catch { return undefined }
-}
-
-export function readCards(value: unknown): ResponseCard[] {
-  if (!Array.isArray(value)) return []
-  return value.filter((card): card is ResponseCard => !!card &&
-    ["project", "resource", "contact"].includes(card.type) && typeof card.title === "string" && typeof card.description === "string")
-    .slice(0, 10)
 }
 
 export function readSources(value: unknown): ResponseSource[] {

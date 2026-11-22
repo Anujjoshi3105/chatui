@@ -17,7 +17,7 @@ function accepts(file: File, accept: string) {
 export default function AttachmentInput({ adapter, placeholder, transcribeAudio, className }: {
   adapter: AttachmentAdapter; placeholder?: string; transcribeAudio?: (blob: Blob) => Promise<string>; className?: string
 }) {
-  const { input, setInput, submitMessage, forcePass, stopGeneration, isGenerating, historyLoading } = useChatSelector(useShallow(s => ({
+  const { input, setInput, submitMessage, stopGeneration, isGenerating, historyLoading } = useChatSelector(useShallow(s => ({
     input: s.input, setInput: s.setInput, submitMessage: s.submitMessage, forcePass: s.forcePass, stopGeneration: s.stopGeneration,
     isGenerating: s.isGenerating, historyLoading: s.historyLoading,
   })))
@@ -31,7 +31,7 @@ export default function AttachmentInput({ adapter, placeholder, transcribeAudio,
     const cache = uploaded.current
     return () => {
       pending.current?.abort()
-      for (const file of cache.values()) void adapter.discard?.(file).catch(() => {})
+      for (const file of cache.values()) void adapter.discard?.(file).catch(() => { })
       cache.clear()
     }
   }, [adapter])
@@ -40,7 +40,7 @@ export default function AttachmentInput({ adapter, placeholder, transcribeAudio,
     for (const [file, reference] of uploaded.current) {
       if (!files?.includes(file)) {
         uploaded.current.delete(file)
-        void adapter.discard?.(reference).catch(() => {})
+        void adapter.discard?.(reference).catch(() => { })
       }
     }
   }, [files, adapter])
@@ -61,10 +61,12 @@ export default function AttachmentInput({ adapter, placeholder, transcribeAudio,
       for (const file of selected) {
         if (uploaded.current.has(file)) continue
         setProgress(`Uploading ${file.name}…`)
-        const reference = await adapter.upload(file, { signal: controller.signal, onProgress: percent => {
-          if (!controller.signal.aborted) setProgress(`Uploading ${file.name}: ${Math.round(Math.max(0, Math.min(100, percent)))}%`)
-        } })
-        if (controller.signal.aborted) { void adapter.discard?.(reference).catch(() => {}); return }
+        const reference = await adapter.upload(file, {
+          signal: controller.signal, onProgress: percent => {
+            if (!controller.signal.aborted) setProgress(`Uploading ${file.name}: ${Math.round(Math.max(0, Math.min(100, percent)))}%`)
+          }
+        })
+        if (controller.signal.aborted) { void adapter.discard?.(reference).catch(() => { }); return }
         if (readAttachments([reference]).length !== 1) throw new Error("Upload returned an invalid file reference. Please try again.")
         uploaded.current.set(file, reference)
       }

@@ -22,4 +22,5 @@ jobs:
           name: frontend-measurements
           path: |
             artifacts/
+            dist/
             test-results/

@@ -42,6 +42,7 @@
     "test:browser": "vite build --mode test && vite build --mode app && playwright test && node scripts/summarize-browser.mjs",
     "test:consumer": "tsc -p tests/consumer/tsconfig.json && node scripts/check-consumer.mjs",
     "check:bundles": "node scripts/check-bundles.mjs",
+    "prepare": "npm run build:lib",
     "check": "npm run typecheck && npm run lint && npm test && npm run build && npm run build:lib && npm run test:consumer && npm run check:bundles"
   },
   "peerDependencies": {

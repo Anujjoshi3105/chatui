@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from "react"
-import {
-    SpeechRecognitionManager,
-    SpeechSynthesisManager,
-    type VoiceConfig,
-    defaultVoiceConfig,
-    getVoiceSupport,
-    stripMarkdownForSpeech,
-} from "@/lib/voice.sdk"
-import { recordAudio } from "@/lib/audio-utils"
+import type { SpeechRecognitionManager, SpeechSynthesisManager, VoiceConfig } from "@/lib/voice.sdk"
+import { defaultVoiceConfig, getVoiceSupport } from "@/lib/voice-support"
+import { useShallow } from "zustand/react/shallow"
 import { useSpeechStore } from "@/store/speech-store"
 
 export interface UseChatVoiceOptions {
@@ -42,6 +36,7 @@ export interface UseChatVoiceReturn {
     stopListening: () => Promise<void>
     toggleListening: () => Promise<void>
     clearTranscript: () => void
+    cancelListening: () => void
 
     // Synthesis controls
     speak: (text: string, messageId?: string) => void
@@ -66,14 +61,15 @@ export function useChatVoice(options: UseChatVoiceOptions = {}): UseChatVoiceRet
         config,
         mode = "native",
         transcribeAudio,
-        onTranscript,
         onTranscriptionComplete,
-        onSpeechStart,
-        onSpeechEnd,
         onError,
     } = options
 
-    const { setSpeaking, setCurrentCharIndex, setCharOffset, setIsPaused, stop: stopSpeechStore, speakingMessageId: activeMsgId, activeText } = useSpeechStore()
+    const { setSpeaking, setCurrentCharIndex, setCharOffset, setIsPaused, stop: stopSpeechStore, speakingMessageId: activeMsgId, activeText } = useSpeechStore(useShallow(s => ({
+      setSpeaking: s.setSpeaking, setCurrentCharIndex: s.setCurrentCharIndex,
+      setCharOffset: s.setCharOffset, setIsPaused: s.setIsPaused, stop: s.stop,
+      speakingMessageId: s.speakingMessageId, activeText: s.activeText,
+    })))
 
     // Common State
     const [isListening, setIsListening] = useState(false)
@@ -90,6 +86,10 @@ export function useChatVoice(options: UseChatVoiceOptions = {}): UseChatVoiceRet
     const [isRecording, setIsRecording] = useState(false)
     const [isTranscribing, setIsTranscribing] = useState(false)
     const [audioStream, setAudioStream] = useState<MediaStream | null>(null)
+    const listeningRevision = useRef(0)
+    const captureStream = useRef<MediaStream | null>(null)
+    const stopRecorder = useRef<(() => void) | null>(null)
+    const starting = useRef(false)
     const activeRecordingRef = useRef<Promise<Blob> | null>(null)
 
     // Synthesis State
@@ -113,26 +113,46 @@ export function useChatVoice(options: UseChatVoiceOptions = {}): UseChatVoiceRet
     const recognitionRef = useRef<SpeechRecognitionManager | null>(null)
     const synthesisRef = useRef<SpeechSynthesisManager | null>(null)
 
-    // Initialize Native Recognition and Synthesis
+    const latest = useRef(options)
+    latest.current = options
+    const currentConfig = useRef(voiceConfig)
+    currentConfig.current = voiceConfig
     useEffect(() => {
+      if (!window.speechSynthesis) return
+      const load = () => {
+        const voices = window.speechSynthesis.getVoices()
+        setAvailableVoices(voices)
+        setSelectedVoice(previous => previous ?? voices.find(voice => voice.voiceURI === currentConfig.current.voiceURI)
+          ?? voices.find(voice => voice.lang.startsWith(currentConfig.current.lang.split("-")[0])) ?? null)
+      }
+      load()
+      window.speechSynthesis.addEventListener("voiceschanged", load)
+      return () => window.speechSynthesis.removeEventListener("voiceschanged", load)
+    }, [])
+    const mounted = useRef(true)
+    const initialization = useRef<Promise<void> | null>(null)
+    const ensureManagers = useCallback(() => {
+      if (initialization.current) return initialization.current
+      initialization.current = import("@/lib/voice.sdk").then(({ SpeechRecognitionManager, SpeechSynthesisManager }) => {
+        if (!mounted.current) return
         if (support.speechRecognition) {
-            recognitionRef.current = new SpeechRecognitionManager(voiceConfig)
+            recognitionRef.current = new SpeechRecognitionManager(currentConfig.current)
 
             recognitionRef.current.onStart = () => {
                 setIsListening(true)
                 setError(null)
-                onSpeechStart?.()
+                latest.current.onSpeechStart?.()
             }
 
             recognitionRef.current.onEnd = () => {
                 setIsListening(false)
-                onSpeechEnd?.()
+                latest.current.onSpeechEnd?.()
             }
 
             recognitionRef.current.onError = (errorMessage) => {
                 setError(errorMessage)
                 setIsListening(false)
-                onError?.(errorMessage)
+                latest.current.onError?.(errorMessage)
             }
 
             recognitionRef.current.onResult = (text, isFinal) => {
@@ -142,12 +162,12 @@ export function useChatVoice(options: UseChatVoiceOptions = {}): UseChatVoiceRet
                 } else {
                     setInterimTranscript(text)
                 }
-                onTranscript?.(text, isFinal)
+                latest.current.onTranscript?.(text, isFinal)
             }
         }
 
         if (support.speechSynthesis) {
-            synthesisRef.current = new SpeechSynthesisManager(voiceConfig)
+            synthesisRef.current = new SpeechSynthesisManager(currentConfig.current)
 
             synthesisRef.current.onStart = () => {
                 setIsSpeaking(true)
@@ -179,9 +199,9 @@ export function useChatVoice(options: UseChatVoiceOptions = {}): UseChatVoiceRet
                 const voices = synthesisRef.current?.getVoices() || []
                 setAvailableVoices(voices)
 
-                if (!selectedVoice && voices.length > 0) {
+                if (voices.length > 0) {
                     const langVoices = voices.filter((v) =>
-                        v.lang.toLowerCase().startsWith(voiceConfig.lang.toLowerCase().split("-")[0])
+                        v.lang.toLowerCase().startsWith(currentConfig.current.lang.toLowerCase().split("-")[0])
                     )
                     if (langVoices.length > 0) {
                         setSelectedVoice(langVoices[0])
@@ -195,15 +215,29 @@ export function useChatVoice(options: UseChatVoiceOptions = {}): UseChatVoiceRet
             }
 
             loadVoices()
-            if (typeof window !== "undefined" && window.speechSynthesis) {
-                window.speechSynthesis.onvoiceschanged = loadVoices
-            }
         }
 
-        return () => {
-            recognitionRef.current?.destroy()
-            synthesisRef.current?.destroy()
-        }
+      }).catch(() => {
+        initialization.current = null
+        setError("Voice could not be loaded. Please try again.")
+      })
+      return initialization.current
+    }, [support.speechRecognition, support.speechSynthesis, setCurrentCharIndex, setIsPaused, stopSpeechStore])
+
+    useEffect(() => {
+      mounted.current = true
+      return () => {
+        mounted.current = false
+        // Invalidate the latest capture, including one started after effect setup.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        listeningRevision.current++
+        stopRecorder.current?.()
+        captureStream.current?.getTracks().forEach(track => track.stop())
+        recognitionRef.current?.destroy()
+        // A virtualized message row may unmount while its speech continues.
+        // The chat root owns cancellation when the whole chat is closed.
+        initialization.current = null
+      }
     }, [])
 
     // Update config
@@ -218,49 +252,67 @@ export function useChatVoice(options: UseChatVoiceOptions = {}): UseChatVoiceRet
 
     // Unified Listening Controls
     const startListening = useCallback(async () => {
+        if (starting.current) return
+        starting.current = true
+        const revision = ++listeningRevision.current
         setError(null)
+        await ensureManagers()
+        starting.current = false
+        if (!mounted.current || revision !== listeningRevision.current) return
         setInterimTranscript("")
 
         if (mode === "native") {
-            recognitionRef.current?.start()
+            if (!recognitionRef.current?.start()) setError("Voice input could not start. Check microphone permissions and try again.")
         } else {
             try {
                 setIsListening(true)
                 setIsRecording(true)
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+                if (!mounted.current || revision !== listeningRevision.current) { stream.getTracks().forEach(track => track.stop()); return }
+                captureStream.current = stream
                 setAudioStream(stream)
+                const { recordAudio } = await import("@/lib/audio-utils")
+                if (!mounted.current || revision !== listeningRevision.current) { stream.getTracks().forEach(track => track.stop()); return }
+                stopRecorder.current = recordAudio.stop
                 activeRecordingRef.current = recordAudio(stream)
-                onSpeechStart?.()
+                void activeRecordingRef.current.catch(() => {})
+                latest.current.onSpeechStart?.()
             } catch (err) {
-                const msg = err instanceof Error ? err.message : "Failed to start recording"
+                if (!mounted.current || revision !== listeningRevision.current) return
+                const msg = err instanceof DOMException && err.name === "NotAllowedError" ? "Microphone access was denied. Allow microphone access in your browser settings." : "Could not access the microphone. Check the device and try again."
                 setError(msg)
                 setIsListening(false)
                 setIsRecording(false)
                 onError?.(msg)
             }
         }
-    }, [mode, onSpeechStart, onError])
+    }, [mode, onError, ensureManagers])
 
     const stopListening = useCallback(async () => {
+        const revision = listeningRevision.current
         if (mode === "native") {
             recognitionRef.current?.stop()
         } else {
             setIsRecording(false)
             setIsTranscribing(true)
             try {
+                const { recordAudio } = await import("@/lib/audio-utils")
                 recordAudio.stop()
                 const recording = await activeRecordingRef.current
                 if (recording && transcribeAudio) {
                     const text = await transcribeAudio(recording)
+                    if (!mounted.current || revision !== listeningRevision.current) return
                     setTranscript((prev) => prev + text)
                     onTranscriptionComplete?.(text)
                 }
             } catch (err) {
+                if (!mounted.current || revision !== listeningRevision.current) return
                 const msg = err instanceof Error ? err.message : "Error transcribing audio"
                 console.error(msg, err)
                 setError(msg)
                 onError?.(msg)
             } finally {
+                if (revision === listeningRevision.current && mounted.current) {
                 setIsTranscribing(false)
                 setIsListening(false)
                 if (audioStream) {
@@ -268,10 +320,21 @@ export function useChatVoice(options: UseChatVoiceOptions = {}): UseChatVoiceRet
                     setAudioStream(null)
                 }
                 activeRecordingRef.current = null
-                onSpeechEnd?.()
+                latest.current.onSpeechEnd?.()
+                }
             }
         }
-    }, [mode, transcribeAudio, onTranscriptionComplete, audioStream, onSpeechEnd, onError])
+    }, [mode, transcribeAudio, onTranscriptionComplete, audioStream, onError])
+
+    const cancelListening = useCallback(() => {
+        listeningRevision.current++
+        recognitionRef.current?.abort()
+        stopRecorder.current?.()
+        captureStream.current?.getTracks().forEach(track => track.stop())
+        captureStream.current = null
+        activeRecordingRef.current = null
+        setAudioStream(null); setIsRecording(false); setIsTranscribing(false); setIsListening(false); setInterimTranscript("")
+    }, [])
 
     const toggleListening = useCallback(async () => {
         if (isListening) {
@@ -287,7 +350,10 @@ export function useChatVoice(options: UseChatVoiceOptions = {}): UseChatVoiceRet
     }, [])
 
     // Synthesis controls
-    const speak = useCallback((text: string, messageId?: string) => {
+    const speak = useCallback(async (text: string, messageId?: string) => {
+        await ensureManagers()
+        if (!mounted.current) return
+        const { stripMarkdownForSpeech } = await import("@/lib/voice.sdk")
         setError(null)
         const cleanText = stripMarkdownForSpeech(text)
         if (selectedVoice) {
@@ -297,7 +363,7 @@ export function useChatVoice(options: UseChatVoiceOptions = {}): UseChatVoiceRet
             setSpeaking(messageId, cleanText)
         }
         synthesisRef.current?.speak(cleanText)
-    }, [selectedVoice, setSpeaking])
+    }, [selectedVoice, setSpeaking, ensureManagers])
 
     const stopSpeaking = useCallback(() => {
         synthesisRef.current?.stop()
@@ -358,6 +424,7 @@ export function useChatVoice(options: UseChatVoiceOptions = {}): UseChatVoiceRet
         stopListening,
         toggleListening,
         clearTranscript,
+        cancelListening,
         speak,
         stopSpeaking,
         pauseSpeaking,

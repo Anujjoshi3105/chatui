@@ -47,14 +47,16 @@ export function ToolResult({ toolName, result }: ToolResultProps) {
     setOpen(false)
   }
 
+  const summary = typeof result === "string" ? result : result && typeof result === "object" && "summary" in result && typeof result.summary === "string" ? result.summary : null
   return (
+    <div className="min-w-0 space-y-2">
+    {summary && <p className="text-sm text-muted-foreground">Result: {summary.slice(0, 180)}{summary.length > 180 ? "..." : ""}</p>}
     <Popover
       open={open}
-      onOpenChange={(isOpen) => {
-        if (!isOpen) setOpen(false)
-      }}
+      onOpenChange={setOpen}
     >
       <PopoverTrigger asChild>
+        <button type="button" aria-label={`View ${toolName} result`}>
         <Badge
           variant="outline"
           className="cursor-pointer hover:scale-[0.95]"
@@ -63,7 +65,7 @@ export function ToolResult({ toolName, result }: ToolResultProps) {
         >
           <Code2 className="size-3" />
           {toolName}
-        </Badge>
+        </Badge></button>
       </PopoverTrigger>
       <PopoverContent
         className="max-h-[80vh] w-96 max-w-[min(90vw,24rem)] flex flex-col p-0"
@@ -91,5 +93,6 @@ export function ToolResult({ toolName, result }: ToolResultProps) {
         </div>
       </PopoverContent>
     </Popover>
+    </div>
   )
 }

@@ -28,6 +28,12 @@ FilePreview.displayName = "FilePreview"
 
 const ImageFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
   ({ file, onRemove }, ref) => {
+    const imageRef = React.useRef<HTMLImageElement>(null)
+    useEffect(() => {
+      const next = URL.createObjectURL(file)
+      if (imageRef.current) imageRef.current.src = next
+      return () => URL.revokeObjectURL(next)
+    }, [file])
     return (
       <motion.div
         ref={ref}
@@ -38,11 +44,10 @@ const ImageFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
         exit={{ opacity: 0, y: "100%" }}
       >
         <div className="flex w-full items-center space-x-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             alt={`Attachment ${file.name}`}
             className="grid h-10 w-10 shrink-0 place-items-center rounded-sm border bg-muted object-cover"
-            src={URL.createObjectURL(file)}
+            ref={imageRef}
           />
           <span className="w-full truncate text-muted-foreground">
             {file.name}
@@ -76,6 +81,7 @@ const TextFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
         setPreview(text.slice(0, 50) + (text.length > 50 ? "..." : ""))
       }
       reader.readAsText(file)
+      return () => { reader.abort(); reader.onload = null }
     }, [file])
 
     return (

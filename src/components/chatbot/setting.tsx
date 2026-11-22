@@ -47,6 +47,7 @@ import { getVoiceSupport } from "@/lib/voice.sdk"
 import { useState, useMemo } from "react"
 
 interface SettingProps {
+  defaultOpen?: boolean
   metadata: ServiceMetadata | null
   selectedAgent: string
   selectedModel: string
@@ -78,6 +79,7 @@ const languageNames: Record<string, string> = {
 }
 
 export default function Setting({
+  defaultOpen,
   metadata,
   selectedAgent,
   selectedModel,
@@ -117,7 +119,7 @@ export default function Setting({
     (support.speechRecognition || support.speechSynthesis)
 
   return (
-    <Popover>
+    <Popover defaultOpen={defaultOpen}>
       <Tooltip>
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
@@ -133,7 +135,7 @@ export default function Setting({
         </TooltipTrigger>
         <TooltipContent>Configuration</TooltipContent>
       </Tooltip>
-      <PopoverContent className="w-[380px] p-0 rounded-xl shadow-lg border-border/50" align="end">
+      <PopoverContent aria-label="Chat settings" className="w-[380px] max-w-[calc(100vw-2rem)] max-h-[80dvh] overflow-y-auto p-0 rounded-xl shadow-lg border-border/50" align="end">
         {/* Header */}
         <div className="px-5 py-3 border-b bg-muted/30 flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />

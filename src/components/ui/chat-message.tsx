@@ -13,7 +13,9 @@ import { lazy, Suspense } from "react"
 const FilePreview = lazy(() => import("@/components/ui/file-preview").then(m => ({ default: m.FilePreview })))
 import { LazyMarkdownRenderer } from "@/components/ui/lazy-markdown-renderer"
 import { TypingIndicator } from "@/components/ui/typing-indicator"
-import { ToolResult } from "@/components/ui/tool-result"
+const ToolResult = lazy(() => import("@/components/ui/tool-result").then(m => ({ default: m.ToolResult })))
+import { OpenUIBlock } from "@/components/openui"
+import { readSources } from "@/core/services/interaction-types"
 import { WordHighlighter } from "@/components/ui/word-highlighter"
 import { useSpeechStore } from "@/store/speech-store"
 
@@ -113,13 +115,13 @@ interface ToolCall {
   toolName: string
 }
 
-interface ToolResult {
+interface ToolResultInvocation {
   state: "result"
   toolName: string
   result: unknown
 }
 
-type ToolInvocation = PartialToolCall | ToolCall | ToolResult
+type ToolInvocation = PartialToolCall | ToolCall | ToolResultInvocation
 
 interface ReasoningPart {
   type: "reasoning"
@@ -171,15 +173,49 @@ export interface Message {
   custom_data?: Record<string, unknown>
   rating?: number
   comment?: string
+  status?: "submitting" | "streaming" | "complete" | "stopped" | "failed"
+  error?: string
   runId?: string
 }
 
 export interface ChatMessageProps extends Message {
+  onCardAction?: () => void
   showTimeStamp?: boolean
   animation?: Animation
   actions?: React.ReactNode
   isGenerating?: boolean
   variant?: "single" | "first" | "middle" | "last"
+}
+
+function parseContentSegments(raw: string) {
+  if (!raw.includes("```openui")) {
+    return [{ type: "markdown" as const, content: raw }]
+  }
+
+  const segments: { type: "markdown" | "openui"; content: string }[] = []
+  const regex = /```openui\s*([\s\S]*?)(?:```|$)/g
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+
+  while ((match = regex.exec(raw)) !== null) {
+    if (match.index > lastIndex) {
+      const text = raw.slice(lastIndex, match.index)
+      if (text.trim()) {
+        segments.push({ type: "markdown", content: text })
+      }
+    }
+    segments.push({ type: "openui", content: match[1] })
+    lastIndex = regex.lastIndex
+  }
+
+  if (lastIndex < raw.length) {
+    const remaining = raw.slice(lastIndex)
+    if (remaining.trim()) {
+      segments.push({ type: "markdown", content: remaining })
+    }
+  }
+
+  return segments
 }
 
 export function ChatMessageBubble({
@@ -202,10 +238,25 @@ export function ChatMessageBubble({
   const { speakingMessageId, currentCharIndex, charOffset, activeText } = useSpeechStore()
   const isSpeakingThis = !!id && speakingMessageId === id
 
+  const segments = useMemo(() => {
+    if (typeof children !== "string") return []
+    return parseContentSegments(children)
+  }, [children])
+
   return (
     <div className={cn(chatBubbleVariants({ isUser, animation, variant }))}>
       {isGenerating && !children ? (
         <TypingIndicator />
+      ) : segments.length > 0 ? (
+        segments.map((seg, idx) =>
+          seg.type === "openui" ? (
+            <OpenUIBlock key={idx} code={seg.content} isStreaming={isGenerating} />
+          ) : (
+            <LazyMarkdownRenderer key={idx} messageId={id}>
+              {seg.content}
+            </LazyMarkdownRenderer>
+          )
+        )
       ) : (
         <LazyMarkdownRenderer messageId={id}>{typeof children === "string" ? children : ""}</LazyMarkdownRenderer>
       )}
@@ -217,7 +268,7 @@ export function ChatMessageBubble({
         />
       )}
       {actions ? (
-        <div className="absolute -bottom-6 right-2 flex space-x-1 rounded-lg border bg-background/95 backdrop-blur-sm p-1 text-foreground opacity-0 transition-all duration-200 group-hover/message:opacity-100 shadow-sm">
+        <div className="chat-message-actions mt-2 flex flex-wrap gap-1 rounded-lg border bg-background/95 backdrop-blur-sm p-1 text-foreground transition-all duration-200 shadow-sm">
           {actions}
         </div>
       ) : null}
@@ -257,6 +308,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   role,
   content,
   createdAt,
+  status,
+  error,
+  custom_data,
+  onCardAction,
   showTimeStamp = false,
   animation = "scale",
   actions,
@@ -290,6 +345,31 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         </div>
       )}
 
+      {typeof custom_data?.openui === "string" ? (
+        <OpenUIBlock code={custom_data.openui} />
+      ) : null}
+      {Array.isArray(custom_data?.sources) ? (() => {
+        const sources = readSources(custom_data.sources)
+        if (!sources.length) return null
+        return (
+          <details className="rounded-lg border p-3 text-sm my-2 w-full">
+            <summary className="cursor-pointer min-h-8">Sources for this answer ({sources.length})</summary>
+            <ol className="list-decimal pl-5 space-y-2 mt-2">
+              {sources.map((source, index) => (
+                <li key={index}>
+                  <a href={source.url} target="_blank" rel="noopener noreferrer" onClick={onCardAction} className="underline break-words">
+                    {source.title}
+                  </a>
+                  {source.excerpt && <p className="text-muted-foreground">{source.excerpt}</p>}
+                </li>
+              ))}
+            </ol>
+          </details>
+        )
+      })() : null}
+      {status === "failed" && <p role="alert" className="rounded-lg border border-destructive/40 p-3 text-sm">{error || "Response interrupted."} Use More to edit and resend as a new message.</p>}
+      {status === "stopped" && <p className="text-xs text-muted-foreground">Response stopped</p>}
+      {!content && !isGenerating && actions && <div className="flex flex-wrap gap-1">{actions}</div>}
       {toolInvocations && toolInvocations.length > 0 && (
         <ToolCall toolInvocations={toolInvocations} />
       )}
@@ -415,7 +495,7 @@ function ToolCall({
         switch (invocation.state) {
           case "result":
             return (
-              <ToolResult key={index} toolName={invocation.toolName} result={invocation.result} />
+              <Suspense key={index} fallback={<div role="status">Loading tool result…</div>}><ToolResult toolName={invocation.toolName} result={invocation.result} /></Suspense>
             )
           case "partial-call":
           case "call":
@@ -428,7 +508,7 @@ function ToolCall({
                   <Terminal className="h-3 w-3" />
                 </div>
                 <span className="font-medium">
-                  Calling{" "}
+                  Working with{" "}
                   <code className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-mono">
                     {invocation.toolName}
                   </code>

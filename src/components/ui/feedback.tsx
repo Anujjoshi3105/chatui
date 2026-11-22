@@ -6,13 +6,17 @@ import { Popover, PopoverContent, PopoverTrigger } from "./popover"
 import { cn } from "@/lib/utils"
 
 interface FeedbackProps {
-  onRateResponse: (messageId: string, score: number, comment?: string) => void
+  onRateResponse: (messageId: string, score: number, comment?: string) => void | Promise<void>
+  localOnly?: boolean
   messageId: string
   rating?: number // 0 to 1
   comment?: string
 }
 
-export default function Feedback({ onRateResponse, messageId, rating, comment: initialComment }: FeedbackProps) {
+export default function Feedback({ onRateResponse, messageId, rating, comment: initialComment, localOnly }: FeedbackProps) {
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
   const [open, setOpen] = useState(false)
   const [hoverValue, setHoverValue] = useState<number | null>(null)
   const [selectedValue, setSelectedValue] = useState<number | null>(rating ? rating * 5 : null)
@@ -20,12 +24,12 @@ export default function Feedback({ onRateResponse, messageId, rating, comment: i
 
   // Sync state if props change (e.g., loaded from history or optimistic update succeeds)
   React.useEffect(() => {
-    setSelectedValue(rating ? rating * 5 : null)
-  }, [rating])
+    if (!open) setSelectedValue(rating ? rating * 5 : null)
+  }, [rating, open])
 
   React.useEffect(() => {
-    setComment(initialComment || "")
-  }, [initialComment])
+    if (!open) setComment(initialComment || "")
+  }, [initialComment, open])
 
   const renderStars = () => {
     return Array.from({ length: 5 }).map((_, i) => {
@@ -36,10 +40,13 @@ export default function Feedback({ onRateResponse, messageId, rating, comment: i
         <button
           key={i}
           type="button"
+          aria-label={`${starValue} out of 5`}
+          aria-pressed={selectedValue === starValue}
+          disabled={pending}
           onClick={() => setSelectedValue(starValue)}
           onMouseEnter={() => setHoverValue(starValue)}
           onMouseLeave={() => setHoverValue(null)}
-          className="p-1 focus:outline-none transition-transform hover:scale-110"
+          className="min-h-11 min-w-11 p-2 focus-visible:outline-2 focus-visible:outline-primary transition-transform hover:scale-110"
         >
           <Heart
             className={cn(
@@ -52,19 +59,23 @@ export default function Feedback({ onRateResponse, messageId, rating, comment: i
     })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (selectedValue) {
-      onRateResponse(messageId, selectedValue / 5, comment.trim() || undefined)
-      setOpen(false)
-    }
+    if (!selectedValue || pending) return
+    setPending(true); setError(null); setSaved(false)
+    try {
+      await onRateResponse(messageId, selectedValue / 5, comment.trim() || undefined)
+      setSaved(true)
+    } catch { setError("Could not save feedback. Your comment is still here. Try again.") }
+    finally { setPending(false) }
   }
 
   const handleOpenChange = (newOpen: boolean) => {
+    if (pending) return
     setOpen(newOpen)
     if (newOpen) {
-      setSelectedValue(rating ? rating * 5 : null)
-      setComment(initialComment || "")
+      setSaved(false)
+      setError(null)
     }
   }
 
@@ -75,6 +86,7 @@ export default function Feedback({ onRateResponse, messageId, rating, comment: i
           <TooltipTrigger asChild>
             <PopoverTrigger asChild>
               <Button
+                aria-label="Rate response"
                 size="icon"
                 variant="ghost"
                 className={cn(
@@ -92,16 +104,16 @@ export default function Feedback({ onRateResponse, messageId, rating, comment: i
         </Tooltip>
       </TooltipProvider>
 
-      <PopoverContent className="w-80 p-4" align="end" side="top">
+      <PopoverContent className="w-80 max-w-[calc(100vw-2rem)] p-4" align="end" side="top">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 relative z-50">
           <div className="space-y-2">
             <h4 className="font-medium text-sm text-foreground">Provide Feedback</h4>
             <p className="text-xs text-muted-foreground">
-              How would you rate this response?
+              {localOnly ? "Saved on this device only; this response has no server feedback ID." : "How would you rate this response?"}
             </p>
           </div>
 
-          <div className="flex justify-center -mx-2">
+          <div role="group" aria-label="Response rating" className="flex justify-center -mx-2">
             {renderStars()}
           </div>
 
@@ -116,6 +128,8 @@ export default function Feedback({ onRateResponse, messageId, rating, comment: i
             />
           </div>
 
+          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+          {saved && <p role="status" className="text-sm">{localOnly ? "Saved on this device" : "Feedback saved"}</p>}
           <div className="flex justify-end gap-2">
             <Button
               type="button"
@@ -128,9 +142,9 @@ export default function Feedback({ onRateResponse, messageId, rating, comment: i
             <Button
               type="submit"
               size="sm"
-              disabled={!selectedValue}
+              disabled={!selectedValue || pending}
             >
-              Submit
+              {pending ? "Saving…" : error ? "Retry" : "Submit"}
             </Button>
           </div>
         </form>

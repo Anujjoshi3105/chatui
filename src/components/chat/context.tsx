@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 
-import React, { createContext, useContext, useMemo, type ReactNode } from "react"
+import React, { createContext, useContext, useMemo, useState, useLayoutEffect, type ReactNode } from "react"
 import { useChatRuntime } from "@/core/runtime/use-chat-runtime"
 import type { ChatRuntimeConfig } from "@/core/runtime/chat-state"
 
@@ -14,10 +14,14 @@ export type VoiceContextOverrides = {
 
 export type ChatContextValue = ReturnType<typeof useChatRuntime> & {
   /** Resolved suggestions: follow-up prompts or starter suggestions when no user messages yet. */
+  emitEvent: (event: ChatEvent) => void
   suggestions: string[]
 } & VoiceContextOverrides
 
-const ChatContext = createContext<ChatContextValue | null>(null)
+import { emitChatEvent, type ChatEvent } from "@/core/services/interaction-types"
+import { createStore, type StoreApi } from "zustand/vanilla"
+import { useStore } from "zustand"
+const ChatContext = createContext<StoreApi<ChatContextValue> | null>(null)
 
 export interface ChatProviderProps extends VoiceContextOverrides {
   config: ChatRuntimeConfig
@@ -48,19 +52,24 @@ export function ChatProvider({
     if (runtime.metadata) onMetadata?.(runtime.metadata)
   }, [runtime.metadata, onMetadata])
   const suggestions = useMemo(() => {
+    if (runtime.isGenerating || runtime.historyLoading) return []
     if (runtime.followUpPrompts.length > 0) return runtime.followUpPrompts
     if (hasUserMessages) return []
     return initialSuggestions ?? config.starterSuggestions ?? []
   }, [
     runtime.followUpPrompts,
+    runtime.isGenerating,
+    runtime.historyLoading,
     hasUserMessages,
     initialSuggestions,
     config.starterSuggestions,
   ])
 
+  const emitEvent = React.useCallback((event: ChatEvent) => emitChatEvent(config.onEvent, event), [config.onEvent])
   const value = useMemo<ChatContextValue>(
     () => ({
       ...runtime,
+      emitEvent,
       suggestions,
       voiceConfig,
       isListening,
@@ -71,6 +80,7 @@ export function ChatProvider({
     }),
     [
       runtime,
+      emitEvent,
       suggestions,
       voiceConfig,
       isListening,
@@ -80,13 +90,19 @@ export function ChatProvider({
     ]
   )
 
-  return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>
+  const [store] = useState(() => createStore<ChatContextValue>(() => value))
+  useLayoutEffect(() => { store.setState(value, true) }, [store, value])
+  return <ChatContext.Provider value={store}>{children}</ChatContext.Provider>
 }
 
-export function useChatContext(): ChatContextValue {
+export function useChatSelector<T>(selector: (value: ChatContextValue) => T): T {
   const ctx = useContext(ChatContext)
   if (!ctx) {
     throw new Error("useChatContext must be used within ChatProvider")
   }
-  return ctx
+  return useStore(ctx, selector)
+}
+
+export function useChatContext(): ChatContextValue {
+  return useChatSelector(value => value)
 }

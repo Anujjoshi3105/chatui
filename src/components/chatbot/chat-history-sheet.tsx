@@ -124,9 +124,14 @@ export function ChatHistorySheet({
   setThreadsLoading,
   currentThreadId,
   onSelectThread,
+  onNewChat,
   getThreads,
   deleteThread,
 }: ChatHistorySheetProps) {
+  const [error, setError] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [retry, setRetry] = useState(0)
+  const requestRevision = useRef(0)
   const [searchInput, setSearchInput] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [loadingMore, setLoadingMore] = useState(false)
@@ -170,16 +175,17 @@ export function ChatHistorySheet({
   useEffect(() => {
     if (!open || !userId?.trim()) return
     let cancelled = false
+    const revision = ++requestRevision.current
+    setError(null)
     setThreadsLoading(true)
-    setThreadList([])
-    setTotalThreads(0)
     getThreads({ limit: PAGE_SIZE, offset: 0, search: searchQuery })
       .then(({ threads, total }) => {
-        if (!cancelled) {
+        if (!cancelled && revision === requestRevision.current) {
           setThreadList(threads)
           setTotalThreads(total ?? 0)
         }
       })
+      .catch(() => { if (!cancelled) setError("Could not load conversations. Try again.") })
       .finally(() => {
         if (!cancelled) setThreadsLoading(false)
       })
@@ -188,6 +194,7 @@ export function ChatHistorySheet({
     }
   }, [
     open,
+    retry,
     userId,
     searchQuery,
     getThreads,
@@ -208,9 +215,11 @@ export function ChatHistorySheet({
       return
     const el = loadMoreSentinelRef.current
     if (!el) return
+    let cancelled = false
+    const revision = requestRevision.current
     const observer = new IntersectionObserver(
       (entries) => {
-        if (!entries[0]?.isIntersecting || loadingMoreRef.current) return
+        if (!entries[0]?.isIntersecting || loadingMoreRef.current || error) return
         const offset = threadListLengthRef.current
         if (offset >= totalThreads) return
         loadingMoreRef.current = true
@@ -221,8 +230,9 @@ export function ChatHistorySheet({
           search: searchQuery || undefined,
         })
           .then(({ threads }) => {
-            setThreadList((prev) => [...prev, ...threads])
+            if (!cancelled && revision === requestRevision.current) setThreadList((prev) => [...prev, ...threads.filter(t => !prev.some(p => p.thread_id === t.thread_id))])
           })
+          .catch(() => { if (!cancelled) setError("Could not load more conversations. Try again.") })
           .finally(() => {
             loadingMoreRef.current = false
             setLoadingMore(false)
@@ -231,12 +241,13 @@ export function ChatHistorySheet({
       { root: null, rootMargin: "100px", threshold: 0 }
     )
     observer.observe(el)
-    return () => observer.disconnect()
+    return () => { cancelled = true; observer.disconnect() }
   }, [
     open,
     userId,
     threadsLoading,
     threadList.length,
+    error,
     totalThreads,
     searchQuery,
     getThreads,
@@ -246,6 +257,7 @@ export function ChatHistorySheet({
   const handleDeleteConfirm = useCallback(async () => {
     if (!threadToDelete || !deleteThread) return
     setIsDeleting(true)
+    setDeleteError(null)
     try {
       await deleteThread(threadToDelete)
       setThreadList((prev) => {
@@ -253,8 +265,8 @@ export function ChatHistorySheet({
       })
       setTotalThreads(Math.max(0, totalThreads - 1))
       setThreadToDelete(null)
-    } catch (e) {
-      console.error("Failed to delete thread", e)
+    } catch {
+      setDeleteError("Could not delete this conversation. Try again.")
     } finally {
       setIsDeleting(false)
     }
@@ -271,6 +283,8 @@ export function ChatHistorySheet({
               : "Sign in to see your conversations."}
           </SheetDescription>
         </SheetHeader>
+        {onNewChat && <Button onClick={() => { onOpenChange(false); onNewChat() }}>New chat</Button>}
+        {error && <div role="alert" className="text-sm"><p>{error}</p><Button variant="outline" onClick={() => setRetry(value => value + 1)}>Retry conversations</Button></div>}
         {userId?.trim() ? (
           <div className="flex items-center bg-muted/50 rounded-lg px-2 py-1.5 focus-within:bg-background focus-within:ring-1 focus-within:ring-ring transition-all">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground ml-1" />
@@ -334,6 +348,7 @@ export function ChatHistorySheet({
                                 "w-full justify-start font-normal h-auto p-3 relative transition-all duration-200 cursor-pointer",
                                 t.thread_id === currentThreadId ? "bg-muted/80 shadow-sm" : "hover:bg-muted"
                               )}
+                              aria-current={t.thread_id === currentThreadId ? "true" : undefined}
                               onClick={() => onSelectThread(t.thread_id)}
                             >
                               <div className="flex items-start gap-3 w-full overflow-hidden">
@@ -357,9 +372,10 @@ export function ChatHistorySheet({
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all focus:opacity-100 z-10"
+                                className="chat-history-delete absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all focus:opacity-100 z-10"
                                 onClick={(e) => {
                                   e.stopPropagation()
+                                  setDeleteError(null)
                                   setThreadToDelete(t.thread_id)
                                 }}
                                 aria-label="Delete conversation"
@@ -394,6 +410,7 @@ export function ChatHistorySheet({
               Are you sure you want to delete this conversation? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
+          {deleteError && <p role="alert" className="text-sm text-destructive">{deleteError}</p>}
           <DialogFooter className="mt-4 flex sm:justify-end">
             <Button
               variant="outline"

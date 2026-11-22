@@ -5,9 +5,11 @@ import { stripMarkdownForSpeech } from "@/lib/voice.sdk"
 import remarkGfm from "remark-gfm"
 
 import rehypeRaw from "rehype-raw"
+import rehypeSanitize from "rehype-sanitize"
 import { cn } from "@/lib/utils"
 import { CopyButton } from "@/components/ui/copy-button"
 import { LinkPreview } from "@/components/ui/link-preview"
+import { OpenUIBlock } from "@/components/openui"
 
 export interface MarkdownRendererProps {
   children: string
@@ -36,6 +38,15 @@ function CodeBlock({
 }: CodeBlockProps) {
   const code = extractText(children)
   const languageClass = React.isValidElement(children) ? (children.props as { className?: string }).className : className
+
+  const isLanguageOpenUI = Boolean(
+    (languageClass && /(?:^|\s)language-openui(?:\s|$)/i.test(languageClass)) ||
+    (className && /(?:^|\s)language-openui(?:\s|$)/i.test(className))
+  )
+
+  if (isLanguageOpenUI) {
+    return <OpenUIBlock code={code.trim()} />
+  }
 
   return (
     <div className="group relative my-4">
@@ -136,7 +147,7 @@ export default memo(function MarkdownRenderer({ children, className, messageId }
     )}>
       <Markdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]}
+        rehypePlugins={[rehypeRaw, rehypeSanitize]}
         components={{
           ...components,
           p: ({ children, ...props }) => {
@@ -183,11 +194,11 @@ function WordHighlighter({ children, globalIndex, fullText }: { children: React.
       )
     }
     if (React.isValidElement(node)) {
-      const children = (node.props as any).children
-      return React.cloneElement(node, {
-        ...(node.props as any),
-        children: React.Children.map(children, highlightWord)
-      } as any)
+      const children = (node.props as { children?: React.ReactNode }).children
+      const element = node as React.ReactElement<{ children?: React.ReactNode }>
+      return React.cloneElement(element, {
+        children: React.Children.map(children, highlightWord),
+      })
     }
     return node
   }
